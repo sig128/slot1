@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { ChannelCard, DirectoryResponse } from "@slot1/contracts";
-import { SkylineArt } from "@/components/brand/SkylineArt";
 import { AnalysisChip, BroadcastChip } from "@/components/ui/StatusChips";
 import { compactNumber, relativeAge } from "@/lib/format";
 import { LinkOpener } from "./LinkOpener";
@@ -24,7 +23,7 @@ function Viewers({ c }: { c: ChannelCard }) {
   return <span className="tnum">{compactNumber(c.broadcast.viewerCount)} watching</span>;
 }
 
-function Featured({ c }: { c: ChannelCard }) {
+function Featured({ c, fallbackArt }: { c: ChannelCard; fallbackArt: ReactNode }) {
   return (
     <article className="min-w-0">
       <Link href={`/watch/${c.login}`} className="group block" aria-label={`Watch ${c.displayName}`}>
@@ -34,7 +33,7 @@ function Featured({ c }: { c: ChannelCard }) {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={c.broadcast.thumbnailUrl} alt={`${c.displayName} stream thumbnail`} className="h-full w-full object-cover" />
           ) : (
-            <SkylineArt className="h-full w-full" idPrefix={`skf-${c.broadcasterId}`} />
+            fallbackArt
           )}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-graphite/85 to-transparent" />
           <div className="absolute bottom-4 left-4 flex flex-wrap gap-2">
@@ -113,8 +112,12 @@ function Row({ c }: { c: ChannelCard }) {
   );
 }
 
-/** The channel directory under the intro: searchable, the first channel featured. */
-export function LiveDirectory({ directory }: { directory: DirectoryResponse }) {
+/**
+ * The channel directory under the intro: searchable, the first channel featured. `fallbackArt`
+ * (server-rendered artwork) fills the featured slot when Twitch has no thumbnail, so the artwork
+ * never ships as client JavaScript.
+ */
+export function LiveDirectory({ directory, fallbackArt }: { directory: DirectoryResponse; fallbackArt: ReactNode }) {
   const [query, setQuery] = useState("");
   const channels = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -148,7 +151,7 @@ export function LiveDirectory({ directory }: { directory: DirectoryResponse }) {
         <p className="mt-16 text-lg text-ivory-2">No channel matches “{query}”.</p>
       ) : (
         <div className="mt-10 grid gap-12 lg:grid-cols-12">
-          <div className="lg:col-span-8">{featured && <Featured c={featured} />}</div>
+          <div className="lg:col-span-8">{featured && <Featured c={featured} fallbackArt={fallbackArt} />}</div>
           <aside className="lg:col-span-4" aria-label="More channels">
             {rest.length > 0 && (
               <>

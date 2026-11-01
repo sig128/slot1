@@ -69,7 +69,11 @@ export function OnAirView({ directory, capabilities }: { directory: DirectoryRes
         <ScenePlayback />
       </section>
 
-      {mode === "empty" ? <EmptyBand twitchReady={twitchReady} capabilities={capabilities} /> : <LiveDirectory directory={directory} />}
+      {mode === "empty" ? (
+        <EmptyBand twitchReady={twitchReady} capabilities={capabilities} />
+      ) : (
+        <LiveDirectory directory={directory} fallbackArt={<SkylineArt idPrefix="skf" className="h-full w-full" />} />
+      )}
     </>
   );
 }

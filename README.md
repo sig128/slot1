@@ -2,6 +2,8 @@
 
 SLOT1 is a broadcast companion for GTA streams on Twitch. Viewers watch through Twitch's official player beside a live log of what SLOT1 actually observed. Each entry carries its evidence: the frame it came from, the on-screen text it read, or the Twitch event that produced it. Creators get a Twitch chat bot, clips on request, saved moments, and a Studio that says exactly what is connected and what isn't.
 
+Creators who also send their stream to SLOT1, from OBS for example, get more: SLOT1's own live video for viewers over WebRTC (typically under a second behind, an estimate), forwarding of that one upload to Twitch, YouTube, Kick or a custom server with one-click OBS setup, recording, screenshots, automatic and hand-cut clips with a browser editor, a public profile, and instant replay of any moment in the log. SLOT1 can also train its own GTA model on frames from creators who opt in. "Los Santos right now" lists every public stream SLOT1 is watching and what it saw on each; an optional demo channel runs a synthetic test video through the real pipeline; operators get an `/admin` dashboard with cookieless visitor statistics. Each of these has its own document ([Further documents](#further-documents)).
+
 SLOT1 does not:
 
 - touch a PS5
@@ -64,9 +66,10 @@ OBS/capture ── RTMP ──► nginx-rtmp or MediaMTX ── hooks ──► 
 worker (BullMQ jobs + live supervisor) ── ffmpeg, tesseract, AI providers, Helix
 ```
 
-- **web**: `apps/web`. App Router, nonce-based CSP, official Twitch embeds only. Pages: On Air, Watch, Replay, Moments, Studio, Setup, and `/demo`, which is clearly labeled fixture data.
+- **web**: `apps/web`. App Router, nonce-based CSP, official Twitch embeds only. Pages: On Air, Watch, Replay, Moments, Studio (with the clip editor), Setup, Los Santos right now, creator profiles and shared items, `/demo` (the live demo, off by default), `/admin`, contact, privacy and terms.
 - **api**: `apps/api`. Handles sessions and CSRF, Twitch OAuth (state bound to the browser session), EventSub verification, uploads, signed media URLs, the SSE event stream with Last-Event-ID backfill, Studio, and gateway hooks.
-- **worker**: `apps/worker`. Runs upload analysis, live ingest (one Redis lease per source), clips, chat commands, EventSub processing, token validation (hourly) and retention.
+- **worker**: `apps/worker`. Runs upload analysis, live ingest (one Redis lease per source), recording, clips and renders, forwarding, chat commands, EventSub processing, token validation (hourly) and retention.
+- **inference**: `apps/inference`. An optional shared service that runs the GTA model for every stream, batching frames across them ([docs/SCALING.md](docs/SCALING.md)). Without it, each worker runs the model itself.
 - **packages**:
   - `contracts`: zod schemas shared by every app.
   - `db`: SQL migrations and queries.
@@ -75,6 +78,7 @@ worker (BullMQ jobs + live supervisor) ── ffmpeg, tesseract, AI providers, H
   - `analysis`: ffmpeg, OCR, fusion, state derivation, and the AI provider adapters.
   - `bot`: command policy and replies.
   - `services`: logic shared by the API and the worker.
+  - `gta-runtime`: runs SLOT1's GTA models with ONNX Runtime, for both the worker and the inference service.
 
 ## Quick start (local, no Docker)
 
