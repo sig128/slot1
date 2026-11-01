@@ -30,7 +30,7 @@ describe("edit decision lists", () => {
     expect(bad({ segments: [seg("a", 0, 6 * 60_000)] })).toBe(false); // longer than 5 min
     expect(bad({ segments: [seg("a", 0, 240_000), seg("b", 0, 240_000), seg("c", 0, 240_000)] })).toBe(false); // edit over 10 min
     expect(bad({ segments: [seg("a", 0, 5000), seg("a", 6000, 9000)] })).toBe(false); // duplicate ids
-    expect(bad({ segments: [seg("a", 0, 5000, { speed: 3 })] })).toBe(false);
+    expect(bad({ segments: [seg("a", 0, 5000, { speed: 5 })] })).toBe(false); // beyond 4×
     expect(bad({ segments: [seg("a", 0, 5000, { reframe: { x: 0.5, y: 0.5, zoom: 5 } })] })).toBe(false);
     expect(bad({ segments: [seg("a", 0, 5000, { sessionId: "not-a-uuid" })] })).toBe(false);
     expect(bad({ aspect: "4:3" })).toBe(false);

@@ -562,7 +562,7 @@ export function presetProblem(preset: ExportPresetId, format: ExportFormat, dura
 /* Library, recordings, profiles                                                              */
 /* ------------------------------------------------------------------------------------------ */
 
-export const LibraryItemKind = z.enum(["recording", "render", "screenshot", "twitch_clip", "clip_export"]);
+export const LibraryItemKind = z.enum(["recording", "render", "screenshot", "twitch_clip", "clip_export", "thumbnail"]);
 export type LibraryItemKind = z.infer<typeof LibraryItemKind>;
 
 /** private: owner only. unlisted: anyone with the link. public: listed on the profile. */
@@ -596,6 +596,9 @@ export const LibraryItemView = z.object({
   /** Where the item opens on SLOT1. */
   viewPath: z.string(),
   canEdit: z.boolean(),
+  /** Renders: the export preset and container. */
+  preset: ExportPresetIdSchema.nullable().default(null),
+  format: z.enum(["mp4", "gif", "audio", "png"]).default("mp4"),
 });
 export type LibraryItemView = z.infer<typeof LibraryItemView>;
 
@@ -642,6 +645,8 @@ export const ProjectSourceView = z.object({
   markers: z.array(z.object({ ms: z.number(), label: z.string(), kind: z.enum(["big", "event", "text"]) })),
   /** Transcript lines (media timeline), for burned-in captions. */
   captionLines: z.number(),
+  /** The creator's webcam box from "Hide your camera from the AI", when set: prefills the facecam split. */
+  cameraBox: EdlBox.nullable().default(null),
 });
 export type ProjectSourceView = z.infer<typeof ProjectSourceView>;
 
@@ -655,6 +660,44 @@ export const ProjectView = z.object({
   renders: z.array(LibraryItemView),
 });
 export type ProjectView = z.infer<typeof ProjectView>;
+
+/** A file the creator uploaded for their edits. */
+export const ProjectMediaView = z.object({
+  id: z.string(),
+  kind: z.enum(["audio", "image"]),
+  name: z.string(),
+  durationMs: z.number().nullable(),
+  width: z.number().nullable(),
+  height: z.number().nullable(),
+  bytes: z.number(),
+  url: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type ProjectMediaView = z.infer<typeof ProjectMediaView>;
+
+/** POST /api/projects/:id/thumbnail: a 1280×720 still with big text, saved to the library. */
+export const ThumbnailInput = z
+  .object({
+    atMs: z.number().int().min(0).describe("Output-timeline time of the frame."),
+    text: z.string().trim().min(1).max(60),
+    subtext: z.string().trim().max(80).default(""),
+    style: z.enum(["poster", "mission", "wasted", "title-card", "banner"]).default("poster"),
+    position: z.enum(["top", "center", "bottom"]).default("bottom"),
+  })
+  .strict();
+export type ThumbnailInput = z.infer<typeof ThumbnailInput>;
+
+/** GET /api/projects/:id/waveform?sessionId=: peaks (0..1) across the whole source. */
+export const WaveformView = z.object({ status: z.enum(["ready", "pending", "unavailable"]), peaks: z.array(z.number()), durationMs: z.number().nullable() });
+export type WaveformView = z.infer<typeof WaveformView>;
+
+/** Captions generated from an edit's audio by the configured transcription provider. */
+export const GeneratedCaptionsView = z.object({
+  status: z.enum(["none", "pending", "ready", "failed"]),
+  error: z.string().nullable(),
+  cues: z.array(CaptionCue),
+});
+export type GeneratedCaptionsView = z.infer<typeof GeneratedCaptionsView>;
 
 export const ProjectPatch = z.object({ title: z.string().trim().min(1).max(120).optional(), edl: Edl.optional() }).strict();
 export type ProjectPatch = z.infer<typeof ProjectPatch>;

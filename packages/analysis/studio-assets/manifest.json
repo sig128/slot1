@@ -1,1 +1,4629 @@
-{ "version": 1, "assets": [] }
+{
+ "version": 1,
+ "assets": [
+  {
+   "id": "ambience/city-night",
+   "kind": "ambience",
+   "category": "ambience",
+   "name": "City at night",
+   "tags": [
+    "ambience",
+    "city",
+    "night",
+    "traffic",
+    "urban",
+    "street",
+    "loop",
+    "background"
+   ],
+   "durationMs": 24000,
+   "loop": true,
+   "file": "ambience/city-night.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "ambience/club-through-wall",
+   "kind": "ambience",
+   "category": "ambience",
+   "name": "Club through the wall",
+   "tags": [
+    "ambience",
+    "club",
+    "party",
+    "muffled",
+    "bass",
+    "interior",
+    "loop",
+    "background"
+   ],
+   "durationMs": 16000,
+   "loop": true,
+   "file": "ambience/club-through-wall.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "ambience/crowd-murmur",
+   "kind": "ambience",
+   "category": "ambience",
+   "name": "Crowd murmur",
+   "tags": [
+    "ambience",
+    "crowd",
+    "people",
+    "bar",
+    "party",
+    "murmur",
+    "talk",
+    "loop",
+    "background"
+   ],
+   "durationMs": 20000,
+   "loop": true,
+   "file": "ambience/crowd-murmur.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "ambience/highway",
+   "kind": "ambience",
+   "category": "ambience",
+   "name": "Highway",
+   "tags": [
+    "ambience",
+    "highway",
+    "traffic",
+    "cars",
+    "freeway",
+    "road",
+    "loop",
+    "background"
+   ],
+   "durationMs": 24000,
+   "loop": true,
+   "file": "ambience/highway.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "ambience/neon-hum",
+   "kind": "ambience",
+   "category": "ambience",
+   "name": "Neon hum",
+   "tags": [
+    "ambience",
+    "neon",
+    "hum",
+    "electric",
+    "sign",
+    "night",
+    "buzz",
+    "loop",
+    "background"
+   ],
+   "durationMs": 16000,
+   "loop": true,
+   "file": "ambience/neon-hum.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "ambience/ocean-waves",
+   "kind": "ambience",
+   "category": "ambience",
+   "name": "Ocean waves",
+   "tags": [
+    "ambience",
+    "ocean",
+    "waves",
+    "beach",
+    "sea",
+    "calm",
+    "loop",
+    "background"
+   ],
+   "durationMs": 24000,
+   "loop": true,
+   "file": "ambience/ocean-waves.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "ambience/rain",
+   "kind": "ambience",
+   "category": "ambience",
+   "name": "Rain",
+   "tags": [
+    "ambience",
+    "rain",
+    "weather",
+    "storm",
+    "calm",
+    "window",
+    "loop",
+    "background"
+   ],
+   "durationMs": 20000,
+   "loop": true,
+   "file": "ambience/rain.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "ambience/wind",
+   "kind": "ambience",
+   "category": "ambience",
+   "name": "Wind",
+   "tags": [
+    "ambience",
+    "wind",
+    "weather",
+    "desert",
+    "rooftop",
+    "lonely",
+    "loop",
+    "background"
+   ],
+   "durationMs": 24000,
+   "loop": true,
+   "file": "ambience/wind.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "frame/comic-panel",
+   "kind": "frame",
+   "category": "frame",
+   "name": "Comic panel",
+   "tags": [
+    "frame",
+    "comic",
+    "panel",
+    "border",
+    "ink"
+   ],
+   "loop": false,
+   "width": 1920,
+   "height": 1080,
+   "file": "elements/frames/comic-panel.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "frame/corner-brackets",
+   "kind": "frame",
+   "category": "frame",
+   "name": "Corner brackets",
+   "tags": [
+    "frame",
+    "corners",
+    "brackets",
+    "focus",
+    "minimal"
+   ],
+   "loop": false,
+   "width": 1920,
+   "height": 1080,
+   "file": "elements/frames/corner-brackets.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "frame/crt-tv",
+   "kind": "frame",
+   "category": "frame",
+   "name": "CRT TV",
+   "tags": [
+    "frame",
+    "tv",
+    "crt",
+    "retro",
+    "news",
+    "broadcast"
+   ],
+   "loop": false,
+   "width": 1920,
+   "height": 1080,
+   "file": "elements/frames/crt-tv.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "frame/film-strip",
+   "kind": "frame",
+   "category": "frame",
+   "name": "Film strip",
+   "tags": [
+    "frame",
+    "film",
+    "strip",
+    "cinema",
+    "movie"
+   ],
+   "loop": false,
+   "width": 1920,
+   "height": 1080,
+   "file": "elements/frames/film-strip.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "frame/hud-corners",
+   "kind": "frame",
+   "category": "frame",
+   "name": "HUD corners",
+   "tags": [
+    "frame",
+    "hud",
+    "game",
+    "stars",
+    "radar",
+    "corners"
+   ],
+   "loop": false,
+   "width": 1920,
+   "height": 1080,
+   "file": "elements/frames/hud-corners.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "frame/neon-coral",
+   "kind": "frame",
+   "category": "frame",
+   "name": "Neon border (coral)",
+   "tags": [
+    "frame",
+    "neon",
+    "border",
+    "glow",
+    "night"
+   ],
+   "loop": false,
+   "width": 1920,
+   "height": 1080,
+   "file": "elements/frames/neon-coral.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "frame/neon-gold",
+   "kind": "frame",
+   "category": "frame",
+   "name": "Neon border (gold)",
+   "tags": [
+    "frame",
+    "neon",
+    "border",
+    "glow",
+    "gold"
+   ],
+   "loop": false,
+   "width": 1920,
+   "height": 1080,
+   "file": "elements/frames/neon-gold.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "frame/phone-vertical",
+   "kind": "frame",
+   "category": "frame",
+   "name": "Phone screen (vertical)",
+   "tags": [
+    "frame",
+    "phone",
+    "vertical",
+    "tiktok",
+    "shorts",
+    "9:16"
+   ],
+   "loop": false,
+   "width": 1080,
+   "height": 1920,
+   "file": "elements/frames/phone-vertical.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "frame/polaroid",
+   "kind": "frame",
+   "category": "frame",
+   "name": "Instant photo",
+   "tags": [
+    "frame",
+    "photo",
+    "instant",
+    "polaroid",
+    "border"
+   ],
+   "loop": false,
+   "width": 1920,
+   "height": 1080,
+   "file": "elements/frames/polaroid.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "frame/vhs",
+   "kind": "frame",
+   "category": "frame",
+   "name": "VHS camcorder",
+   "tags": [
+    "frame",
+    "vhs",
+    "camcorder",
+    "retro",
+    "rec",
+    "tape"
+   ],
+   "loop": false,
+   "width": 1920,
+   "height": 1080,
+   "file": "elements/frames/vhs.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "music/cinematic/tension-bed",
+   "kind": "music",
+   "category": "cinematic",
+   "name": "Tension Bed (90 BPM)",
+   "tags": [
+    "tension",
+    "dark",
+    "suspense",
+    "heist",
+    "stealth",
+    "cinematic",
+    "90bpm",
+    "loop"
+   ],
+   "durationMs": 21333,
+   "loop": true,
+   "file": "music/cinematic/tension-bed.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "music/drive/boost",
+   "kind": "music",
+   "category": "drive",
+   "name": "Boost (124 BPM)",
+   "tags": [
+    "drive",
+    "house",
+    "energy",
+    "race",
+    "upbeat",
+    "124bpm",
+    "loop"
+   ],
+   "durationMs": 15484,
+   "loop": true,
+   "file": "music/drive/boost.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "music/drive/chase-mode",
+   "kind": "music",
+   "category": "drive",
+   "name": "Chase Mode (132 BPM)",
+   "tags": [
+    "drive",
+    "chase",
+    "aggressive",
+    "action",
+    "intense",
+    "132bpm",
+    "loop"
+   ],
+   "durationMs": 14545,
+   "loop": true,
+   "file": "music/drive/chase-mode.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "music/drive/pursuit",
+   "kind": "music",
+   "category": "drive",
+   "name": "Pursuit (128 BPM)",
+   "tags": [
+    "drive",
+    "chase",
+    "action",
+    "electronic",
+    "fast",
+    "police",
+    "128bpm",
+    "loop"
+   ],
+   "durationMs": 15000,
+   "loop": true,
+   "file": "music/drive/pursuit.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "music/funk/victory-lap",
+   "kind": "music",
+   "category": "funk",
+   "name": "Victory Lap (116 BPM)",
+   "tags": [
+    "funk",
+    "victory",
+    "win",
+    "upbeat",
+    "groove",
+    "happy",
+    "116bpm",
+    "loop"
+   ],
+   "durationMs": 16552,
+   "loop": true,
+   "file": "music/funk/victory-lap.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "music/lofi/late-shift",
+   "kind": "music",
+   "category": "lofi",
+   "name": "Late Shift (84 BPM)",
+   "tags": [
+    "lofi",
+    "chill",
+    "jazzy",
+    "late-night",
+    "cruise",
+    "84bpm",
+    "loop"
+   ],
+   "durationMs": 11429,
+   "loop": true,
+   "file": "music/lofi/late-shift.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "music/lofi/rain-window",
+   "kind": "music",
+   "category": "lofi",
+   "name": "Rain Window (76 BPM)",
+   "tags": [
+    "lofi",
+    "rain",
+    "chill",
+    "mellow",
+    "sad",
+    "76bpm",
+    "loop"
+   ],
+   "durationMs": 12632,
+   "loop": true,
+   "file": "music/lofi/rain-window.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "music/lofi/rooftop-chill",
+   "kind": "music",
+   "category": "lofi",
+   "name": "Rooftop Chill (80 BPM)",
+   "tags": [
+    "lofi",
+    "chill",
+    "jazzy",
+    "relax",
+    "night",
+    "study",
+    "80bpm",
+    "loop"
+   ],
+   "durationMs": 12000,
+   "loop": true,
+   "file": "music/lofi/rooftop-chill.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "music/synthwave/neon-drive",
+   "kind": "music",
+   "category": "synthwave",
+   "name": "Neon Drive (100 BPM)",
+   "tags": [
+    "synthwave",
+    "retro",
+    "night",
+    "drive",
+    "80s",
+    "neon",
+    "100bpm",
+    "loop"
+   ],
+   "durationMs": 19200,
+   "loop": true,
+   "file": "music/synthwave/neon-drive.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "music/synthwave/sunset-cruise",
+   "kind": "music",
+   "category": "synthwave",
+   "name": "Sunset Cruise (96 BPM)",
+   "tags": [
+    "synthwave",
+    "chill",
+    "sunset",
+    "cruise",
+    "beach",
+    "warm",
+    "96bpm",
+    "loop"
+   ],
+   "durationMs": 20000,
+   "loop": true,
+   "file": "music/synthwave/sunset-cruise.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "music/synthwave/vice-nights",
+   "kind": "music",
+   "category": "synthwave",
+   "name": "Vice Nights (108 BPM)",
+   "tags": [
+    "synthwave",
+    "retro",
+    "night",
+    "city",
+    "80s",
+    "melody",
+    "108bpm",
+    "loop"
+   ],
+   "durationMs": 17778,
+   "loop": true,
+   "file": "music/synthwave/vice-nights.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "music/trap/block-party",
+   "kind": "music",
+   "category": "trap",
+   "name": "Block Party (140 BPM)",
+   "tags": [
+    "trap",
+    "hip-hop",
+    "808",
+    "street",
+    "party",
+    "bounce",
+    "140bpm",
+    "loop"
+   ],
+   "durationMs": 13714,
+   "loop": true,
+   "file": "music/trap/block-party.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "music/trap/getaway",
+   "kind": "music",
+   "category": "trap",
+   "name": "Getaway (136 BPM)",
+   "tags": [
+    "trap",
+    "chase",
+    "getaway",
+    "808",
+    "fast",
+    "escape",
+    "136bpm",
+    "loop"
+   ],
+   "durationMs": 14118,
+   "loop": true,
+   "file": "music/trap/getaway.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "music/trap/heist-prep",
+   "kind": "music",
+   "category": "trap",
+   "name": "Heist Prep (150 BPM)",
+   "tags": [
+    "trap",
+    "dark",
+    "heist",
+    "tension",
+    "808",
+    "plan",
+    "150bpm",
+    "loop"
+   ],
+   "durationMs": 12800,
+   "loop": true,
+   "file": "music/trap/heist-prep.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "overlay/crt-screen",
+   "kind": "overlay",
+   "category": "texture",
+   "name": "CRT screen",
+   "tags": [
+    "overlay",
+    "crt",
+    "tv",
+    "retro",
+    "vignette"
+   ],
+   "loop": false,
+   "width": 1280,
+   "height": 720,
+   "file": "elements/overlays/crt-screen.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "overlay/dust-scratches",
+   "kind": "overlay",
+   "category": "texture",
+   "name": "Dust and scratches",
+   "tags": [
+    "overlay",
+    "dust",
+    "scratches",
+    "film",
+    "old"
+   ],
+   "loop": false,
+   "width": 1280,
+   "height": 720,
+   "file": "elements/overlays/dust-scratches.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "overlay/film-grain",
+   "kind": "overlay",
+   "category": "texture",
+   "name": "Film grain",
+   "tags": [
+    "overlay",
+    "grain",
+    "film",
+    "noise",
+    "texture"
+   ],
+   "loop": false,
+   "width": 960,
+   "height": 540,
+   "file": "elements/overlays/film-grain.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "overlay/halftone-corner",
+   "kind": "overlay",
+   "category": "texture",
+   "name": "Halftone corner",
+   "tags": [
+    "overlay",
+    "halftone",
+    "comic",
+    "corner",
+    "print"
+   ],
+   "loop": false,
+   "width": 1280,
+   "height": 720,
+   "file": "elements/overlays/halftone-corner.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "overlay/halftone-dots",
+   "kind": "overlay",
+   "category": "texture",
+   "name": "Halftone dots",
+   "tags": [
+    "overlay",
+    "halftone",
+    "comic",
+    "dots",
+    "print"
+   ],
+   "loop": false,
+   "width": 1280,
+   "height": 720,
+   "file": "elements/overlays/halftone-dots.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "overlay/light-leak-neon-01",
+   "kind": "overlay",
+   "category": "light",
+   "name": "Light leak (neon 1)",
+   "tags": [
+    "overlay",
+    "light-leak",
+    "neon",
+    "night",
+    "vice"
+   ],
+   "loop": false,
+   "width": 1280,
+   "height": 720,
+   "file": "elements/overlays/light-leak-neon-01.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "overlay/light-leak-neon-02",
+   "kind": "overlay",
+   "category": "light",
+   "name": "Light leak (neon 2)",
+   "tags": [
+    "overlay",
+    "light-leak",
+    "neon",
+    "night"
+   ],
+   "loop": false,
+   "width": 1280,
+   "height": 720,
+   "file": "elements/overlays/light-leak-neon-02.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "overlay/light-leak-warm-01",
+   "kind": "overlay",
+   "category": "light",
+   "name": "Light leak (warm 1)",
+   "tags": [
+    "overlay",
+    "light-leak",
+    "warm",
+    "film",
+    "sunset"
+   ],
+   "loop": false,
+   "width": 1280,
+   "height": 720,
+   "file": "elements/overlays/light-leak-warm-01.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "overlay/light-leak-warm-02",
+   "kind": "overlay",
+   "category": "light",
+   "name": "Light leak (warm 2)",
+   "tags": [
+    "overlay",
+    "light-leak",
+    "warm",
+    "film"
+   ],
+   "loop": false,
+   "width": 1280,
+   "height": 720,
+   "file": "elements/overlays/light-leak-warm-02.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "overlay/light-leak-warm-03",
+   "kind": "overlay",
+   "category": "light",
+   "name": "Light leak (warm 3)",
+   "tags": [
+    "overlay",
+    "light-leak",
+    "warm",
+    "glow"
+   ],
+   "loop": false,
+   "width": 1280,
+   "height": 720,
+   "file": "elements/overlays/light-leak-warm-03.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "overlay/rain-streaks",
+   "kind": "overlay",
+   "category": "weather",
+   "name": "Rain streaks",
+   "tags": [
+    "overlay",
+    "rain",
+    "weather",
+    "storm",
+    "streaks"
+   ],
+   "loop": false,
+   "width": 1280,
+   "height": 720,
+   "file": "elements/overlays/rain-streaks.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "overlay/scanlines",
+   "kind": "overlay",
+   "category": "texture",
+   "name": "Scanlines",
+   "tags": [
+    "overlay",
+    "scanlines",
+    "retro",
+    "crt",
+    "tv"
+   ],
+   "loop": false,
+   "width": 1920,
+   "height": 1080,
+   "file": "elements/overlays/scanlines.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "overlay/sunset-wash",
+   "kind": "overlay",
+   "category": "light",
+   "name": "Sunset color wash",
+   "tags": [
+    "overlay",
+    "sunset",
+    "color",
+    "wash",
+    "golden-hour",
+    "grade"
+   ],
+   "loop": false,
+   "width": 1280,
+   "height": 720,
+   "file": "elements/overlays/sunset-wash.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "overlay/vhs-noise",
+   "kind": "overlay",
+   "category": "texture",
+   "name": "VHS noise bars",
+   "tags": [
+    "overlay",
+    "vhs",
+    "noise",
+    "retro",
+    "glitch",
+    "tape"
+   ],
+   "loop": false,
+   "width": 1280,
+   "height": 720,
+   "file": "elements/overlays/vhs-noise.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "overlay/vignette-dark",
+   "kind": "overlay",
+   "category": "texture",
+   "name": "Vignette (dark)",
+   "tags": [
+    "overlay",
+    "vignette",
+    "dark",
+    "focus",
+    "cinematic"
+   ],
+   "loop": false,
+   "width": 1280,
+   "height": 720,
+   "file": "elements/overlays/vignette-dark.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "overlay/vignette-soft",
+   "kind": "overlay",
+   "category": "texture",
+   "name": "Vignette (soft)",
+   "tags": [
+    "overlay",
+    "vignette",
+    "soft",
+    "subtle"
+   ],
+   "loop": false,
+   "width": 1280,
+   "height": 720,
+   "file": "elements/overlays/vignette-soft.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/camera/film-wind-01",
+   "kind": "sfx",
+   "category": "camera",
+   "name": "Film wind",
+   "tags": [
+    "camera",
+    "film",
+    "wind",
+    "ratchet",
+    "retro"
+   ],
+   "durationMs": 565,
+   "loop": false,
+   "file": "sfx/camera/film-wind-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/camera/flash-charge-01",
+   "kind": "sfx",
+   "category": "camera",
+   "name": "Flash charge",
+   "tags": [
+    "camera",
+    "flash",
+    "charge",
+    "whine",
+    "power-up"
+   ],
+   "durationMs": 1200,
+   "loop": false,
+   "file": "sfx/camera/flash-charge-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/camera/focus-beep-01",
+   "kind": "sfx",
+   "category": "camera",
+   "name": "Focus beep",
+   "tags": [
+    "camera",
+    "focus",
+    "beep",
+    "lock-on"
+   ],
+   "durationMs": 190,
+   "loop": false,
+   "file": "sfx/camera/focus-beep-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/camera/shutter-01",
+   "kind": "sfx",
+   "category": "camera",
+   "name": "Camera shutter 1",
+   "tags": [
+    "camera",
+    "shutter",
+    "photo",
+    "screenshot",
+    "snap"
+   ],
+   "durationMs": 147,
+   "loop": false,
+   "file": "sfx/camera/shutter-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/camera/shutter-02",
+   "kind": "sfx",
+   "category": "camera",
+   "name": "Camera shutter 2 (fast)",
+   "tags": [
+    "camera",
+    "shutter",
+    "photo",
+    "burst"
+   ],
+   "durationMs": 120,
+   "loop": false,
+   "file": "sfx/camera/shutter-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/cash/cash-counter-01",
+   "kind": "sfx",
+   "category": "cash",
+   "name": "Cash counter",
+   "tags": [
+    "cash",
+    "money",
+    "count",
+    "score",
+    "tally"
+   ],
+   "durationMs": 1000,
+   "loop": false,
+   "file": "sfx/cash/cash-counter-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/cash/coin-01",
+   "kind": "sfx",
+   "category": "cash",
+   "name": "Coin 1",
+   "tags": [
+    "cash",
+    "coin",
+    "money",
+    "pickup",
+    "collect"
+   ],
+   "durationMs": 600,
+   "loop": false,
+   "file": "sfx/cash/coin-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/cash/coin-02",
+   "kind": "sfx",
+   "category": "cash",
+   "name": "Coin 2 (retro)",
+   "tags": [
+    "cash",
+    "coin",
+    "pickup",
+    "retro",
+    "8-bit"
+   ],
+   "durationMs": 370,
+   "loop": false,
+   "file": "sfx/cash/coin-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/cash/ka-ching-01",
+   "kind": "sfx",
+   "category": "cash",
+   "name": "Ka-ching 1",
+   "tags": [
+    "cash",
+    "money",
+    "register",
+    "ka-ching",
+    "win"
+   ],
+   "durationMs": 1633,
+   "loop": false,
+   "file": "sfx/cash/ka-ching-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/cash/ka-ching-02",
+   "kind": "sfx",
+   "category": "cash",
+   "name": "Ka-ching 2 (bright)",
+   "tags": [
+    "cash",
+    "money",
+    "register",
+    "ka-ching",
+    "win"
+   ],
+   "durationMs": 1633,
+   "loop": false,
+   "file": "sfx/cash/ka-ching-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/cash/money-rain-01",
+   "kind": "sfx",
+   "category": "cash",
+   "name": "Money rain",
+   "tags": [
+    "cash",
+    "money",
+    "rain",
+    "jackpot",
+    "win"
+   ],
+   "durationMs": 2078,
+   "loop": false,
+   "file": "sfx/cash/money-rain-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/cash/register-bell-01",
+   "kind": "sfx",
+   "category": "cash",
+   "name": "Register bell",
+   "tags": [
+    "cash",
+    "bell",
+    "shop",
+    "ding"
+   ],
+   "durationMs": 1520,
+   "loop": false,
+   "file": "sfx/cash/register-bell-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/comedy/boing-01",
+   "kind": "sfx",
+   "category": "comedy",
+   "name": "Boing 1",
+   "tags": [
+    "boing",
+    "spring",
+    "funny",
+    "bounce",
+    "cartoon"
+   ],
+   "durationMs": 800,
+   "loop": false,
+   "file": "sfx/comedy/boing-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/comedy/boing-02",
+   "kind": "sfx",
+   "category": "comedy",
+   "name": "Boing 2 (high)",
+   "tags": [
+    "boing",
+    "spring",
+    "funny",
+    "jump"
+   ],
+   "durationMs": 600,
+   "loop": false,
+   "file": "sfx/comedy/boing-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/comedy/boing-03",
+   "kind": "sfx",
+   "category": "comedy",
+   "name": "Boing 3 (low)",
+   "tags": [
+    "boing",
+    "spring",
+    "funny",
+    "fall"
+   ],
+   "durationMs": 1000,
+   "loop": false,
+   "file": "sfx/comedy/boing-03.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/comedy/car-horn-01",
+   "kind": "sfx",
+   "category": "comedy",
+   "name": "Car horn",
+   "tags": [
+    "horn",
+    "car",
+    "honk",
+    "traffic",
+    "angry"
+   ],
+   "durationMs": 600,
+   "loop": false,
+   "file": "sfx/comedy/car-horn-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/comedy/crowd-cheer-01",
+   "kind": "sfx",
+   "category": "comedy",
+   "name": "Crowd cheer (synthetic)",
+   "tags": [
+    "crowd",
+    "cheer",
+    "reaction",
+    "win",
+    "audience"
+   ],
+   "durationMs": 2930,
+   "loop": false,
+   "file": "sfx/comedy/crowd-cheer-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/comedy/crowd-ooh-01",
+   "kind": "sfx",
+   "category": "comedy",
+   "name": "Crowd ooh (synthetic)",
+   "tags": [
+    "crowd",
+    "ooh",
+    "reaction",
+    "wow",
+    "audience"
+   ],
+   "durationMs": 2344,
+   "loop": false,
+   "file": "sfx/comedy/crowd-ooh-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/comedy/honk-01",
+   "kind": "sfx",
+   "category": "comedy",
+   "name": "Bike horn honk",
+   "tags": [
+    "honk",
+    "horn",
+    "clown",
+    "funny",
+    "squeeze"
+   ],
+   "durationMs": 250,
+   "loop": false,
+   "file": "sfx/comedy/honk-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/comedy/plop-01",
+   "kind": "sfx",
+   "category": "comedy",
+   "name": "Plop 1",
+   "tags": [
+    "plop",
+    "pop",
+    "drop",
+    "funny",
+    "bubble"
+   ],
+   "durationMs": 150,
+   "loop": false,
+   "file": "sfx/comedy/plop-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/comedy/plop-02",
+   "kind": "sfx",
+   "category": "comedy",
+   "name": "Plop 2 (pop)",
+   "tags": [
+    "plop",
+    "pop",
+    "cork",
+    "funny"
+   ],
+   "durationMs": 120,
+   "loop": false,
+   "file": "sfx/comedy/plop-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/comedy/slide-whistle-down-01",
+   "kind": "sfx",
+   "category": "comedy",
+   "name": "Slide whistle down",
+   "tags": [
+    "slide-whistle",
+    "down",
+    "funny",
+    "cartoon",
+    "fall"
+   ],
+   "durationMs": 900,
+   "loop": false,
+   "file": "sfx/comedy/slide-whistle-down-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/comedy/slide-whistle-up-01",
+   "kind": "sfx",
+   "category": "comedy",
+   "name": "Slide whistle up",
+   "tags": [
+    "slide-whistle",
+    "up",
+    "funny",
+    "cartoon",
+    "rise"
+   ],
+   "durationMs": 900,
+   "loop": false,
+   "file": "sfx/comedy/slide-whistle-up-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/drops/downlifter-01",
+   "kind": "sfx",
+   "category": "drops",
+   "name": "Downlifter 1",
+   "tags": [
+    "drop",
+    "downlifter",
+    "fall",
+    "transition"
+   ],
+   "durationMs": 1941,
+   "loop": false,
+   "file": "sfx/drops/downlifter-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/drops/downlifter-02",
+   "kind": "sfx",
+   "category": "drops",
+   "name": "Downlifter 2",
+   "tags": [
+    "drop",
+    "downlifter",
+    "fall",
+    "transition"
+   ],
+   "durationMs": 2671,
+   "loop": false,
+   "file": "sfx/drops/downlifter-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/drops/downlifter-03",
+   "kind": "sfx",
+   "category": "drops",
+   "name": "Downlifter 3",
+   "tags": [
+    "drop",
+    "downlifter",
+    "fall",
+    "transition"
+   ],
+   "durationMs": 1568,
+   "loop": false,
+   "file": "sfx/drops/downlifter-03.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/drops/sub-drop-01",
+   "kind": "sfx",
+   "category": "drops",
+   "name": "Sub drop 1",
+   "tags": [
+    "drop",
+    "sub",
+    "bass",
+    "808",
+    "boom"
+   ],
+   "durationMs": 2000,
+   "loop": false,
+   "file": "sfx/drops/sub-drop-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/drops/sub-drop-02",
+   "kind": "sfx",
+   "category": "drops",
+   "name": "Sub drop 2",
+   "tags": [
+    "drop",
+    "sub",
+    "bass",
+    "808",
+    "boom"
+   ],
+   "durationMs": 1400,
+   "loop": false,
+   "file": "sfx/drops/sub-drop-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/drops/sub-drop-03",
+   "kind": "sfx",
+   "category": "drops",
+   "name": "Sub drop 3",
+   "tags": [
+    "drop",
+    "sub",
+    "bass",
+    "808",
+    "boom"
+   ],
+   "durationMs": 2800,
+   "loop": false,
+   "file": "sfx/drops/sub-drop-03.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/engines/engine-idle-01",
+   "kind": "sfx",
+   "category": "engines",
+   "name": "Engine idle",
+   "tags": [
+    "engine",
+    "idle",
+    "car",
+    "rumble",
+    "loop"
+   ],
+   "durationMs": 3000,
+   "loop": false,
+   "file": "sfx/engines/engine-idle-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/engines/engine-rev-01",
+   "kind": "sfx",
+   "category": "engines",
+   "name": "Engine rev 1 (V8)",
+   "tags": [
+    "engine",
+    "car",
+    "rev",
+    "muscle",
+    "race"
+   ],
+   "durationMs": 2924,
+   "loop": false,
+   "file": "sfx/engines/engine-rev-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/engines/engine-rev-02",
+   "kind": "sfx",
+   "category": "engines",
+   "name": "Engine rev 2 (sport)",
+   "tags": [
+    "engine",
+    "car",
+    "rev",
+    "sport",
+    "race"
+   ],
+   "durationMs": 2498,
+   "loop": false,
+   "file": "sfx/engines/engine-rev-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/engines/engine-rev-03",
+   "kind": "sfx",
+   "category": "engines",
+   "name": "Engine rev 3 (bike)",
+   "tags": [
+    "engine",
+    "motorbike",
+    "rev",
+    "bike"
+   ],
+   "durationMs": 2301,
+   "loop": false,
+   "file": "sfx/engines/engine-rev-03.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/engines/pass-by-01",
+   "kind": "sfx",
+   "category": "engines",
+   "name": "Car pass-by 1",
+   "tags": [
+    "engine",
+    "car",
+    "pass-by",
+    "doppler",
+    "street"
+   ],
+   "durationMs": 3200,
+   "loop": false,
+   "file": "sfx/engines/pass-by-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/engines/pass-by-02",
+   "kind": "sfx",
+   "category": "engines",
+   "name": "Car pass-by 2 (fast)",
+   "tags": [
+    "engine",
+    "car",
+    "pass-by",
+    "doppler",
+    "race",
+    "fast"
+   ],
+   "durationMs": 2400,
+   "loop": false,
+   "file": "sfx/engines/pass-by-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/engines/tire-screech-01",
+   "kind": "sfx",
+   "category": "engines",
+   "name": "Tire screech 1",
+   "tags": [
+    "tire",
+    "screech",
+    "drift",
+    "brake",
+    "car"
+   ],
+   "durationMs": 1980,
+   "loop": false,
+   "file": "sfx/engines/tire-screech-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/engines/tire-screech-02",
+   "kind": "sfx",
+   "category": "engines",
+   "name": "Tire screech 2 (long drift)",
+   "tags": [
+    "tire",
+    "screech",
+    "drift",
+    "car"
+   ],
+   "durationMs": 3169,
+   "loop": false,
+   "file": "sfx/engines/tire-screech-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/explosions/boom-01",
+   "kind": "sfx",
+   "category": "explosions",
+   "name": "Boom 1",
+   "tags": [
+    "explosion",
+    "boom",
+    "blast",
+    "big",
+    "car"
+   ],
+   "durationMs": 2856,
+   "loop": false,
+   "file": "sfx/explosions/boom-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/explosions/boom-02",
+   "kind": "sfx",
+   "category": "explosions",
+   "name": "Boom 2 (short)",
+   "tags": [
+    "explosion",
+    "boom",
+    "blast",
+    "grenade"
+   ],
+   "durationMs": 2301,
+   "loop": false,
+   "file": "sfx/explosions/boom-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/explosions/boom-03",
+   "kind": "sfx",
+   "category": "explosions",
+   "name": "Boom 3 (heavy)",
+   "tags": [
+    "explosion",
+    "boom",
+    "heavy",
+    "bass"
+   ],
+   "durationMs": 3482,
+   "loop": false,
+   "file": "sfx/explosions/boom-03.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/explosions/distant-boom-01",
+   "kind": "sfx",
+   "category": "explosions",
+   "name": "Distant boom 1",
+   "tags": [
+    "explosion",
+    "distant",
+    "far",
+    "thunder",
+    "city"
+   ],
+   "durationMs": 3409,
+   "loop": false,
+   "file": "sfx/explosions/distant-boom-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/explosions/distant-boom-02",
+   "kind": "sfx",
+   "category": "explosions",
+   "name": "Distant boom 2",
+   "tags": [
+    "explosion",
+    "distant",
+    "far",
+    "war"
+   ],
+   "durationMs": 3932,
+   "loop": false,
+   "file": "sfx/explosions/distant-boom-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/explosions/explosion-big-01",
+   "kind": "sfx",
+   "category": "explosions",
+   "name": "Big explosion 1",
+   "tags": [
+    "explosion",
+    "big",
+    "debris",
+    "fire",
+    "heist"
+   ],
+   "durationMs": 4018,
+   "loop": false,
+   "file": "sfx/explosions/explosion-big-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/explosions/explosion-big-02",
+   "kind": "sfx",
+   "category": "explosions",
+   "name": "Big explosion 2",
+   "tags": [
+    "explosion",
+    "big",
+    "rumble",
+    "fire"
+   ],
+   "durationMs": 4423,
+   "loop": false,
+   "file": "sfx/explosions/explosion-big-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/explosions/firework-pop-01",
+   "kind": "sfx",
+   "category": "explosions",
+   "name": "Firework pop",
+   "tags": [
+    "firework",
+    "pop",
+    "celebration",
+    "crackle",
+    "party"
+   ],
+   "durationMs": 2547,
+   "loop": false,
+   "file": "sfx/explosions/firework-pop-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/glitches/data-burst-01",
+   "kind": "sfx",
+   "category": "glitches",
+   "name": "Data burst 1",
+   "tags": [
+    "data",
+    "modem",
+    "digital",
+    "hack",
+    "computer"
+   ],
+   "durationMs": 700,
+   "loop": false,
+   "file": "sfx/glitches/data-burst-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/glitches/data-burst-02",
+   "kind": "sfx",
+   "category": "glitches",
+   "name": "Data burst 2",
+   "tags": [
+    "data",
+    "modem",
+    "digital",
+    "hack",
+    "computer"
+   ],
+   "durationMs": 1100,
+   "loop": false,
+   "file": "sfx/glitches/data-burst-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/glitches/glitch-01",
+   "kind": "sfx",
+   "category": "glitches",
+   "name": "Glitch 1",
+   "tags": [
+    "glitch",
+    "digital",
+    "error",
+    "stutter"
+   ],
+   "durationMs": 400,
+   "loop": false,
+   "file": "sfx/glitches/glitch-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/glitches/glitch-02",
+   "kind": "sfx",
+   "category": "glitches",
+   "name": "Glitch 2",
+   "tags": [
+    "glitch",
+    "digital",
+    "error",
+    "stutter"
+   ],
+   "durationMs": 600,
+   "loop": false,
+   "file": "sfx/glitches/glitch-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/glitches/glitch-03",
+   "kind": "sfx",
+   "category": "glitches",
+   "name": "Glitch 3",
+   "tags": [
+    "glitch",
+    "digital",
+    "error",
+    "stutter"
+   ],
+   "durationMs": 300,
+   "loop": false,
+   "file": "sfx/glitches/glitch-03.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/glitches/glitch-04",
+   "kind": "sfx",
+   "category": "glitches",
+   "name": "Glitch 4",
+   "tags": [
+    "glitch",
+    "digital",
+    "error",
+    "stutter"
+   ],
+   "durationMs": 800,
+   "loop": false,
+   "file": "sfx/glitches/glitch-04.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/glitches/glitch-05",
+   "kind": "sfx",
+   "category": "glitches",
+   "name": "Glitch 5",
+   "tags": [
+    "glitch",
+    "digital",
+    "error",
+    "stutter"
+   ],
+   "durationMs": 500,
+   "loop": false,
+   "file": "sfx/glitches/glitch-05.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/glitches/static-burst-01",
+   "kind": "sfx",
+   "category": "glitches",
+   "name": "Static burst 1",
+   "tags": [
+    "static",
+    "radio",
+    "tv",
+    "noise",
+    "interference"
+   ],
+   "durationMs": 500,
+   "loop": false,
+   "file": "sfx/glitches/static-burst-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/glitches/static-burst-02",
+   "kind": "sfx",
+   "category": "glitches",
+   "name": "Static burst 2",
+   "tags": [
+    "static",
+    "radio",
+    "tv",
+    "noise",
+    "interference"
+   ],
+   "durationMs": 900,
+   "loop": false,
+   "file": "sfx/glitches/static-burst-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/glitches/static-burst-03",
+   "kind": "sfx",
+   "category": "glitches",
+   "name": "Static burst 3",
+   "tags": [
+    "static",
+    "radio",
+    "tv",
+    "noise",
+    "interference"
+   ],
+   "durationMs": 1400,
+   "loop": false,
+   "file": "sfx/glitches/static-burst-03.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/impacts/heavy-hit-01",
+   "kind": "sfx",
+   "category": "impacts",
+   "name": "Heavy hit 1",
+   "tags": [
+    "impact",
+    "hit",
+    "heavy",
+    "boom",
+    "bass"
+   ],
+   "durationMs": 1275,
+   "loop": false,
+   "file": "sfx/impacts/heavy-hit-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/impacts/heavy-hit-02",
+   "kind": "sfx",
+   "category": "impacts",
+   "name": "Heavy hit 2",
+   "tags": [
+    "impact",
+    "hit",
+    "heavy",
+    "boom",
+    "bass"
+   ],
+   "durationMs": 1496,
+   "loop": false,
+   "file": "sfx/impacts/heavy-hit-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/impacts/heavy-hit-03",
+   "kind": "sfx",
+   "category": "impacts",
+   "name": "Heavy hit 3",
+   "tags": [
+    "impact",
+    "hit",
+    "heavy",
+    "boom",
+    "bass"
+   ],
+   "durationMs": 1042,
+   "loop": false,
+   "file": "sfx/impacts/heavy-hit-03.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/impacts/metal-clang-01",
+   "kind": "sfx",
+   "category": "impacts",
+   "name": "Metal clang 1",
+   "tags": [
+    "impact",
+    "metal",
+    "clang",
+    "ring"
+   ],
+   "durationMs": 1650,
+   "loop": false,
+   "file": "sfx/impacts/metal-clang-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/impacts/metal-clang-02",
+   "kind": "sfx",
+   "category": "impacts",
+   "name": "Metal clang 2",
+   "tags": [
+    "impact",
+    "metal",
+    "clang",
+    "ring"
+   ],
+   "durationMs": 1715,
+   "loop": false,
+   "file": "sfx/impacts/metal-clang-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/impacts/punch-01",
+   "kind": "sfx",
+   "category": "impacts",
+   "name": "Punch 1",
+   "tags": [
+    "impact",
+    "punch",
+    "fight",
+    "hit"
+   ],
+   "durationMs": 350,
+   "loop": false,
+   "file": "sfx/impacts/punch-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/impacts/punch-02",
+   "kind": "sfx",
+   "category": "impacts",
+   "name": "Punch 2",
+   "tags": [
+    "impact",
+    "punch",
+    "fight",
+    "hit"
+   ],
+   "durationMs": 300,
+   "loop": false,
+   "file": "sfx/impacts/punch-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/impacts/punch-03",
+   "kind": "sfx",
+   "category": "impacts",
+   "name": "Punch 3",
+   "tags": [
+    "impact",
+    "punch",
+    "fight",
+    "hit"
+   ],
+   "durationMs": 400,
+   "loop": false,
+   "file": "sfx/impacts/punch-03.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/impacts/slam-01",
+   "kind": "sfx",
+   "category": "impacts",
+   "name": "Slam 1",
+   "tags": [
+    "impact",
+    "slam",
+    "door",
+    "big",
+    "reverb"
+   ],
+   "durationMs": 1684,
+   "loop": false,
+   "file": "sfx/impacts/slam-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/impacts/slam-02",
+   "kind": "sfx",
+   "category": "impacts",
+   "name": "Slam 2",
+   "tags": [
+    "impact",
+    "slam",
+    "door",
+    "big",
+    "reverb"
+   ],
+   "durationMs": 1908,
+   "loop": false,
+   "file": "sfx/impacts/slam-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/impacts/thud-01",
+   "kind": "sfx",
+   "category": "impacts",
+   "name": "Thud 1",
+   "tags": [
+    "impact",
+    "thud",
+    "soft",
+    "body"
+   ],
+   "durationMs": 600,
+   "loop": false,
+   "file": "sfx/impacts/thud-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/impacts/thud-02",
+   "kind": "sfx",
+   "category": "impacts",
+   "name": "Thud 2",
+   "tags": [
+    "impact",
+    "thud",
+    "soft",
+    "body"
+   ],
+   "durationMs": 700,
+   "loop": false,
+   "file": "sfx/impacts/thud-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/phone/dial-blip-01",
+   "kind": "sfx",
+   "category": "phone",
+   "name": "Dial blip",
+   "tags": [
+    "phone",
+    "dial",
+    "keypad",
+    "beep"
+   ],
+   "durationMs": 120,
+   "loop": false,
+   "file": "sfx/phone/dial-blip-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/phone/hang-up-01",
+   "kind": "sfx",
+   "category": "phone",
+   "name": "Hang up",
+   "tags": [
+    "phone",
+    "hang-up",
+    "end",
+    "call",
+    "beep"
+   ],
+   "durationMs": 700,
+   "loop": false,
+   "file": "sfx/phone/hang-up-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/phone/ring-01",
+   "kind": "sfx",
+   "category": "phone",
+   "name": "Phone ring 1",
+   "tags": [
+    "phone",
+    "ring",
+    "call",
+    "ringtone",
+    "incoming"
+   ],
+   "durationMs": 2480,
+   "loop": false,
+   "file": "sfx/phone/ring-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/phone/ring-02",
+   "kind": "sfx",
+   "category": "phone",
+   "name": "Phone ring 2",
+   "tags": [
+    "phone",
+    "ring",
+    "call",
+    "ringtone"
+   ],
+   "durationMs": 2385,
+   "loop": false,
+   "file": "sfx/phone/ring-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/phone/text-ping-01",
+   "kind": "sfx",
+   "category": "phone",
+   "name": "Text ping 1",
+   "tags": [
+    "phone",
+    "text",
+    "message",
+    "sms",
+    "ping"
+   ],
+   "durationMs": 778,
+   "loop": false,
+   "file": "sfx/phone/text-ping-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/phone/text-ping-02",
+   "kind": "sfx",
+   "category": "phone",
+   "name": "Text ping 2",
+   "tags": [
+    "phone",
+    "text",
+    "message",
+    "pop"
+   ],
+   "durationMs": 150,
+   "loop": false,
+   "file": "sfx/phone/text-ping-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/phone/text-ping-03",
+   "kind": "sfx",
+   "category": "phone",
+   "name": "Text ping 3",
+   "tags": [
+    "phone",
+    "text",
+    "message",
+    "double"
+   ],
+   "durationMs": 576,
+   "loop": false,
+   "file": "sfx/phone/text-ping-03.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/phone/vibrate-01",
+   "kind": "sfx",
+   "category": "phone",
+   "name": "Phone vibrate 1",
+   "tags": [
+    "phone",
+    "vibrate",
+    "buzz",
+    "silent"
+   ],
+   "durationMs": 990,
+   "loop": false,
+   "file": "sfx/phone/vibrate-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/phone/vibrate-02",
+   "kind": "sfx",
+   "category": "phone",
+   "name": "Phone vibrate 2 (short)",
+   "tags": [
+    "phone",
+    "vibrate",
+    "buzz",
+    "notification"
+   ],
+   "durationMs": 560,
+   "loop": false,
+   "file": "sfx/phone/vibrate-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/record/record-scratch-01",
+   "kind": "sfx",
+   "category": "record",
+   "name": "Record scratch 1",
+   "tags": [
+    "scratch",
+    "record",
+    "stop",
+    "dj",
+    "funny"
+   ],
+   "durationMs": 370,
+   "loop": false,
+   "file": "sfx/record/record-scratch-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/record/record-scratch-02",
+   "kind": "sfx",
+   "category": "record",
+   "name": "Record scratch 2",
+   "tags": [
+    "scratch",
+    "record",
+    "dj",
+    "rewind"
+   ],
+   "durationMs": 440,
+   "loop": false,
+   "file": "sfx/record/record-scratch-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/record/tape-stop-01",
+   "kind": "sfx",
+   "category": "record",
+   "name": "Tape stop 1",
+   "tags": [
+    "tape",
+    "stop",
+    "slowdown",
+    "power-down",
+    "transition"
+   ],
+   "durationMs": 1100,
+   "loop": false,
+   "file": "sfx/record/tape-stop-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/record/tape-stop-02",
+   "kind": "sfx",
+   "category": "record",
+   "name": "Tape stop 2 (power down)",
+   "tags": [
+    "tape",
+    "stop",
+    "power-down",
+    "shutdown"
+   ],
+   "durationMs": 1600,
+   "loop": false,
+   "file": "sfx/record/tape-stop-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/risers/noise-sweep-up-01",
+   "kind": "sfx",
+   "category": "risers",
+   "name": "Noise sweep up 1",
+   "tags": [
+    "riser",
+    "noise",
+    "sweep",
+    "white"
+   ],
+   "durationMs": 2796,
+   "loop": false,
+   "file": "sfx/risers/noise-sweep-up-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/risers/noise-sweep-up-02",
+   "kind": "sfx",
+   "category": "risers",
+   "name": "Noise sweep up 2",
+   "tags": [
+    "riser",
+    "noise",
+    "sweep",
+    "fast"
+   ],
+   "durationMs": 1742,
+   "loop": false,
+   "file": "sfx/risers/noise-sweep-up-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/risers/riser-long-01",
+   "kind": "sfx",
+   "category": "risers",
+   "name": "Long riser 1",
+   "tags": [
+    "riser",
+    "build",
+    "drop",
+    "edm"
+   ],
+   "durationMs": 4958,
+   "loop": false,
+   "file": "sfx/risers/riser-long-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/risers/riser-long-02",
+   "kind": "sfx",
+   "category": "risers",
+   "name": "Long riser 2",
+   "tags": [
+    "riser",
+    "build",
+    "cinematic"
+   ],
+   "durationMs": 4078,
+   "loop": false,
+   "file": "sfx/risers/riser-long-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/risers/riser-short-01",
+   "kind": "sfx",
+   "category": "risers",
+   "name": "Short riser 1",
+   "tags": [
+    "riser",
+    "build",
+    "tension",
+    "transition"
+   ],
+   "durationMs": 2415,
+   "loop": false,
+   "file": "sfx/risers/riser-short-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/risers/riser-short-02",
+   "kind": "sfx",
+   "category": "risers",
+   "name": "Short riser 2",
+   "tags": [
+    "riser",
+    "build",
+    "noise",
+    "transition"
+   ],
+   "durationMs": 2041,
+   "loop": false,
+   "file": "sfx/risers/riser-short-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/risers/tension-riser-01",
+   "kind": "sfx",
+   "category": "risers",
+   "name": "Tension riser 1",
+   "tags": [
+    "riser",
+    "tension",
+    "dark",
+    "horror"
+   ],
+   "durationMs": 3956,
+   "loop": false,
+   "file": "sfx/risers/tension-riser-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/risers/tension-riser-02",
+   "kind": "sfx",
+   "category": "risers",
+   "name": "Tension riser 2",
+   "tags": [
+    "riser",
+    "tension",
+    "suspense"
+   ],
+   "durationMs": 3358,
+   "loop": false,
+   "file": "sfx/risers/tension-riser-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/sirens/alarm-beep-01",
+   "kind": "sfx",
+   "category": "sirens",
+   "name": "Alarm beeps",
+   "tags": [
+    "alarm",
+    "beep",
+    "warning",
+    "heist",
+    "security"
+   ],
+   "durationMs": 2000,
+   "loop": false,
+   "file": "sfx/sirens/alarm-beep-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/sirens/alarm-beep-02",
+   "kind": "sfx",
+   "category": "sirens",
+   "name": "Alarm beeps (slow)",
+   "tags": [
+    "alarm",
+    "beep",
+    "warning",
+    "bomb",
+    "timer"
+   ],
+   "durationMs": 2123,
+   "loop": false,
+   "file": "sfx/sirens/alarm-beep-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/sirens/klaxon-01",
+   "kind": "sfx",
+   "category": "sirens",
+   "name": "Klaxon 1",
+   "tags": [
+    "alarm",
+    "klaxon",
+    "horn",
+    "warning",
+    "lockdown"
+   ],
+   "durationMs": 2656,
+   "loop": false,
+   "file": "sfx/sirens/klaxon-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/sirens/klaxon-02",
+   "kind": "sfx",
+   "category": "sirens",
+   "name": "Klaxon 2",
+   "tags": [
+    "alarm",
+    "klaxon",
+    "horn",
+    "danger"
+   ],
+   "durationMs": 2175,
+   "loop": false,
+   "file": "sfx/sirens/klaxon-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/sirens/siren-wail-01",
+   "kind": "sfx",
+   "category": "sirens",
+   "name": "Siren wail 1",
+   "tags": [
+    "siren",
+    "police",
+    "chase",
+    "wanted",
+    "emergency"
+   ],
+   "durationMs": 4225,
+   "loop": false,
+   "file": "sfx/sirens/siren-wail-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/sirens/siren-wail-02",
+   "kind": "sfx",
+   "category": "sirens",
+   "name": "Siren wail 2 (far)",
+   "tags": [
+    "siren",
+    "police",
+    "distant",
+    "city"
+   ],
+   "durationMs": 4296,
+   "loop": false,
+   "file": "sfx/sirens/siren-wail-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/sirens/siren-yelp-01",
+   "kind": "sfx",
+   "category": "sirens",
+   "name": "Siren yelp 1",
+   "tags": [
+    "siren",
+    "yelp",
+    "police",
+    "chase",
+    "fast"
+   ],
+   "durationMs": 3288,
+   "loop": false,
+   "file": "sfx/sirens/siren-yelp-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/sirens/siren-yelp-02",
+   "kind": "sfx",
+   "category": "sirens",
+   "name": "Siren yelp 2",
+   "tags": [
+    "siren",
+    "yelp",
+    "urgent"
+   ],
+   "durationMs": 2785,
+   "loop": false,
+   "file": "sfx/sirens/siren-yelp-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/stingers/level-up-01",
+   "kind": "sfx",
+   "category": "stingers",
+   "name": "Level up 1",
+   "tags": [
+    "stinger",
+    "level-up",
+    "rank",
+    "retro",
+    "8-bit",
+    "upgrade"
+   ],
+   "durationMs": 1113,
+   "loop": false,
+   "file": "sfx/stingers/level-up-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/stingers/level-up-02",
+   "kind": "sfx",
+   "category": "stingers",
+   "name": "Level up 2",
+   "tags": [
+    "stinger",
+    "level-up",
+    "rank",
+    "retro",
+    "unlock"
+   ],
+   "durationMs": 1103,
+   "loop": false,
+   "file": "sfx/stingers/level-up-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/stingers/mission-complete-01",
+   "kind": "sfx",
+   "category": "stingers",
+   "name": "Mission complete 1",
+   "tags": [
+    "stinger",
+    "success",
+    "win",
+    "complete",
+    "victory"
+   ],
+   "durationMs": 2820,
+   "loop": false,
+   "file": "sfx/stingers/mission-complete-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/stingers/mission-complete-02",
+   "kind": "sfx",
+   "category": "stingers",
+   "name": "Mission complete 2",
+   "tags": [
+    "stinger",
+    "success",
+    "win",
+    "complete",
+    "triumph"
+   ],
+   "durationMs": 3232,
+   "loop": false,
+   "file": "sfx/stingers/mission-complete-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/stingers/mission-complete-03",
+   "kind": "sfx",
+   "category": "stingers",
+   "name": "Mission complete 3 (short)",
+   "tags": [
+    "stinger",
+    "success",
+    "short",
+    "done"
+   ],
+   "durationMs": 2270,
+   "loop": false,
+   "file": "sfx/stingers/mission-complete-03.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/stingers/mission-failed-01",
+   "kind": "sfx",
+   "category": "stingers",
+   "name": "Mission failed 1",
+   "tags": [
+    "stinger",
+    "fail",
+    "lose",
+    "failed",
+    "sad"
+   ],
+   "durationMs": 3636,
+   "loop": false,
+   "file": "sfx/stingers/mission-failed-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/stingers/mission-failed-02",
+   "kind": "sfx",
+   "category": "stingers",
+   "name": "Mission failed 2",
+   "tags": [
+    "stinger",
+    "fail",
+    "lose",
+    "dark"
+   ],
+   "durationMs": 3445,
+   "loop": false,
+   "file": "sfx/stingers/mission-failed-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/stingers/mission-failed-03",
+   "kind": "sfx",
+   "category": "stingers",
+   "name": "Mission failed 3 (sad trombone style)",
+   "tags": [
+    "stinger",
+    "fail",
+    "funny",
+    "lose",
+    "comedy"
+   ],
+   "durationMs": 2912,
+   "loop": false,
+   "file": "sfx/stingers/mission-failed-03.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/stingers/reveal-stinger-01",
+   "kind": "sfx",
+   "category": "stingers",
+   "name": "Reveal stinger 1",
+   "tags": [
+    "stinger",
+    "reveal",
+    "epic",
+    "big"
+   ],
+   "durationMs": 3168,
+   "loop": false,
+   "file": "sfx/stingers/reveal-stinger-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/stingers/reveal-stinger-02",
+   "kind": "sfx",
+   "category": "stingers",
+   "name": "Reveal stinger 2",
+   "tags": [
+    "stinger",
+    "reveal",
+    "drama",
+    "cinematic"
+   ],
+   "durationMs": 3351,
+   "loop": false,
+   "file": "sfx/stingers/reveal-stinger-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/stingers/tension-stinger-01",
+   "kind": "sfx",
+   "category": "stingers",
+   "name": "Tension stinger 1",
+   "tags": [
+    "stinger",
+    "tension",
+    "suspense",
+    "danger",
+    "reveal"
+   ],
+   "durationMs": 2962,
+   "loop": false,
+   "file": "sfx/stingers/tension-stinger-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/stingers/tension-stinger-02",
+   "kind": "sfx",
+   "category": "stingers",
+   "name": "Tension stinger 2",
+   "tags": [
+    "stinger",
+    "tension",
+    "horror",
+    "hit"
+   ],
+   "durationMs": 2508,
+   "loop": false,
+   "file": "sfx/stingers/tension-stinger-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/ui/blip-down-01",
+   "kind": "sfx",
+   "category": "ui",
+   "name": "Blip down 1",
+   "tags": [
+    "ui",
+    "blip",
+    "down",
+    "back",
+    "cancel"
+   ],
+   "durationMs": 120,
+   "loop": false,
+   "file": "sfx/ui/blip-down-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/ui/blip-down-02",
+   "kind": "sfx",
+   "category": "ui",
+   "name": "Blip down 2 (retro)",
+   "tags": [
+    "ui",
+    "blip",
+    "down",
+    "retro",
+    "8-bit"
+   ],
+   "durationMs": 100,
+   "loop": false,
+   "file": "sfx/ui/blip-down-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/ui/blip-up-01",
+   "kind": "sfx",
+   "category": "ui",
+   "name": "Blip up 1",
+   "tags": [
+    "ui",
+    "blip",
+    "up",
+    "positive",
+    "select"
+   ],
+   "durationMs": 120,
+   "loop": false,
+   "file": "sfx/ui/blip-up-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/ui/blip-up-02",
+   "kind": "sfx",
+   "category": "ui",
+   "name": "Blip up 2 (retro)",
+   "tags": [
+    "ui",
+    "blip",
+    "up",
+    "retro",
+    "8-bit"
+   ],
+   "durationMs": 100,
+   "loop": false,
+   "file": "sfx/ui/blip-up-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/ui/click-01",
+   "kind": "sfx",
+   "category": "ui",
+   "name": "Click 1",
+   "tags": [
+    "ui",
+    "click",
+    "button",
+    "tap"
+   ],
+   "durationMs": 50,
+   "loop": false,
+   "file": "sfx/ui/click-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/ui/click-02",
+   "kind": "sfx",
+   "category": "ui",
+   "name": "Click 2",
+   "tags": [
+    "ui",
+    "click",
+    "button",
+    "tap"
+   ],
+   "durationMs": 50,
+   "loop": false,
+   "file": "sfx/ui/click-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/ui/click-03",
+   "kind": "sfx",
+   "category": "ui",
+   "name": "Click 3",
+   "tags": [
+    "ui",
+    "click",
+    "button",
+    "tap"
+   ],
+   "durationMs": 50,
+   "loop": false,
+   "file": "sfx/ui/click-03.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/ui/confirm-01",
+   "kind": "sfx",
+   "category": "ui",
+   "name": "Confirm",
+   "tags": [
+    "ui",
+    "confirm",
+    "success",
+    "ok",
+    "positive"
+   ],
+   "durationMs": 860,
+   "loop": false,
+   "file": "sfx/ui/confirm-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/ui/countdown-beep-01",
+   "kind": "sfx",
+   "category": "ui",
+   "name": "Countdown beep",
+   "tags": [
+    "ui",
+    "countdown",
+    "beep",
+    "timer",
+    "race"
+   ],
+   "durationMs": 160,
+   "loop": false,
+   "file": "sfx/ui/countdown-beep-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/ui/countdown-go-01",
+   "kind": "sfx",
+   "category": "ui",
+   "name": "Countdown go",
+   "tags": [
+    "ui",
+    "countdown",
+    "go",
+    "start",
+    "race"
+   ],
+   "durationMs": 500,
+   "loop": false,
+   "file": "sfx/ui/countdown-go-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/ui/error-01",
+   "kind": "sfx",
+   "category": "ui",
+   "name": "Error buzz",
+   "tags": [
+    "ui",
+    "error",
+    "wrong",
+    "denied",
+    "buzz"
+   ],
+   "durationMs": 320,
+   "loop": false,
+   "file": "sfx/ui/error-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/ui/hover-tick-01",
+   "kind": "sfx",
+   "category": "ui",
+   "name": "Hover tick",
+   "tags": [
+    "ui",
+    "hover",
+    "tick",
+    "soft"
+   ],
+   "durationMs": 30,
+   "loop": false,
+   "file": "sfx/ui/hover-tick-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/ui/menu-close-01",
+   "kind": "sfx",
+   "category": "ui",
+   "name": "Menu close",
+   "tags": [
+    "ui",
+    "menu",
+    "close",
+    "back"
+   ],
+   "durationMs": 250,
+   "loop": false,
+   "file": "sfx/ui/menu-close-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/ui/menu-open-01",
+   "kind": "sfx",
+   "category": "ui",
+   "name": "Menu open",
+   "tags": [
+    "ui",
+    "menu",
+    "open",
+    "pause",
+    "swoosh"
+   ],
+   "durationMs": 280,
+   "loop": false,
+   "file": "sfx/ui/menu-open-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/ui/notification-01",
+   "kind": "sfx",
+   "category": "ui",
+   "name": "Notification 1",
+   "tags": [
+    "ui",
+    "notification",
+    "chime",
+    "alert",
+    "message"
+   ],
+   "durationMs": 1009,
+   "loop": false,
+   "file": "sfx/ui/notification-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/ui/notification-02",
+   "kind": "sfx",
+   "category": "ui",
+   "name": "Notification 2",
+   "tags": [
+    "ui",
+    "notification",
+    "chime",
+    "soft"
+   ],
+   "durationMs": 1003,
+   "loop": false,
+   "file": "sfx/ui/notification-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/ui/notification-03",
+   "kind": "sfx",
+   "category": "ui",
+   "name": "Notification 3",
+   "tags": [
+    "ui",
+    "notification",
+    "ping",
+    "bright"
+   ],
+   "durationMs": 963,
+   "loop": false,
+   "file": "sfx/ui/notification-03.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/ui/select-01",
+   "kind": "sfx",
+   "category": "ui",
+   "name": "Select tick",
+   "tags": [
+    "ui",
+    "select",
+    "tick",
+    "menu"
+   ],
+   "durationMs": 50,
+   "loop": false,
+   "file": "sfx/ui/select-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/whooshes/reverse-whoosh-01",
+   "kind": "sfx",
+   "category": "whooshes",
+   "name": "Reverse whoosh 1",
+   "tags": [
+    "whoosh",
+    "reverse",
+    "build",
+    "suck"
+   ],
+   "durationMs": 900,
+   "loop": false,
+   "file": "sfx/whooshes/reverse-whoosh-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/whooshes/reverse-whoosh-02",
+   "kind": "sfx",
+   "category": "whooshes",
+   "name": "Reverse whoosh 2",
+   "tags": [
+    "whoosh",
+    "reverse",
+    "build",
+    "suck"
+   ],
+   "durationMs": 1300,
+   "loop": false,
+   "file": "sfx/whooshes/reverse-whoosh-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/whooshes/swish-01",
+   "kind": "sfx",
+   "category": "whooshes",
+   "name": "Swish 1",
+   "tags": [
+    "swish",
+    "quick",
+    "cut",
+    "ui"
+   ],
+   "durationMs": 180,
+   "loop": false,
+   "file": "sfx/whooshes/swish-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/whooshes/swish-02",
+   "kind": "sfx",
+   "category": "whooshes",
+   "name": "Swish 2",
+   "tags": [
+    "swish",
+    "quick",
+    "cut",
+    "ui"
+   ],
+   "durationMs": 220,
+   "loop": false,
+   "file": "sfx/whooshes/swish-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/whooshes/swish-03",
+   "kind": "sfx",
+   "category": "whooshes",
+   "name": "Swish 3",
+   "tags": [
+    "swish",
+    "quick",
+    "cut",
+    "ui"
+   ],
+   "durationMs": 160,
+   "loop": false,
+   "file": "sfx/whooshes/swish-03.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/whooshes/whoosh-long-01",
+   "kind": "sfx",
+   "category": "whooshes",
+   "name": "Long whoosh 1",
+   "tags": [
+    "whoosh",
+    "slow",
+    "transition",
+    "fly-by"
+   ],
+   "durationMs": 1100,
+   "loop": false,
+   "file": "sfx/whooshes/whoosh-long-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/whooshes/whoosh-long-02",
+   "kind": "sfx",
+   "category": "whooshes",
+   "name": "Long whoosh 2",
+   "tags": [
+    "whoosh",
+    "slow",
+    "transition",
+    "fly-by"
+   ],
+   "durationMs": 1399,
+   "loop": false,
+   "file": "sfx/whooshes/whoosh-long-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/whooshes/whoosh-long-03",
+   "kind": "sfx",
+   "category": "whooshes",
+   "name": "Long whoosh 3",
+   "tags": [
+    "whoosh",
+    "slow",
+    "transition",
+    "fly-by"
+   ],
+   "durationMs": 900,
+   "loop": false,
+   "file": "sfx/whooshes/whoosh-long-03.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/whooshes/whoosh-short-01",
+   "kind": "sfx",
+   "category": "whooshes",
+   "name": "Short whoosh 1",
+   "tags": [
+    "whoosh",
+    "fast",
+    "transition",
+    "swipe"
+   ],
+   "durationMs": 350,
+   "loop": false,
+   "file": "sfx/whooshes/whoosh-short-01.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/whooshes/whoosh-short-02",
+   "kind": "sfx",
+   "category": "whooshes",
+   "name": "Short whoosh 2",
+   "tags": [
+    "whoosh",
+    "fast",
+    "transition",
+    "swipe"
+   ],
+   "durationMs": 450,
+   "loop": false,
+   "file": "sfx/whooshes/whoosh-short-02.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/whooshes/whoosh-short-03",
+   "kind": "sfx",
+   "category": "whooshes",
+   "name": "Short whoosh 3",
+   "tags": [
+    "whoosh",
+    "fast",
+    "transition",
+    "swipe"
+   ],
+   "durationMs": 300,
+   "loop": false,
+   "file": "sfx/whooshes/whoosh-short-03.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sfx/whooshes/whoosh-short-04",
+   "kind": "sfx",
+   "category": "whooshes",
+   "name": "Short whoosh 4",
+   "tags": [
+    "whoosh",
+    "fast",
+    "transition",
+    "swipe"
+   ],
+   "durationMs": 500,
+   "loop": false,
+   "file": "sfx/whooshes/whoosh-short-04.m4a",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/annotate/arrow-coral",
+   "kind": "sticker",
+   "category": "annotate",
+   "name": "Arrow (coral)",
+   "tags": [
+    "arrow",
+    "point",
+    "look",
+    "pointer",
+    "coral"
+   ],
+   "loop": false,
+   "width": 480,
+   "height": 212,
+   "file": "elements/stickers/annotate/arrow-coral.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/annotate/arrow-curved-coral",
+   "kind": "sticker",
+   "category": "annotate",
+   "name": "Curved arrow (coral)",
+   "tags": [
+    "arrow",
+    "curved",
+    "point",
+    "look",
+    "coral"
+   ],
+   "loop": false,
+   "width": 456,
+   "height": 350,
+   "file": "elements/stickers/annotate/arrow-curved-coral.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/annotate/arrow-curved-gold",
+   "kind": "sticker",
+   "category": "annotate",
+   "name": "Curved arrow (gold)",
+   "tags": [
+    "arrow",
+    "curved",
+    "point",
+    "look",
+    "gold"
+   ],
+   "loop": false,
+   "width": 456,
+   "height": 350,
+   "file": "elements/stickers/annotate/arrow-curved-gold.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/annotate/arrow-gold",
+   "kind": "sticker",
+   "category": "annotate",
+   "name": "Arrow (gold)",
+   "tags": [
+    "arrow",
+    "point",
+    "look",
+    "pointer",
+    "gold"
+   ],
+   "loop": false,
+   "width": 480,
+   "height": 212,
+   "file": "elements/stickers/annotate/arrow-gold.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/annotate/arrow-ivory",
+   "kind": "sticker",
+   "category": "annotate",
+   "name": "Arrow (ivory)",
+   "tags": [
+    "arrow",
+    "point",
+    "look",
+    "pointer",
+    "ivory"
+   ],
+   "loop": false,
+   "width": 480,
+   "height": 212,
+   "file": "elements/stickers/annotate/arrow-ivory.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/annotate/callout-left",
+   "kind": "sticker",
+   "category": "annotate",
+   "name": "Callout box (left tail)",
+   "tags": [
+    "callout",
+    "box",
+    "note",
+    "label",
+    "caption"
+   ],
+   "loop": false,
+   "width": 590,
+   "height": 292,
+   "file": "elements/stickers/annotate/callout-left.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/annotate/callout-right",
+   "kind": "sticker",
+   "category": "annotate",
+   "name": "Callout box (right tail)",
+   "tags": [
+    "callout",
+    "box",
+    "note",
+    "label",
+    "caption"
+   ],
+   "loop": false,
+   "width": 590,
+   "height": 292,
+   "file": "elements/stickers/annotate/callout-right.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/annotate/check-mark",
+   "kind": "sticker",
+   "category": "annotate",
+   "name": "Check mark",
+   "tags": [
+    "check",
+    "tick",
+    "yes",
+    "correct",
+    "done"
+   ],
+   "loop": false,
+   "width": 340,
+   "height": 282,
+   "file": "elements/stickers/annotate/check-mark.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/annotate/circle-coral",
+   "kind": "sticker",
+   "category": "annotate",
+   "name": "Hand-drawn circle (coral)",
+   "tags": [
+    "circle",
+    "highlight",
+    "look",
+    "mark"
+   ],
+   "loop": false,
+   "width": 535,
+   "height": 393,
+   "file": "elements/stickers/annotate/circle-coral.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/annotate/circle-gold",
+   "kind": "sticker",
+   "category": "annotate",
+   "name": "Hand-drawn circle (gold)",
+   "tags": [
+    "circle",
+    "highlight",
+    "look",
+    "mark"
+   ],
+   "loop": false,
+   "width": 531,
+   "height": 392,
+   "file": "elements/stickers/annotate/circle-gold.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/annotate/ring-dashed",
+   "kind": "sticker",
+   "category": "annotate",
+   "name": "Target ring (dashed)",
+   "tags": [
+    "ring",
+    "target",
+    "focus",
+    "highlight",
+    "crosshair"
+   ],
+   "loop": false,
+   "width": 400,
+   "height": 400,
+   "file": "elements/stickers/annotate/ring-dashed.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/annotate/scribble-underline",
+   "kind": "sticker",
+   "category": "annotate",
+   "name": "Scribble underline",
+   "tags": [
+    "underline",
+    "scribble",
+    "highlight",
+    "mark"
+   ],
+   "loop": false,
+   "width": 682,
+   "height": 92,
+   "file": "elements/stickers/annotate/scribble-underline.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/annotate/speech-bubble",
+   "kind": "sticker",
+   "category": "annotate",
+   "name": "Speech bubble",
+   "tags": [
+    "speech",
+    "bubble",
+    "talk",
+    "say",
+    "comic"
+   ],
+   "loop": false,
+   "width": 570,
+   "height": 422,
+   "file": "elements/stickers/annotate/speech-bubble.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/annotate/speech-bubble-shout",
+   "kind": "sticker",
+   "category": "annotate",
+   "name": "Shout bubble",
+   "tags": [
+    "speech",
+    "bubble",
+    "shout",
+    "yell",
+    "comic"
+   ],
+   "loop": false,
+   "width": 561,
+   "height": 460,
+   "file": "elements/stickers/annotate/speech-bubble-shout.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/annotate/thought-bubble",
+   "kind": "sticker",
+   "category": "annotate",
+   "name": "Thought bubble",
+   "tags": [
+    "thought",
+    "bubble",
+    "think",
+    "comic",
+    "idea"
+   ],
+   "loop": false,
+   "width": 496,
+   "height": 419,
+   "file": "elements/stickers/annotate/thought-bubble.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/annotate/x-mark",
+   "kind": "sticker",
+   "category": "annotate",
+   "name": "X mark",
+   "tags": [
+    "x",
+    "cross",
+    "wrong",
+    "no",
+    "fail"
+   ],
+   "loop": false,
+   "width": 270,
+   "height": 272,
+   "file": "elements/stickers/annotate/x-mark.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/badge/clip",
+   "kind": "sticker",
+   "category": "badge",
+   "name": "Badge: Clip",
+   "tags": [
+    "badge",
+    "label",
+    "clip",
+    "clip"
+   ],
+   "loop": false,
+   "width": 254,
+   "height": 116,
+   "file": "elements/stickers/badge/clip.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/badge/live",
+   "kind": "sticker",
+   "category": "badge",
+   "name": "Badge: Live",
+   "tags": [
+    "badge",
+    "label",
+    "live",
+    "live"
+   ],
+   "loop": false,
+   "width": 254,
+   "height": 116,
+   "file": "elements/stickers/badge/live.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/badge/new",
+   "kind": "sticker",
+   "category": "badge",
+   "name": "Badge: New",
+   "tags": [
+    "badge",
+    "label",
+    "new",
+    "new"
+   ],
+   "loop": false,
+   "width": 193,
+   "height": 116,
+   "file": "elements/stickers/badge/new.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/badge/rec",
+   "kind": "sticker",
+   "category": "badge",
+   "name": "Badge: Rec",
+   "tags": [
+    "badge",
+    "label",
+    "rec",
+    "rec"
+   ],
+   "loop": false,
+   "width": 235,
+   "height": 116,
+   "file": "elements/stickers/badge/rec.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/badge/replay",
+   "kind": "sticker",
+   "category": "badge",
+   "name": "Badge: Replay",
+   "tags": [
+    "badge",
+    "label",
+    "replay",
+    "replay"
+   ],
+   "loop": false,
+   "width": 282,
+   "height": 116,
+   "file": "elements/stickers/badge/replay.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/badge/slow-mo",
+   "kind": "sticker",
+   "category": "badge",
+   "name": "Badge: Slow-Mo",
+   "tags": [
+    "badge",
+    "label",
+    "slow mo",
+    "slow-mo"
+   ],
+   "loop": false,
+   "width": 327,
+   "height": 116,
+   "file": "elements/stickers/badge/slow-mo.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/badge/speed-2x",
+   "kind": "sticker",
+   "category": "badge",
+   "name": "Badge: 2X Speed",
+   "tags": [
+    "badge",
+    "label",
+    "speed 2x",
+    "2x speed"
+   ],
+   "loop": false,
+   "width": 331,
+   "height": 116,
+   "file": "elements/stickers/badge/speed-2x.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/countdown/countdown-1",
+   "kind": "sticker",
+   "category": "countdown",
+   "name": "Countdown 1",
+   "tags": [
+    "countdown",
+    "timer",
+    "race",
+    "start",
+    "1"
+   ],
+   "loop": false,
+   "width": 116,
+   "height": 205,
+   "file": "elements/stickers/countdown/countdown-1.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/countdown/countdown-2",
+   "kind": "sticker",
+   "category": "countdown",
+   "name": "Countdown 2",
+   "tags": [
+    "countdown",
+    "timer",
+    "race",
+    "start",
+    "2"
+   ],
+   "loop": false,
+   "width": 162,
+   "height": 208,
+   "file": "elements/stickers/countdown/countdown-2.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/countdown/countdown-3",
+   "kind": "sticker",
+   "category": "countdown",
+   "name": "Countdown 3",
+   "tags": [
+    "countdown",
+    "timer",
+    "race",
+    "start",
+    "3"
+   ],
+   "loop": false,
+   "width": 162,
+   "height": 211,
+   "file": "elements/stickers/countdown/countdown-3.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/countdown/countdown-go",
+   "kind": "sticker",
+   "category": "countdown",
+   "name": "Countdown GO!",
+   "tags": [
+    "countdown",
+    "timer",
+    "race",
+    "start",
+    "go!"
+   ],
+   "loop": false,
+   "width": 435,
+   "height": 211,
+   "file": "elements/stickers/countdown/countdown-go.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/hud/ammo-plate",
+   "kind": "sticker",
+   "category": "hud",
+   "name": "Ammo counter",
+   "tags": [
+    "hud",
+    "ammo",
+    "bullets",
+    "weapon",
+    "counter"
+   ],
+   "loop": false,
+   "width": 398,
+   "height": 130,
+   "file": "elements/stickers/hud/ammo-plate.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/hud/armor-bar",
+   "kind": "sticker",
+   "category": "hud",
+   "name": "Armor bar",
+   "tags": [
+    "hud",
+    "armor",
+    "shield",
+    "bar"
+   ],
+   "loop": false,
+   "width": 618,
+   "height": 105,
+   "file": "elements/stickers/hud/armor-bar.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/hud/cash-million",
+   "kind": "sticker",
+   "category": "hud",
+   "name": "Cash $1,000,000",
+   "tags": [
+    "hud",
+    "money",
+    "cash",
+    "dollars",
+    "score",
+    "reward"
+   ],
+   "loop": false,
+   "width": 445,
+   "height": 124,
+   "file": "elements/stickers/hud/cash-million.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/hud/cash-minus",
+   "kind": "sticker",
+   "category": "hud",
+   "name": "Cash -$500",
+   "tags": [
+    "hud",
+    "money",
+    "cash",
+    "dollars",
+    "score",
+    "reward"
+   ],
+   "loop": false,
+   "width": 261,
+   "height": 122,
+   "file": "elements/stickers/hud/cash-minus.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/hud/cash-plus-1k",
+   "kind": "sticker",
+   "category": "hud",
+   "name": "Cash +$1,000",
+   "tags": [
+    "hud",
+    "money",
+    "cash",
+    "dollars",
+    "score",
+    "reward"
+   ],
+   "loop": false,
+   "width": 324,
+   "height": 124,
+   "file": "elements/stickers/hud/cash-plus-1k.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/hud/cash-plus-50k",
+   "kind": "sticker",
+   "category": "hud",
+   "name": "Cash +$50,000",
+   "tags": [
+    "hud",
+    "money",
+    "cash",
+    "dollars",
+    "score",
+    "reward"
+   ],
+   "loop": false,
+   "width": 390,
+   "height": 124,
+   "file": "elements/stickers/hud/cash-plus-50k.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/hud/health-bar-full",
+   "kind": "sticker",
+   "category": "hud",
+   "name": "Health bar (full)",
+   "tags": [
+    "hud",
+    "health",
+    "bar",
+    "life",
+    "full"
+   ],
+   "loop": false,
+   "width": 618,
+   "height": 105,
+   "file": "elements/stickers/hud/health-bar-full.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/hud/health-bar-low",
+   "kind": "sticker",
+   "category": "hud",
+   "name": "Health bar (low)",
+   "tags": [
+    "hud",
+    "health",
+    "bar",
+    "low",
+    "danger",
+    "dying"
+   ],
+   "loop": false,
+   "width": 618,
+   "height": 105,
+   "file": "elements/stickers/hud/health-bar-low.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/hud/radar-blips",
+   "kind": "sticker",
+   "category": "hud",
+   "name": "Radar with blips",
+   "tags": [
+    "hud",
+    "radar",
+    "minimap",
+    "map",
+    "targets",
+    "blips"
+   ],
+   "loop": false,
+   "width": 390,
+   "height": 410,
+   "file": "elements/stickers/hud/radar-blips.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/hud/radar-frame",
+   "kind": "sticker",
+   "category": "hud",
+   "name": "Radar (empty)",
+   "tags": [
+    "hud",
+    "radar",
+    "minimap",
+    "map",
+    "gps"
+   ],
+   "loop": false,
+   "width": 390,
+   "height": 410,
+   "file": "elements/stickers/hud/radar-frame.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/hud/wanted-stars-0",
+   "kind": "sticker",
+   "category": "hud",
+   "name": "Wanted stars (0 of 5)",
+   "tags": [
+    "hud",
+    "stars",
+    "wanted",
+    "police",
+    "chase",
+    "level"
+   ],
+   "loop": false,
+   "width": 610,
+   "height": 116,
+   "file": "elements/stickers/hud/wanted-stars-0.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/hud/wanted-stars-1",
+   "kind": "sticker",
+   "category": "hud",
+   "name": "Wanted stars (1 of 5)",
+   "tags": [
+    "hud",
+    "stars",
+    "wanted",
+    "police",
+    "chase",
+    "level"
+   ],
+   "loop": false,
+   "width": 611,
+   "height": 127,
+   "file": "elements/stickers/hud/wanted-stars-1.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/hud/wanted-stars-2",
+   "kind": "sticker",
+   "category": "hud",
+   "name": "Wanted stars (2 of 5)",
+   "tags": [
+    "hud",
+    "stars",
+    "wanted",
+    "police",
+    "chase",
+    "level"
+   ],
+   "loop": false,
+   "width": 611,
+   "height": 127,
+   "file": "elements/stickers/hud/wanted-stars-2.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/hud/wanted-stars-3",
+   "kind": "sticker",
+   "category": "hud",
+   "name": "Wanted stars (3 of 5)",
+   "tags": [
+    "hud",
+    "stars",
+    "wanted",
+    "police",
+    "chase",
+    "level"
+   ],
+   "loop": false,
+   "width": 611,
+   "height": 127,
+   "file": "elements/stickers/hud/wanted-stars-3.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/hud/wanted-stars-4",
+   "kind": "sticker",
+   "category": "hud",
+   "name": "Wanted stars (4 of 5)",
+   "tags": [
+    "hud",
+    "stars",
+    "wanted",
+    "police",
+    "chase",
+    "level"
+   ],
+   "loop": false,
+   "width": 611,
+   "height": 127,
+   "file": "elements/stickers/hud/wanted-stars-4.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/hud/wanted-stars-5",
+   "kind": "sticker",
+   "category": "hud",
+   "name": "Wanted stars (5 of 5)",
+   "tags": [
+    "hud",
+    "stars",
+    "wanted",
+    "police",
+    "chase",
+    "level"
+   ],
+   "loop": false,
+   "width": 616,
+   "height": 127,
+   "file": "elements/stickers/hud/wanted-stars-5.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/mission/banner-busted",
+   "kind": "sticker",
+   "category": "mission",
+   "name": "Banner: Busted",
+   "tags": [
+    "banner",
+    "result",
+    "arrested",
+    "police",
+    "caught",
+    "busted"
+   ],
+   "loop": false,
+   "width": 661,
+   "height": 221,
+   "file": "elements/stickers/mission/banner-busted.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/mission/banner-clutch",
+   "kind": "sticker",
+   "category": "mission",
+   "name": "Banner: Clutch",
+   "tags": [
+    "banner",
+    "result",
+    "clutch",
+    "hype",
+    "win",
+    "save"
+   ],
+   "loop": false,
+   "width": 616,
+   "height": 219,
+   "file": "elements/stickers/mission/banner-clutch.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/mission/banner-gg",
+   "kind": "sticker",
+   "category": "mission",
+   "name": "Banner: Gg",
+   "tags": [
+    "banner",
+    "result",
+    "gg",
+    "good-game",
+    "win"
+   ],
+   "loop": false,
+   "width": 325,
+   "height": 278,
+   "file": "elements/stickers/mission/banner-gg.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/mission/banner-mission-complete",
+   "kind": "sticker",
+   "category": "mission",
+   "name": "Banner: Mission Complete",
+   "tags": [
+    "banner",
+    "result",
+    "win",
+    "success",
+    "complete",
+    "passed"
+   ],
+   "loop": false,
+   "width": 1005,
+   "height": 104,
+   "file": "elements/stickers/mission/banner-mission-complete.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/mission/banner-mission-failed",
+   "kind": "sticker",
+   "category": "mission",
+   "name": "Banner: Mission Failed",
+   "tags": [
+    "banner",
+    "result",
+    "fail",
+    "lose",
+    "failed"
+   ],
+   "loop": false,
+   "width": 832,
+   "height": 104,
+   "file": "elements/stickers/mission/banner-mission-failed.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/mission/banner-new-record",
+   "kind": "sticker",
+   "category": "mission",
+   "name": "Banner: New Record",
+   "tags": [
+    "banner",
+    "result",
+    "record",
+    "best",
+    "score",
+    "win"
+   ],
+   "loop": false,
+   "width": 834,
+   "height": 255,
+   "file": "elements/stickers/mission/banner-new-record.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/mission/banner-no-way",
+   "kind": "sticker",
+   "category": "mission",
+   "name": "Banner: No Way!",
+   "tags": [
+    "banner",
+    "result",
+    "no-way",
+    "shock",
+    "reaction",
+    "hype"
+   ],
+   "loop": false,
+   "width": 727,
+   "height": 225,
+   "file": "elements/stickers/mission/banner-no-way.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/mission/banner-wasted",
+   "kind": "sticker",
+   "category": "mission",
+   "name": "Banner: Wasted",
+   "tags": [
+    "banner",
+    "result",
+    "dead",
+    "death",
+    "fail",
+    "wasted"
+   ],
+   "loop": false,
+   "width": 692,
+   "height": 223,
+   "file": "elements/stickers/mission/banner-wasted.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/mission/objective-lower-third",
+   "kind": "sticker",
+   "category": "mission",
+   "name": "Objective lower third (blank)",
+   "tags": [
+    "mission",
+    "objective",
+    "lower-third",
+    "subtitle",
+    "blank"
+   ],
+   "loop": false,
+   "width": 1326,
+   "height": 138,
+   "file": "elements/stickers/mission/objective-lower-third.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/mission/title-plate",
+   "kind": "sticker",
+   "category": "mission",
+   "name": "Mission title plate (blank)",
+   "tags": [
+    "mission",
+    "title",
+    "card",
+    "plate",
+    "gold",
+    "blank"
+   ],
+   "loop": false,
+   "width": 1318,
+   "height": 229,
+   "file": "elements/stickers/mission/title-plate.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/phone/achievement-toast",
+   "kind": "sticker",
+   "category": "phone",
+   "name": "Achievement toast",
+   "tags": [
+    "phone",
+    "achievement",
+    "trophy",
+    "unlock",
+    "award"
+   ],
+   "loop": false,
+   "width": 866,
+   "height": 168,
+   "file": "elements/stickers/phone/achievement-toast.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/phone/incoming-call",
+   "kind": "sticker",
+   "category": "phone",
+   "name": "Incoming call",
+   "tags": [
+    "phone",
+    "call",
+    "ringing",
+    "contact"
+   ],
+   "loop": false,
+   "width": 490,
+   "height": 612,
+   "file": "elements/stickers/phone/incoming-call.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/phone/notification-banner",
+   "kind": "sticker",
+   "category": "phone",
+   "name": "Notification banner",
+   "tags": [
+    "phone",
+    "notification",
+    "banner",
+    "alert",
+    "popup"
+   ],
+   "loop": false,
+   "width": 866,
+   "height": 148,
+   "file": "elements/stickers/phone/notification-banner.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/phone/text-bubble",
+   "kind": "sticker",
+   "category": "phone",
+   "name": "Text message",
+   "tags": [
+    "phone",
+    "text",
+    "message",
+    "sms",
+    "chat",
+    "notification"
+   ],
+   "loop": false,
+   "width": 729,
+   "height": 201,
+   "file": "elements/stickers/phone/text-bubble.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/reaction/crown",
+   "kind": "sticker",
+   "category": "reaction",
+   "name": "Crown",
+   "tags": [
+    "reaction",
+    "crown",
+    "king",
+    "winner",
+    "best"
+   ],
+   "loop": false,
+   "width": 470,
+   "height": 298,
+   "file": "elements/stickers/reaction/crown.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/reaction/exclamation",
+   "kind": "sticker",
+   "category": "reaction",
+   "name": "Exclamation burst",
+   "tags": [
+    "reaction",
+    "exclamation",
+    "alert",
+    "shock",
+    "!"
+   ],
+   "loop": false,
+   "width": 507,
+   "height": 449,
+   "file": "elements/stickers/reaction/exclamation.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/reaction/eyes",
+   "kind": "sticker",
+   "category": "reaction",
+   "name": "Eyes",
+   "tags": [
+    "reaction",
+    "eyes",
+    "look",
+    "watch",
+    "sus"
+   ],
+   "loop": false,
+   "width": 458,
+   "height": 270,
+   "file": "elements/stickers/reaction/eyes.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/reaction/fire",
+   "kind": "sticker",
+   "category": "reaction",
+   "name": "Fire",
+   "tags": [
+    "reaction",
+    "fire",
+    "hot",
+    "lit",
+    "hype"
+   ],
+   "loop": false,
+   "width": 310,
+   "height": 472,
+   "file": "elements/stickers/reaction/fire.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/reaction/heart",
+   "kind": "sticker",
+   "category": "reaction",
+   "name": "Heart",
+   "tags": [
+    "reaction",
+    "heart",
+    "love",
+    "like"
+   ],
+   "loop": false,
+   "width": 410,
+   "height": 367,
+   "file": "elements/stickers/reaction/heart.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/reaction/hundred",
+   "kind": "sticker",
+   "category": "reaction",
+   "name": "100",
+   "tags": [
+    "reaction",
+    "100",
+    "perfect",
+    "hype",
+    "score"
+   ],
+   "loop": false,
+   "width": 439,
+   "height": 322,
+   "file": "elements/stickers/reaction/hundred.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/reaction/laugh",
+   "kind": "sticker",
+   "category": "reaction",
+   "name": "Laughing face",
+   "tags": [
+    "reaction",
+    "laugh",
+    "lol",
+    "funny",
+    "lmao"
+   ],
+   "loop": false,
+   "width": 410,
+   "height": 412,
+   "file": "elements/stickers/reaction/laugh.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/reaction/lightning",
+   "kind": "sticker",
+   "category": "reaction",
+   "name": "Lightning bolt",
+   "tags": [
+    "reaction",
+    "lightning",
+    "fast",
+    "power",
+    "energy"
+   ],
+   "loop": false,
+   "width": 260,
+   "height": 492,
+   "file": "elements/stickers/reaction/lightning.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/reaction/money-bag",
+   "kind": "sticker",
+   "category": "reaction",
+   "name": "Money bag",
+   "tags": [
+    "reaction",
+    "money",
+    "bag",
+    "cash",
+    "heist",
+    "rich"
+   ],
+   "loop": false,
+   "width": 370,
+   "height": 442,
+   "file": "elements/stickers/reaction/money-bag.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/reaction/question",
+   "kind": "sticker",
+   "category": "reaction",
+   "name": "Question burst",
+   "tags": [
+    "reaction",
+    "question",
+    "confused",
+    "what",
+    "?"
+   ],
+   "loop": false,
+   "width": 484,
+   "height": 460,
+   "file": "elements/stickers/reaction/question.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/reaction/siren-light",
+   "kind": "sticker",
+   "category": "reaction",
+   "name": "Siren light",
+   "tags": [
+    "reaction",
+    "siren",
+    "police",
+    "alert",
+    "emergency"
+   ],
+   "loop": false,
+   "width": 370,
+   "height": 378,
+   "file": "elements/stickers/reaction/siren-light.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "sticker/reaction/skull",
+   "kind": "sticker",
+   "category": "reaction",
+   "name": "Skull",
+   "tags": [
+    "reaction",
+    "skull",
+    "dead",
+    "rip",
+    "fail",
+    "wasted"
+   ],
+   "loop": false,
+   "width": 385,
+   "height": 357,
+   "file": "elements/stickers/reaction/skull.png",
+   "license": "Original (SLOT1)"
+  },
+  {
+   "id": "transition/glitch-slabs",
+   "kind": "transition",
+   "category": "transition",
+   "name": "Glitch slabs",
+   "tags": [
+    "transition",
+    "glitch",
+    "digital",
+    "error",
+    "motion:shake"
+   ],
+   "loop": false,
+   "width": 1920,
+   "height": 1080,
+   "file": "elements/transitions/glitch-slabs.png",
+   "license": "Original (SLOT1)",
+   "durationMs": 600
+  },
+  {
+   "id": "transition/gold-flash",
+   "kind": "transition",
+   "category": "transition",
+   "name": "Gold flash",
+   "tags": [
+    "transition",
+    "flash",
+    "gold",
+    "burst",
+    "motion:fade"
+   ],
+   "loop": false,
+   "width": 1280,
+   "height": 720,
+   "file": "elements/transitions/gold-flash.png",
+   "license": "Original (SLOT1)",
+   "durationMs": 600
+  },
+  {
+   "id": "transition/halftone-wipe",
+   "kind": "transition",
+   "category": "transition",
+   "name": "Halftone wipe",
+   "tags": [
+    "transition",
+    "halftone",
+    "comic",
+    "wipe",
+    "motion:slide-left"
+   ],
+   "loop": false,
+   "width": 1920,
+   "height": 1080,
+   "file": "elements/transitions/halftone-wipe.png",
+   "license": "Original (SLOT1)",
+   "durationMs": 600
+  },
+  {
+   "id": "transition/ink-swipe",
+   "kind": "transition",
+   "category": "transition",
+   "name": "Ink swipe",
+   "tags": [
+    "transition",
+    "swipe",
+    "ink",
+    "wipe",
+    "motion:slide-left"
+   ],
+   "loop": false,
+   "width": 1920,
+   "height": 1080,
+   "file": "elements/transitions/ink-swipe.png",
+   "license": "Original (SLOT1)",
+   "durationMs": 600
+  },
+  {
+   "id": "transition/neon-streak",
+   "kind": "transition",
+   "category": "transition",
+   "name": "Neon streak",
+   "tags": [
+    "transition",
+    "neon",
+    "light",
+    "streak",
+    "motion:slide-right"
+   ],
+   "loop": false,
+   "width": 1920,
+   "height": 1080,
+   "file": "elements/transitions/neon-streak.png",
+   "license": "Original (SLOT1)",
+   "durationMs": 600
+  },
+  {
+   "id": "transition/paper-tear",
+   "kind": "transition",
+   "category": "transition",
+   "name": "Paper tear",
+   "tags": [
+    "transition",
+    "paper",
+    "tear",
+    "reveal",
+    "motion:slide-left"
+   ],
+   "loop": false,
+   "width": 1920,
+   "height": 1080,
+   "file": "elements/transitions/paper-tear.png",
+   "license": "Original (SLOT1)",
+   "durationMs": 600
+  },
+  {
+   "id": "transition/smoke-wipe",
+   "kind": "transition",
+   "category": "transition",
+   "name": "Smoke wipe",
+   "tags": [
+    "transition",
+    "smoke",
+    "fog",
+    "soft",
+    "motion:fade"
+   ],
+   "loop": false,
+   "width": 960,
+   "height": 540,
+   "file": "elements/transitions/smoke-wipe.png",
+   "license": "Original (SLOT1)",
+   "durationMs": 600
+  },
+  {
+   "id": "transition/speed-lines",
+   "kind": "transition",
+   "category": "transition",
+   "name": "Speed lines",
+   "tags": [
+    "transition",
+    "speed",
+    "zoom",
+    "anime",
+    "comic",
+    "motion:zoom"
+   ],
+   "loop": false,
+   "width": 1920,
+   "height": 1080,
+   "file": "elements/transitions/speed-lines.png",
+   "license": "Original (SLOT1)",
+   "durationMs": 600
+  },
+  {
+   "id": "transition/star-burst",
+   "kind": "transition",
+   "category": "transition",
+   "name": "Star burst",
+   "tags": [
+    "transition",
+    "burst",
+    "comic",
+    "pop",
+    "motion:zoom"
+   ],
+   "loop": false,
+   "width": 1920,
+   "height": 1080,
+   "file": "elements/transitions/star-burst.png",
+   "license": "Original (SLOT1)",
+   "durationMs": 600
+  },
+  {
+   "id": "transition/white-flash",
+   "kind": "transition",
+   "category": "transition",
+   "name": "White flash",
+   "tags": [
+    "transition",
+    "flash",
+    "white",
+    "camera",
+    "motion:fade"
+   ],
+   "loop": false,
+   "width": 1280,
+   "height": 720,
+   "file": "elements/transitions/white-flash.png",
+   "license": "Original (SLOT1)",
+   "durationMs": 600
+  }
+ ]
+}

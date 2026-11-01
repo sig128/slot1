@@ -28,3 +28,13 @@ export type StudioAsset = z.infer<typeof StudioAsset>;
 
 export const StudioAssetManifest = z.object({ version: z.literal(1), assets: z.array(StudioAsset) });
 export type StudioAssetManifest = z.infer<typeof StudioAssetManifest>;
+
+/**
+ * GET /api/studio/assets: the manifest plus a revision (append `?v=<rev>` to file URLs so they
+ * can be cached for good) and small waveform peaks for previewing audio without downloading it.
+ */
+export const StudioAssetsResponse = StudioAssetManifest.extend({
+  rev: z.string().describe("Changes whenever the library changes"),
+  peaks: z.record(z.string(), z.array(z.number().min(0).max(1))).default({}).describe("Preview waveform peaks (0–1) per audio asset id"),
+});
+export type StudioAssetsResponse = z.infer<typeof StudioAssetsResponse>;

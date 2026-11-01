@@ -8,6 +8,7 @@ export * from "./library";
 export * from "./ops";
 export * from "./training";
 export * from "./clipper";
+export * from "./clipper-pro";
 export * from "./relay";
 export * from "./analytics";
 export * from "./admin";

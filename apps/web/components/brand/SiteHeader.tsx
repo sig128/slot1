@@ -1,21 +1,20 @@
 "use client";
 
+import "./site-header.css";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { MeResponse } from "@slot1/contracts";
 import { getMe, onMeChange } from "@/lib/api";
+import { HeaderAvatar } from "./HeaderAvatar";
+import { MobileMenu } from "./MobileMenu";
+import { PRIMARY_NAV } from "./site-nav";
 import { Wordmark } from "./Wordmark";
 
-const TABS = [
-  { href: "/", label: "On Air", match: (p: string) => p === "/" || p.startsWith("/watch") || p.startsWith("/replay") },
-  { href: "/los-santos", label: "Right now", match: (p: string) => p.startsWith("/los-santos") },
-  { href: "/moments", label: "Moments", match: (p: string) => p.startsWith("/moments") },
-  { href: "/studio", label: "Studio", match: (p: string) => p.startsWith("/studio") },
-  { href: "/setup", label: "Setup", match: (p: string) => p.startsWith("/setup") },
-];
-
-/** Pause-menu style navigation: the active tab is the ivory selection bar. */
+/**
+ * Pause-menu style navigation: the active tab is the ivory selection bar. From 768 px the tabs and
+ * the account sit in the header; below that a Menu button opens them as a full-screen pause menu.
+ */
 export function SiteHeader() {
   const pathname = usePathname() ?? "/";
   const [me, setMe] = useState<MeResponse | null>(null);
@@ -27,12 +26,12 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b hairline bg-graphite/92 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1600px] items-center gap-6 px-4 sm:px-6 lg:px-10">
-        <Link href="/" className="shrink-0 rounded-sm" aria-label="SLOT1 home">
+        <Link href="/" className="flex min-h-11 shrink-0 items-center rounded-sm" aria-label="SLOT1 home">
           <Wordmark size="sm" reveal />
         </Link>
-        <nav aria-label="Primary" className="-mx-1 flex min-w-0 flex-1 overflow-x-auto">
+        <nav aria-label="Primary" className="-mx-1 hidden min-w-0 flex-1 overflow-x-auto md:flex">
           <ul className="flex items-stretch gap-1">
-            {TABS.map((t) => {
+            {PRIMARY_NAV.map((t) => {
               const active = t.match(pathname);
               return (
                 <li key={t.href}>
@@ -50,17 +49,10 @@ export function SiteHeader() {
             })}
           </ul>
         </nav>
-        <div className="hidden shrink-0 items-center gap-3 sm:flex">
+        <div className="hidden shrink-0 items-center gap-3 md:flex">
           {me?.broadcaster ? (
             <Link href="/studio" className="flex items-center gap-2 text-sm text-ivory-2 hover:text-ivory">
-              {me.broadcaster.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={me.broadcaster.avatarUrl} alt="" className="h-7 w-7 rounded-full" />
-              ) : (
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-graphite-600 font-display text-sm font-bold">
-                  {me.broadcaster.displayName.slice(0, 1).toUpperCase()}
-                </span>
-              )}
+              <HeaderAvatar broadcaster={me.broadcaster} className="h-7 w-7 text-sm" />
               <span className="max-w-[10rem] truncate">{me.broadcaster.displayName}</span>
             </Link>
           ) : (
@@ -69,6 +61,7 @@ export function SiteHeader() {
             </Link>
           )}
         </div>
+        <MobileMenu pathname={pathname} me={me} />
       </div>
     </header>
   );

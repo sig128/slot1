@@ -26,7 +26,7 @@ export const SITE = {
   /** Home page title: under 60 characters so search results don't cut it. */
   title: "SLOT1: your AI sidekick for GTA streams",
   description:
-    "SLOT1 watches your GTA stream live, spots missions, chases and crashes, and turns them into clips and instant replays. Opt in to help train an AI for GTA VI.",
+    "Stream GTA. Get clips. Train the AI. SLOT1 watches your stream live, clips your big moments and learns from every stream you choose to share. Next stop: GTA VI.",
   tagline: "Your AI sidekick for GTA.",
   locale: "en_US",
   themeColor: "#101014",

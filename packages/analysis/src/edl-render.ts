@@ -382,7 +382,8 @@ function gradeFilters(g: Edl["grade"]): string[] {
   }
   if (g.brightness !== 0 || g.contrast !== 1 || g.saturation !== 1) f.push(`eq=brightness=${num(g.brightness)}:contrast=${num(g.contrast)}:saturation=${num(g.saturation)}`);
   if (g.vignette > 0) f.push(`vignette=angle=${num(0.25 + g.vignette * 0.75)}`);
-  if (g.grain > 0) f.push(`noise=alls=${Math.round(4 + g.grain * 26)}:allf=t`);
+  // Temporal grain is expensive to encode; it stays subtle and the bitrate is capped.
+  if (g.grain > 0) f.push(`noise=alls=${Math.round(2 + g.grain * 12)}:allf=t`);
   return f;
 }
 
@@ -545,10 +546,8 @@ export function buildEdlRender(input: {
       };
 
       if (layout === "fit") {
-        const speedPart = ramp ? "" : s.speed === 1 ? "" : `,setpts=PTS/${num(s.speed)}`;
-        const head = ramp ? `[sp${i}]` : `[${i}:v]setpts=PTS-STARTPTS${speedPart},`;
         filters.push(
-          `${head}${ramp ? "" : ""}split=2[bg${i}][fg${i}]`.replace(`[sp${i}]split`, `[sp${i}]split`),
+          `${pre},split=2[bg${i}][fg${i}]`,
           `[bg${i}]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},boxblur=24:2,eq=brightness=-0.12[bgb${i}]`,
           `[fg${i}]scale=${W}:${H}:force_original_aspect_ratio=decrease:force_divisible_by=2[fgs${i}]`,
           `[bgb${i}][fgs${i}]overlay=(W-w)/2:(H-h)/2,${tail}`,
@@ -613,7 +612,7 @@ export function buildEdlRender(input: {
       const nv = i === n - 1 ? "[vcat]" : `[j${i}]`;
       const na = i === n - 1 ? "[acat]" : `[ja${i}]`;
       if (d === 0) {
-        if (wantVideo) filters.push(`${accV}${accA}[v${i}][a${i}]concat=n=2:v=1:a=1[jc${i}]${na === "[acat]" ? "[acat]" : `[ja${i}]`}`, `[jc${i}]settb=1/${fps}${nv}`);
+        if (wantVideo) filters.push(`${accV}${accA}[v${i}][a${i}]concat=n=2:v=1:a=1[jc${i}]${na}`, `[jc${i}]settb=1/${fps}${nv}`);
         else filters.push(`${accA}[a${i}]concat=n=2:v=0:a=1${na}`);
       } else {
         if (wantVideo) filters.push(`${accV}[v${i}]xfade=transition=${XFADE[s.transitionIn.kind as Exclude<TransitionKind, "cut">]}:duration=${sec(d)}:offset=${sec(accMs - d)}${nv}`);
@@ -667,7 +666,12 @@ export function buildEdlRender(input: {
         case "wasted": {
           const first = Math.round(a * fps);
           const last = Math.max(first, Math.round(b * fps) - 1);
-          chain(`freezeframes=first=${first}:last=${last}:replace=${first},hue=s=0:${win},eq=brightness=-0.06:contrast=1.18:${win},vignette=angle=0.95:${win}`);
+          // freezeframes takes the replacement frame from its second input: a copy of the stream.
+          const i = step;
+          filters.push(`${label}split=2[fza${i}][fzb${i}]`);
+          label = `[fz${i}]`;
+          filters.push(`[fza${i}][fzb${i}]freezeframes=first=${first}:last=${last}:replace=${first}${label}`);
+          chain(`hue=s=0:${win},eq=brightness=-0.06:contrast=1.18:${win},vignette=angle=0.95:${win}`);
           banners.push(...effectEvents(f, W, H));
           break;
         }
@@ -729,7 +733,8 @@ export function buildEdlRender(input: {
         }
       }
     }
-    if (video.length) {
+    // Old single-track edits keep their text in the final filter, exactly as before.
+    if (multi && video.length) {
       chain(video.join(","));
       video.length = 0;
     }
@@ -765,7 +770,9 @@ export function buildEdlRender(input: {
         }
         const keys = [...it.keys].sort((a, b) => a.atMs - b.atMs) as OverlayKey[];
         const kt = (pick: (k: OverlayKey) => number) => keys.map((k) => [k.atMs / 1000, pick(k)] as const);
-        const widthPx = Math.max(8, evenSize(W * it.widthPct * (keys.length ? keys[0]!.scale : it.scale)));
+        const widthPx = Math.max(8, evenSize(W * it.widthPct * it.scale));
+        const scaleVaries = keys.length > 1 && keys.some((k) => k.scale !== keys[0]!.scale);
+        const S = keys.length ? keyExpr(kt((k) => k.scale)) : num(it.scale);
         const rot = keys.length ? keyExpr(kt((k) => k.rotation)) : num(it.rotation);
         const op = keys.length ? keyExpr(kt((k) => k.opacity)) : num(it.opacity);
         const X = keys.length ? keyExpr(kt((k) => k.x)) : num(it.x);
@@ -775,7 +782,7 @@ export function buildEdlRender(input: {
         const prep = [
           `setpts=PTS-STARTPTS+${num(startS)}/TB`,
           "format=rgba",
-          `scale=${widthPx}:-2:flags=lanczos`,
+          scaleVaries ? `scale=w='max(8,2*trunc(${num(W * it.widthPct)}*(${S})/2))':h=-2:eval=frame:flags=lanczos` : `scale=${keys.length ? Math.max(8, evenSize(W * it.widthPct * keys[0]!.scale)) : widthPx}:-2:flags=lanczos`,
           ...(rotates ? [`rotate=a='(${rot})*PI/180':ow='hypot(iw,ih)':oh='hypot(iw,ih)':c=none`] : []),
           ...(fadesOpacity ? [keys.length ? `geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='alpha(X,Y)*(${op.replace(/\bt\b/g, "T")})'` : `colorchannelmixer=aa=${op}`] : []),
         ];
@@ -833,7 +840,8 @@ export function buildEdlRender(input: {
         const r = need(c.source);
         const ix = inputIndex++;
         const dur = Math.min(c.durationMs, total - c.startMs);
-        if (c.loop) args.push("-stream_loop", "-1", "-i", r.path);
+        // A looping input is limited too: an endless input would keep ffmpeg reading forever.
+        if (c.loop) args.push("-stream_loop", "-1", "-t", sec(c.offsetMs + dur), "-i", r.path);
         else args.push("-ss", sec(c.offsetMs), "-t", sec(dur), "-i", r.path);
         const parts = [
           ...(c.loop ? [`atrim=start=${sec(c.offsetMs)}:duration=${sec(dur)}`] : []),
@@ -851,18 +859,20 @@ export function buildEdlRender(input: {
       });
       if (!clipLabels.length) return;
       const trackOut = `[tr${ti}]`;
-      const sum = clipLabels.length > 1 ? `${clipLabels.join("")}amix=inputs=${clipLabels.length}:normalize=0:duration=longest,` : `${clipLabels[0]}`;
       const vol = `volume=${num(t.volume)}`;
+      const mixed = clipLabels.length > 1 ? `${clipLabels.join("")}amix=inputs=${clipLabels.length}:normalize=0:duration=longest,${vol}` : `${clipLabels[0]}${vol}`;
       if (t.duck && ducking) {
         const sc = duckers > 1 ? `[sc${scUsed++}]` : "[srcsc]";
-        filters.push(`${sum}${clipLabels.length > 1 ? "" : ""}${clipLabels.length > 1 ? vol : `${vol}`}[trp${ti}]`.replace(`${clipLabels[0]}${vol}`, `${clipLabels[0]}${vol}`));
-        filters.push(`[trp${ti}]${sc}sidechaincompress=threshold=0.04:ratio=6:attack=15:release=350${trackOut}`);
+        filters.push(`${mixed}[trp${ti}]`, `[trp${ti}]${sc}sidechaincompress=threshold=0.04:ratio=6:attack=15:release=350${trackOut}`);
       } else {
-        filters.push(`${sum}${vol}${trackOut}`);
+        filters.push(`${mixed}${trackOut}`);
       }
       mix.push(trackOut);
     });
-    if (mix.length === 0) mix.push(`[sil]`), filters.push(`aevalsrc=0|0:c=stereo:s=48000:d=${sec(total)}[sil]`);
+    if (mix.length === 0) {
+      mix.push("[sil]");
+      filters.push(`aevalsrc=0|0:c=stereo:s=48000:d=${sec(total)}[sil]`);
+    }
     const master = [
       `apad`,
       `atrim=duration=${sec(total)}`,
@@ -892,7 +902,9 @@ export function buildEdlRender(input: {
   const crf = opts.quality === "small" ? "27" : opts.quality === "standard" ? "23" : "20";
   if (input.encoder === "h264_nvenc") args.push("-c:v", "h264_nvenc", "-preset", "p4", "-cq", String(Number(crf) + 1), "-b:v", "0");
   else args.push("-c:v", "libx264", "-preset", "veryfast", "-crf", crf, "-profile:v", "high");
-  if (opts.maxrateKbps) args.push("-maxrate", `${opts.maxrateKbps}k`, "-bufsize", `${opts.maxrateKbps * 2}k`);
+  // Multi-track edits (grain, effects) get a bitrate ceiling even without a platform preset.
+  const maxrate = opts.maxrateKbps ?? (multi ? 12_000 : null);
+  if (maxrate) args.push("-maxrate", `${maxrate}k`, "-bufsize", `${maxrate * 2}k`);
   args.push("-pix_fmt", "yuv420p", "-r", String(fps), "-c:a", "aac", "-b:a", opts.quality === "high" || !opts.quality ? "160k" : "128k", "-ar", "48000", "-movflags", "+faststart", "-t", sec(total));
   args.push(...tail);
   return { args, durationMs: total, width: W, height: H, textFiles, container: "mp4" };

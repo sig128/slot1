@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { ingestAvailable, startLiveCreator, type LiveCreator } from "./support/live-seed";
+import { closeMenu, openPrimaryNav } from "./support/nav";
 
 /**
  * "Los Santos right now" in a real browser at desktop and 390 px: two TEST streams really
@@ -46,7 +47,8 @@ test.describe("Los Santos right now", () => {
     const narrow = info.project.name === "narrow";
     await page.goto(`/los-santos?stream=${a.login}`);
     await expect(page.getByRole("heading", { name: "Los Santos right now", level: 1 })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Right now" })).toHaveAttribute("aria-current", "page");
+    await expect((await openPrimaryNav(page)).getByRole("link", { name: "Right now" })).toHaveAttribute("aria-current", "page");
+    await closeMenu(page);
     const list = page.getByRole("complementary", { name: "Live streams" });
     await expect(list.getByRole("button", { name: new RegExp(a.displayName) })).toBeVisible({ timeout: 20_000 });
     await expect(list.getByRole("button", { name: new RegExp(b.displayName) })).toBeVisible();

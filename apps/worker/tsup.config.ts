@@ -16,6 +16,8 @@ export default defineConfig({
   async onSuccess() {
     const { cp } = await import("node:fs/promises");
     await cp("../../packages/db/migrations", "dist/migrations", { recursive: true });
+    // The Studio library (sounds, music, ambience, visual elements), resolved next to dist/main.js.
+    await cp("../../packages/analysis/studio-assets", "dist/studio-assets", { recursive: true });
     // OFL fonts for burned-in clip text (resolved next to dist/main.js by findRenderFonts).
     await cp("../../packages/analysis/fonts", "dist/fonts", { recursive: true });
   },

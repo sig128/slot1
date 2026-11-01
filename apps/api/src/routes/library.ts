@@ -1,9 +1,17 @@
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { z } from "zod";
+import { edlMediaNeeds, resolveStudioAsset } from "@slot1/analysis";
 import {
   bigMoment,
   CreateProjectInput,
   Edl,
+  edlDurationMs,
+  edlLocate,
+  EXPORT_PRESETS,
+  presetProblem,
+  RenderOptions,
+  ThumbnailInput,
+  type ExportPresetId,
   LibraryItemKind,
   LibraryItemPatch,
   LibraryVisibility,
@@ -16,6 +24,7 @@ import {
   type ProjectView,
 } from "@slot1/contracts";
 import {
+  createJobRun,
   createProject,
   deleteLibraryItem,
   deleteProject,
@@ -27,6 +36,7 @@ import {
   getLibraryItem,
   getObservation,
   getProject,
+  getProjectMedia,
   getRecording,
   getSession,
   getSettings,
@@ -50,12 +60,13 @@ import { QUEUES, storageKeys } from "@slot1/platform";
 import { ANONYMOUS, canViewSession, hiddenDemo, isOwner, libraryItemView, momentEdl, playbackUrlTtl, queueRender, type ServerContext } from "@slot1/services";
 import { badRequest, conflict, notFound } from "../lib/errors";
 import { requireBroadcaster } from "../lib/session";
+import { deleteAllProjectMedia } from "./editor";
 
 const IdParam = z.object({ id: z.string().uuid() });
 
 /** Remove a library item's own files (they live under the library prefix, outside sessions). */
 async function purgeItemFiles(ctx: ServerContext, item: LibraryItemRow) {
-  if (item.kind === "render" || item.kind === "screenshot") {
+  if (item.kind === "render" || item.kind === "screenshot" || item.kind === "thumbnail") {
     await ctx.storage.deletePrefix(storageKeys.libraryPrefix(item.broadcaster_id, item.id)).catch(() => 0);
     await ctx.db.query(`UPDATE evidence_assets SET deleted_at = now() WHERE storage_key LIKE $1`, [`${storageKeys.libraryPrefix(item.broadcaster_id, item.id)}/%`]);
   }
@@ -67,8 +78,53 @@ export async function deleteWholeLibrary(ctx: ServerContext, broadcasterId: stri
     await purgeItemFiles(ctx, item);
     await deleteLibraryItem(ctx.db, item.id);
   }
+  // Edits keep generated captions under their own prefix; uploaded edit media has its own rows.
+  for (const p of await listProjects(ctx.db, broadcasterId, 10_000)) await ctx.storage.deletePrefix(storageKeys.libraryPrefix(broadcasterId, p.id)).catch(() => 0);
   await ctx.db.query(`DELETE FROM edit_projects WHERE broadcaster_id = $1`, [broadcasterId]);
+  await deleteAllProjectMedia(ctx, broadcasterId);
 }
+
+/**
+ * Check everything an edit points at belongs to the creator: segment and picture-in-picture
+ * sessions, and uploaded files. Studio library ids are checked when rendering.
+ */
+async function assertEdlOwned(ctx: ServerContext, b: BroadcasterRow, edl: Edl) {
+  for (const s of edl.segments) await ownedSession(ctx, b, s.sessionId);
+  const needs = edlMediaNeeds(edl);
+  for (const p of needs.pips) await ownedSession(ctx, b, p.sessionId);
+  for (const r of needs.refs) {
+    if (r.kind !== "upload") continue;
+    const m = await getProjectMedia(ctx.db, r.assetId);
+    if (!m || m.broadcaster_id !== b.id) throw badRequest("This edit uses an uploaded file that doesn't exist", "Upload it again, or remove it from the edit");
+  }
+}
+
+/** Refuse up front when something a render needs is gone, instead of queueing a render that can't work. */
+async function assertRenderable(ctx: ServerContext, b: BroadcasterRow, edl: Edl) {
+  for (const [i, s] of edl.segments.entries()) {
+    const session = await getSession(ctx.db, s.sessionId);
+    if (!session || session.broadcaster_id !== b.id || session.delete_requested_at) {
+      throw conflict(`Segment ${i + 1}'s session no longer exists`, "Remove that segment, or delete this edit");
+    }
+    if (!s.runId && !(await playbackFor(ctx, session))) throw conflict(`Segment ${i + 1}'s video is no longer stored`, "Retention or deletion removed it; remove that segment");
+  }
+  const needs = edlMediaNeeds(edl);
+  for (const p of needs.pips) {
+    const session = await getSession(ctx.db, p.sessionId);
+    if (!session || session.broadcaster_id !== b.id || !(await playbackFor(ctx, session))) throw conflict("A picture-in-picture video is no longer stored", "Remove it from the edit");
+  }
+  for (const r of needs.refs) {
+    if (r.kind === "library") {
+      if (!resolveStudioAsset(r.assetId)) throw conflict(`This edit uses a Studio library item that isn't available on this server: ${r.assetId}`, "Remove it from the edit");
+    } else {
+      const m = await getProjectMedia(ctx.db, r.assetId);
+      if (!m || m.broadcaster_id !== b.id) throw conflict("An uploaded file this edit uses was deleted", "Upload it again, or remove it from the edit");
+    }
+  }
+}
+
+const presetTitle = (title: string, preset: ExportPresetId, format: string) =>
+  `${title}${preset === "original" ? "" : ` · ${EXPORT_PRESETS[preset].label}`}${format === "gif" ? " · GIF" : format === "audio" ? " · audio" : ""}`.slice(0, 120);
 
 /**
  * Who may see a library item: the owner always; others only shared (public or unlisted), ready
@@ -128,6 +184,9 @@ async function projectView(ctx: ServerContext, req: FastifyRequest, id: string):
         return { ms: o.mediaStartMs!, label: big ? big.text : o.description.slice(0, 80), kind: big ? ("big" as const) : o.rawText ? ("text" as const) : ("event" as const) };
       });
     const captionLines = Number((await ctx.db.query<{ n: string }>(`SELECT count(*)::text AS n FROM transcripts WHERE session_id = $1`, [session.id])).rows[0]?.n ?? 0);
+    // "Hide your camera from the AI" boxes on the creator's live sources prefill the facecam split.
+    const masked = (await listSources(ctx.db, b.id)).filter((x) => x.kind === "live_ingest" && (x.camera_mask?.length ?? 0) > 0);
+    const mask = (masked.find((x) => x.session_id === session.id) ?? masked[0])?.camera_mask[0] ?? null;
     sources.push({
       sessionId: session.id,
       title: session.title ?? "Untitled session",
@@ -138,6 +197,7 @@ async function projectView(ctx: ServerContext, req: FastifyRequest, id: string):
       height: pb?.height ?? null,
       markers,
       captionLines,
+      cameraBox: mask ? { x: mask.x, y: mask.y, w: mask.w, h: mask.h } : null,
     });
   }
   const renders = await Promise.all(
@@ -290,7 +350,7 @@ export const libraryRoutes =
       const patch = ProjectPatch.parse(req.body);
       const p = await getProject(ctx.db, id);
       if (!p || p.broadcaster_id !== b.id) throw notFound("Edit not found");
-      if (patch.edl) for (const s of patch.edl.segments) await ownedSession(ctx, b, s.sessionId);
+      if (patch.edl) await assertEdlOwned(ctx, b, patch.edl);
       await updateProject(ctx.db, id, patch);
       return projectView(ctx, req, id);
     });
@@ -300,28 +360,78 @@ export const libraryRoutes =
       const { id } = IdParam.parse(req.params);
       const p = await getProject(ctx.db, id);
       if (!p || p.broadcaster_id !== b.id) throw notFound("Edit not found");
+      await ctx.storage.deletePrefix(storageKeys.libraryPrefix(b.id, p.id)).catch(() => 0);
       await deleteProject(ctx.db, id);
       return { ok: true };
     });
 
-    app.post("/api/projects/:id/render", { config: { rateLimit: { max: 30, timeWindow: "1 hour" } } }, async (req): Promise<LibraryItemView> => {
+    /**
+     * Queue renders of an edit. Without a body this is the classic "as edited" MP4. With
+     * RenderOptions, one library item per export preset (TikTok, Shorts, Reels, X, YouTube).
+     */
+    const startRenders = async (req: FastifyRequest, opts: RenderOptions, limit: { one: number; batch: number }) => {
       const b = requireBroadcaster(req);
       const { id } = IdParam.parse(req.params);
       const p = await getProject(ctx.db, id);
       if (!p || p.broadcaster_id !== b.id) throw notFound("Edit not found");
       const edl = Edl.parse(p.edl);
-      // Refuse up front when a segment's video is gone, instead of queueing a render that can't work.
-      for (const [i, s] of edl.segments.entries()) {
-        const session = await getSession(ctx.db, s.sessionId);
-        if (!session || session.broadcaster_id !== b.id || session.delete_requested_at) {
-          throw conflict(`Segment ${i + 1}'s session no longer exists`, "Remove that segment, or delete this edit");
-        }
-        if (!s.runId && !(await playbackFor(ctx, session))) throw conflict(`Segment ${i + 1}'s video is no longer stored`, "Retention or deletion removed it; remove that segment");
+      await assertRenderable(ctx, b, edl);
+      const presets = [...new Set(opts.presets)];
+      for (const preset of presets) {
+        const problem = presetProblem(preset, opts.format, edlDurationMs(edl));
+        if (problem) throw conflict(problem, "Trim the edit or pick another preset");
       }
       const active = Number((await ctx.db.query<{ n: string }>(`SELECT count(*)::text AS n FROM library_items WHERE broadcaster_id = $1 AND status = 'processing' AND kind = 'render'`, [b.id])).rows[0]?.n ?? 0);
-      if (active >= 4) throw conflict("Four renders are already running. Wait for one to finish");
-      const item = await queueRender(ctx, { broadcasterId: b.id, projectId: p.id, title: p.title, sessionId: edl.segments[0]!.sessionId });
-      return libraryItemView(ctx, item, { canView: true, canEdit: true });
+      if (presets.length === 1 && active >= limit.one) throw conflict("Four renders are already running. Wait for one to finish");
+      if (presets.length > 1 && active + presets.length > limit.batch) throw conflict(`Exporting ${presets.length} versions would run more than ${limit.batch} renders at once. Wait for some to finish`);
+      // A request without options keeps the original behaviour exactly (no preset, no options).
+      const plain = presets.length === 1 && presets[0] === "original" && opts.format === "mp4" && opts.height === 1080 && opts.fps === 30 && opts.quality === "high";
+      const items = [];
+      for (const preset of presets) {
+        const item = await queueRender(ctx, {
+          broadcasterId: b.id,
+          projectId: p.id,
+          title: presetTitle(p.title, preset, opts.format),
+          sessionId: edl.segments[0]!.sessionId,
+          preset: plain ? null : preset,
+          format: opts.format,
+          renderOptions: plain ? null : { format: opts.format, height: opts.height, fps: opts.fps, quality: opts.quality },
+        });
+        items.push(await libraryItemView(ctx, item, { canView: true, canEdit: true }));
+      }
+      return items;
+    };
+
+    app.post("/api/projects/:id/render", { config: { rateLimit: { max: 30, timeWindow: "1 hour" } } }, async (req): Promise<LibraryItemView> => {
+      const opts = RenderOptions.parse(req.body ?? {});
+      if (opts.presets.length > 1) throw badRequest("One preset per render. Use /exports for several at once");
+      return (await startRenders(req, opts, { one: 4, batch: 8 }))[0]!;
+    });
+
+    /** Batch export: the same edit for several platforms at once. */
+    app.post("/api/projects/:id/exports", { config: { rateLimit: { max: 20, timeWindow: "1 hour" } } }, async (req): Promise<{ items: LibraryItemView[] }> => {
+      const opts = RenderOptions.parse(req.body ?? {});
+      return { items: await startRenders(req, opts, { one: 4, batch: 8 }) };
+    });
+
+    /** A 1280×720 thumbnail (one frame plus big styled text), saved to the library as a PNG. */
+    app.post("/api/projects/:id/thumbnail", { config: { rateLimit: { max: 60, timeWindow: "1 hour" } } }, async (req): Promise<LibraryItemView> => {
+      const b = requireBroadcaster(req);
+      const { id } = IdParam.parse(req.params);
+      const p = await getProject(ctx.db, id);
+      if (!p || p.broadcaster_id !== b.id) throw notFound("Edit not found");
+      const input = ThumbnailInput.parse(req.body);
+      const edl = Edl.parse(p.edl);
+      if (input.atMs >= edlDurationMs(edl)) throw badRequest("That time is past the end of the edit");
+      const seg = edl.segments[edlLocate(edl, input.atMs).index]!;
+      if (seg.runId) throw conflict("Thumbnails need the finished recording", "Try again after the stream ends");
+      const session = await ownedSession(ctx, b, seg.sessionId);
+      if (!(await playbackFor(ctx, session))) throw conflict("That part of the edit is no longer stored");
+      const item = await insertLibraryItem(ctx.db, { broadcasterId: b.id, kind: "thumbnail", title: `${input.text} · thumbnail`.slice(0, 120), status: "processing", sessionId: session.id, projectId: p.id, format: "png" });
+      const job = await createJobRun(ctx.db, { broadcasterId: b.id, sessionId: session.id, queue: QUEUES.library, name: "project-thumbnail" });
+      const row = (await updateLibraryItem(ctx.db, item.id, { jobRunId: job.id }))!;
+      await ctx.enqueue(QUEUES.library, "project-thumbnail", { itemId: item.id, projectId: p.id, jobRunId: job.id, input }, { jobId: `thumb-${item.id}`, attempts: 2 });
+      return libraryItemView(ctx, row, { canView: true, canEdit: true });
     });
 
     /* ------------------------------------ Profiles ----------------------------------------- */

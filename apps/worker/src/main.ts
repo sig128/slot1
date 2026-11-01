@@ -8,7 +8,8 @@ import { handleChatCommand, postReply } from "./jobs/chat";
 import { processEventSub } from "./jobs/eventsub";
 import { deleteSession, refreshDirectory, retentionSweep, validateGrants } from "./jobs/maintenance";
 import { analyzeUpload } from "./jobs/upload";
-import { finalizeRecording, renderProject, takeScreenshot } from "./jobs/library";
+import { buildWaveform, finalizeRecording, generateProjectCaptions, renderProject, renderThumbnail, takeScreenshot } from "./jobs/library";
+import { analyzeClipAudio } from "./jobs/clip-ai";
 import { RelaySupervisor } from "./live/relay";
 import { LiveSupervisor } from "./live/supervisor";
 
@@ -51,6 +52,10 @@ const handlers: Record<string, Record<string, Handler>> = {
     "finalize-recording": (j) => finalizeRecording(ctx, j.data),
     screenshot: (j) => takeScreenshot(ctx, j.data),
     "render-project": (j) => renderProject(ctx, j.data, j.attemptsMade + 1, j.opts.attempts ?? 1),
+    "project-thumbnail": (j) => renderThumbnail(ctx, j.data),
+    "session-waveform": (j) => buildWaveform(ctx, j.data),
+    "project-captions": (j) => generateProjectCaptions(ctx, j.data),
+    "clip-ai-audio": (j) => analyzeClipAudio(ctx, j.data),
   },
   [QUEUES.maintenance]: {
     "retention-sweep": () => retentionSweep(ctx),

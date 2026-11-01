@@ -3,14 +3,33 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { UnrecoverableError } from "bullmq";
-import { buildEdlRender, extractFrameAt, findRenderFonts, probeFile, runChecked, runWithProgress, type CaptionLine, type EdlSegmentMedia } from "@slot1/analysis";
-import { Edl } from "@slot1/contracts";
+import { spawn } from "node:child_process";
+import {
+  buildEdlAudioRender,
+  buildEdlRender,
+  buildThumbnailRender,
+  createTranscriptionProvider,
+  edlMediaNeeds,
+  extractFrameAt,
+  findRenderFonts,
+  findRenderFontsDir,
+  probeFile,
+  refKey,
+  resolveStudioAsset,
+  runChecked,
+  runWithProgress,
+  type CaptionLine,
+  type EdlSegmentMedia,
+  type ResolvedRef,
+} from "@slot1/analysis";
+import { Edl, edlDurationMs, edlLocate, EXPORT_PRESETS, presetProblem, RenderOptions, ThumbnailInput, type CaptionCue, type ExportPresetId } from "@slot1/contracts";
 import {
   createRecordingSource,
   getAsset,
   getLibraryItem,
   getLibraryItemForRecording,
   getProject,
+  getProjectMedia,
   getRecording,
   getRecordingBySession,
   getSession,
@@ -32,7 +51,7 @@ import {
   type RecordingRun,
 } from "@slot1/db";
 import { sanitizeErrorMessage, storageKeys, type StorageDriver } from "@slot1/platform";
-import type { ServerContext } from "@slot1/services";
+import { projectCaptionsKey, sessionWaveformKey, type ServerContext } from "@slot1/services";
 
 /* ------------------------------------------------------------------------------------------ */
 /* Stored media                                                                               */
@@ -382,39 +401,77 @@ export async function renderProject(ctx: ServerContext, data: { itemId: string; 
         for (const r of rows) captions.push({ segmentIndex: i, startMs: Number(r.media_start_ms), endMs: Number(r.media_end_ms), text: r.text });
       }
     }
-    const out = path.join(work, "render.mp4");
-    const plan = buildEdlRender({ edl, media, output: out, workDir: work, fonts: findRenderFonts(), captions, encoder: ctx.config.env.FFMPEG_ENCODER });
+    // Library items, uploads and picture-in-picture sources the edit uses.
+    const needs = edlMediaNeeds(edl);
+    const refs: Record<string, ResolvedRef> = {};
+    for (const r of needs.refs) {
+      if (r.kind === "library") {
+        const found = resolveStudioAsset(r.assetId);
+        if (!found) throw new UnrecoverableError(`This edit uses a Studio library item that isn't available on this server: ${r.assetId}`);
+        const ext = path.extname(found.path).toLowerCase();
+        const audio = found.asset.kind === "sfx" || found.asset.kind === "music" || found.asset.kind === "ambience";
+        refs[refKey(r)] = { path: found.path, kind: audio ? "audio" : [".png", ".jpg", ".jpeg", ".webp"].includes(ext) ? "image" : "video", durationMs: found.asset.durationMs ?? null };
+      } else {
+        const m = await getProjectMedia(ctx.db, r.assetId);
+        if (!m || m.broadcaster_id !== project.broadcaster_id) throw new UnrecoverableError("An uploaded file this edit uses was deleted");
+        refs[refKey(r)] = { path: await readableInput(ctx.storage, m.storage_key, m.content_type), kind: m.kind === "audio" ? "audio" : m.content_type === "image/gif" ? "video" : "image", durationMs: m.duration_ms };
+      }
+    }
+    const pips: Record<string, EdlSegmentMedia> = {};
+    for (const p of needs.pips) {
+      const session = await getSession(ctx.db, p.sessionId);
+      if (!session || session.broadcaster_id !== project.broadcaster_id) throw new UnrecoverableError("A picture-in-picture session no longer exists");
+      if (!stored.has(p.sessionId)) stored.set(p.sessionId, await storedMediaFor(ctx, p.sessionId));
+      const sm = stored.get(p.sessionId);
+      if (!sm) throw new UnrecoverableError("A picture-in-picture video is no longer stored");
+      pips[p.itemId] = { path: sm.input, offsetMs: 0, width: sm.probe.width ?? 1280, height: sm.probe.height ?? 720, hasAudio: sm.probe.hasAudio };
+    }
+    // Export preset and options chosen for this render (older renders have none: as edited).
+    const preset = (item.preset ?? "original") as ExportPresetId;
+    const format: "mp4" | "gif" | "audio" = item.format === "gif" || item.format === "audio" ? item.format : "mp4";
+    const problem = presetProblem(preset, format, edlDurationMs(edl));
+    if (problem) throw new UnrecoverableError(problem);
+    const ro = RenderOptions.omit({ presets: true }).partial().parse(item.render_options ?? {});
+    const p = EXPORT_PRESETS[preset];
+    const options =
+      item.preset || item.render_options
+        ? { aspect: p.aspect ?? undefined, height: ro.height, fps: ro.fps, quality: ro.quality, maxrateKbps: p.maxrateKbps, format }
+        : undefined;
+    const ext = format === "gif" ? "gif" : format === "audio" ? "m4a" : "mp4";
+    const out = path.join(work, `render.${ext}`);
+    const plan = buildEdlRender({ edl, media, output: out, workDir: work, fonts: findRenderFonts(), fontsDir: findRenderFontsDir(), captions, encoder: ctx.config.env.FFMPEG_ENCODER, options, refs, pips });
     for (const f of plan.textFiles) await writeFile(f.path, f.content);
     await updateJobRun(ctx.db, data.jobRunId, { step: "Rendering", progress: 0.02 });
     await runWithProgress(ctx.tools.ffmpeg, plan.args, plan.durationMs, (p) => void updateJobRun(ctx.db, data.jobRunId, { progress: p }), ctx.tools.timeoutMs);
     const poster = path.join(work, "poster.jpg");
-    await extractFrameAt(ctx.tools, out, "mov", Math.min(plan.durationMs - 1, edl.coverMs ?? Math.min(1000, Math.floor(plan.durationMs / 3))), poster, 1920).catch(() => undefined);
+    if (plan.container === "mp4") await extractFrameAt(ctx.tools, out, "mov", Math.min(plan.durationMs - 1, edl.coverMs ?? Math.min(1000, Math.floor(plan.durationMs / 3))), poster, 1920).catch(() => undefined);
     const probe = await probeFile(ctx.tools, out);
-    const key = storageKeys.library(item.broadcaster_id, item.id, "render.mp4");
-    const up = await ctx.storage.putFile(key, out, "video/mp4");
+    const contentType = plan.container === "gif" ? "image/gif" : plan.container === "m4a" ? "audio/mp4" : "video/mp4";
+    const key = storageKeys.library(item.broadcaster_id, item.id, `render.${ext}`);
+    const up = await ctx.storage.putFile(key, out, contentType);
     const asset = await insertAsset(ctx.db, {
       broadcasterId: item.broadcaster_id,
       sessionId: null,
       sourceId: null,
       kind: "render",
       storageKey: key,
-      contentType: "video/mp4",
+      contentType,
       bytes: up.bytes,
-      width: plan.width,
-      height: plan.height,
+      width: plan.width || null,
+      height: plan.height || null,
       durationMs: probe.durationMs ?? plan.durationMs,
     });
     let posterId: string | null = null;
     const pKey = storageKeys.library(item.broadcaster_id, item.id, "poster.jpg");
-    const pUp = await ctx.storage.putFile(pKey, poster, "image/jpeg").catch(() => null);
+    const pUp = plan.container === "mp4" ? await ctx.storage.putFile(pKey, poster, "image/jpeg").catch(() => null) : null;
     if (pUp) posterId = (await insertAsset(ctx.db, { broadcasterId: item.broadcaster_id, sessionId: null, sourceId: null, kind: "poster", storageKey: pKey, contentType: "image/jpeg", bytes: pUp.bytes })).id;
     await updateLibraryItem(ctx.db, item.id, {
       status: "ready",
       error: null,
       assetId: asset.id,
       posterAssetId: posterId,
-      width: plan.width,
-      height: plan.height,
+      width: plan.width || null,
+      height: plan.height || null,
       durationMs: probe.durationMs ?? plan.durationMs,
       bytes: up.bytes,
     });
@@ -435,6 +492,147 @@ export async function renderProject(ctx: ServerContext, data: { itemId: string; 
       await updateJobRun(ctx.db, data.jobRunId, { step: `Retrying: ${msg}`.slice(0, 200) });
     }
     throw err;
+  } finally {
+    await rm(work, { recursive: true, force: true });
+  }
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Thumbnails, waveforms and generated captions                                               */
+/* ------------------------------------------------------------------------------------------ */
+
+/** A 1280×720 thumbnail from one frame of the edit, with big styled text, into the library. */
+export async function renderThumbnail(ctx: ServerContext, data: { itemId: string; projectId: string; jobRunId: string; input: unknown }) {
+  const item = await getLibraryItem(ctx.db, data.itemId);
+  const project = await getProject(ctx.db, data.projectId);
+  if (!item || !project || item.status !== "processing") return;
+  const work = await mkdtemp(path.join(tmpdir(), "slot1-thumb-"));
+  try {
+    await updateJobRun(ctx.db, data.jobRunId, { state: "running", step: "Rendering thumbnail", progress: 0.1 });
+    const input = ThumbnailInput.parse(data.input);
+    const edl = Edl.parse(project.edl);
+    const { index, sourceMs } = edlLocate(edl, input.atMs);
+    const seg = edl.segments[index]!;
+    if (seg.runId) throw new UnrecoverableError("Thumbnails need the finalized recording; try again after the stream ends");
+    const session = await getSession(ctx.db, seg.sessionId);
+    if (!session || session.broadcaster_id !== project.broadcaster_id) throw new UnrecoverableError("That segment's session no longer exists");
+    const media = await storedMediaFor(ctx, seg.sessionId);
+    if (!media) throw new UnrecoverableError("That segment's video is no longer stored");
+    const frame = path.join(work, "frame.jpg");
+    const remote = /^https?:\/\//.test(media.input);
+    await runChecked(
+      ctx.tools.ffmpeg,
+      ["-hide_banner", "-nostdin", "-protocol_whitelist", remote ? "file,http,https,tcp,tls,crypto" : "file", "-ss", (sourceMs / 1000).toFixed(3), "-i", media.input, "-frames:v", "1", "-an", "-q:v", "2", "-y", frame],
+      { timeoutMs: 60_000 },
+    );
+    const out = path.join(work, "thumbnail.png");
+    const plan = buildThumbnailRender({ frame, output: out, workDir: work, fontsDir: findRenderFontsDir(), text: input.text, subtext: input.subtext, style: input.style, position: input.position, grade: edl.grade });
+    for (const f of plan.textFiles) await writeFile(f.path, f.content);
+    await runChecked(ctx.tools.ffmpeg, plan.args, { timeoutMs: 60_000 });
+    const key = storageKeys.library(item.broadcaster_id, item.id, "thumbnail.png");
+    const { bytes } = await ctx.storage.putFile(key, out, "image/png");
+    const asset = await insertAsset(ctx.db, { broadcasterId: item.broadcaster_id, sessionId: null, sourceId: null, kind: "render", storageKey: key, contentType: "image/png", bytes, width: 1280, height: 720 });
+    await updateLibraryItem(ctx.db, item.id, { status: "ready", error: null, assetId: asset.id, posterAssetId: asset.id, width: 1280, height: 720, bytes });
+    await updateJobRun(ctx.db, data.jobRunId, { state: "succeeded", step: "Done", progress: 1 });
+  } catch (err) {
+    const msg = sanitizeErrorMessage((err as Error).message);
+    await updateLibraryItem(ctx.db, item.id, { status: "failed", error: msg });
+    await updateJobRun(ctx.db, data.jobRunId, { state: "failed", error: msg });
+    if (!(err instanceof UnrecoverableError)) throw err;
+  } finally {
+    await rm(work, { recursive: true, force: true });
+  }
+}
+
+/** Peak levels (0..1) of a session's stored audio, for the editor's timeline waveform. */
+export async function buildWaveform(ctx: ServerContext, data: { sessionId: string }) {
+  const session = await getSession(ctx.db, data.sessionId);
+  if (!session) return;
+  const media = await storedMediaFor(ctx, session.id).catch(() => null);
+  const durationMs = media?.probe.durationMs ?? null;
+  let peaks: number[] = [];
+  let unavailable = !media;
+  if (media && media.probe.hasAudio && durationMs) try {
+    // Keep at most ~20 M samples in memory whatever the length; 8 kHz for short media.
+    const rate = Math.max(200, Math.min(8000, Math.floor(20_000_000 / Math.max(1, durationMs / 1000))));
+    const remote = /^https?:\/\//.test(media.input);
+    const pcm = await new Promise<Buffer>((resolve, reject) => {
+      const child = spawn(ctx.tools.ffmpeg, ["-hide_banner", "-nostdin", "-v", "error", "-protocol_whitelist", remote ? "file,http,https,tcp,tls,crypto" : "file", "-i", media.input, "-vn", "-ac", "1", "-ar", String(rate), "-f", "s16le", "-"], { stdio: ["ignore", "pipe", "pipe"] });
+      const chunks: Buffer[] = [];
+      const timer = setTimeout(() => child.kill("SIGKILL"), 10 * 60_000);
+      child.stdout.on("data", (c: Buffer) => chunks.push(c));
+      child.on("error", reject);
+      child.on("close", (code) => {
+        clearTimeout(timer);
+        if (code === 0) resolve(Buffer.concat(chunks));
+        else reject(new Error(`waveform extraction failed (${code})`));
+      });
+    });
+    const samples = Math.floor(pcm.length / 2);
+    const bins = Math.max(1, Math.min(6000, Math.ceil(durationMs / 100)));
+    const per = Math.max(1, Math.floor(samples / bins));
+    let max = 1;
+    const raw: number[] = [];
+    for (let b = 0; b < bins; b++) {
+      let peak = 0;
+      for (let k = b * per; k < Math.min(samples, (b + 1) * per); k++) peak = Math.max(peak, Math.abs(pcm.readInt16LE(k * 2)));
+      raw.push(peak);
+      max = Math.max(max, peak);
+    }
+    peaks = raw.map((v) => Math.round((v / max) * 1000) / 1000);
+  } catch {
+    // The editor shows "no waveform" instead of waiting forever.
+    unavailable = true;
+  }
+  await ctx.storage.putBuffer(sessionWaveformKey(session.broadcaster_id, session.id), Buffer.from(JSON.stringify({ peaks, durationMs, unavailable })), "application/json");
+}
+
+/** Transcribe an edit's audio with the configured provider; the editor applies the cues. */
+export async function generateProjectCaptions(ctx: ServerContext, data: { projectId: string; jobRunId: string }) {
+  const project = await getProject(ctx.db, data.projectId);
+  if (!project) return;
+  const key = projectCaptionsKey(project.broadcaster_id, project.id);
+  const save = (v: { status: "ready" | "failed"; error: string | null; cues: CaptionCue[] }) => ctx.storage.putBuffer(key, Buffer.from(JSON.stringify(v)), "application/json");
+  const work = await mkdtemp(path.join(tmpdir(), "slot1-captions-"));
+  try {
+    await updateJobRun(ctx.db, data.jobRunId, { state: "running", step: "Extracting the edit's audio", progress: 0.1 });
+    const provider = createTranscriptionProvider(ctx.config.env);
+    if (!provider) throw new UnrecoverableError("Transcription isn't configured: set TRANSCRIPTION_PROVIDER, TRANSCRIPTION_MODEL and its API key");
+    const edl = Edl.parse(project.edl);
+    const media: EdlSegmentMedia[] = [];
+    for (const s of edl.segments) {
+      if (s.runId) throw new UnrecoverableError("Captions need the finalized recording; try again after the stream ends");
+      const m = await storedMediaFor(ctx, s.sessionId);
+      if (!m) throw new UnrecoverableError("A segment's video is no longer stored");
+      media.push({ path: m.input, offsetMs: 0, width: m.probe.width ?? 1280, height: m.probe.height ?? 720, hasAudio: m.probe.hasAudio });
+    }
+    const audio = path.join(work, "edit.mp3");
+    const plan = buildEdlAudioRender({ edl, media, output: audio, workDir: work });
+    await runChecked(ctx.tools.ffmpeg, plan.args, { timeoutMs: ctx.tools.timeoutMs });
+    await updateJobRun(ctx.db, data.jobRunId, { step: "Transcribing", progress: 0.4 });
+    const result = await provider.transcribe(audio);
+    const lines = result.segments.length ? result.segments : result.text ? [{ startMs: 0, endMs: plan.durationMs, text: result.text }] : [];
+    // Long lines become cues of at most ~7 words, spread over the line's time.
+    const cues: CaptionCue[] = [];
+    for (const l of lines) {
+      const words = l.text.split(/\s+/).filter(Boolean);
+      const chunks = Math.max(1, Math.ceil(words.length / 7));
+      for (let c = 0; c < chunks; c++) {
+        const part = words.slice(c * 7, (c + 1) * 7).join(" ");
+        if (!part) continue;
+        const a = Math.round(l.startMs + ((l.endMs - l.startMs) * c) / chunks);
+        const b = Math.round(l.startMs + ((l.endMs - l.startMs) * (c + 1)) / chunks);
+        if (b - a < 200 || a >= plan.durationMs) continue;
+        cues.push({ id: `g${cues.length + 1}`, startMs: a, endMs: Math.min(b, plan.durationMs), text: part.slice(0, 200), words: [] });
+      }
+    }
+    await save({ status: "ready", error: null, cues: cues.slice(0, 400) });
+    await updateJobRun(ctx.db, data.jobRunId, { state: "succeeded", step: "Done", progress: 1 });
+  } catch (err) {
+    const msg = sanitizeErrorMessage((err as Error).message);
+    await save({ status: "failed", error: msg, cues: [] }).catch(() => undefined);
+    await updateJobRun(ctx.db, data.jobRunId, { state: "failed", error: msg });
+    if (!(err instanceof UnrecoverableError)) throw err;
   } finally {
     await rm(work, { recursive: true, force: true });
   }

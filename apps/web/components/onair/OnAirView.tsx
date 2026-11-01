@@ -41,8 +41,8 @@ export function OnAirView({ directory, capabilities }: { directory: DirectoryRes
             </span>
           </h1>
           <p className="gx-help gx-reveal mt-5" style={{ animationDelay: "2.7s" }}>
-            SLOT1 watches your GTA stream live, spots the missions, chases and crashes, and turns them into clips, instant replays and highlights.{" "}
-            <span className="text-ivory-2">Everything it tells you comes with proof: the exact frames.</span>
+            <strong className="block font-display text-[1.3rem] font-bold tracking-[0.01em] text-ivory">Stream GTA. Get clips. Train the AI.</strong>
+            SLOT1 watches your stream live, clips your big moments for you, and learns the game from every stream you choose to share.
           </p>
           <div className="gx-reveal mt-5 flex flex-wrap gap-3" style={{ animationDelay: "2.85s" }}>
             <Link href="/demo" className="btn btn-coral h-12 px-5 text-[1.12rem]">
@@ -59,7 +59,7 @@ export function OnAirView({ directory, capabilities }: { directory: DirectoryRes
             )}
           </div>
           <p className="gx-train gx-reveal mt-5" style={{ animationDelay: "2.95s" }}>
-            Opt in, and your streams help train SLOT1’s own GTA AI, getting ready for <span className="gx-vi">GTA VI</span>.{" "}
+            Building the GTA AI, one stream at a time. Next stop: <span className="gx-vi">GTA VI</span>.{" "}
             <a href="#gta-ai" className="whitespace-nowrap underline decoration-line-strong underline-offset-4 hover:text-ivory">
               How it learns
             </a>

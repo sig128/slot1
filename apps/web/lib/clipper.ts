@@ -34,6 +34,8 @@ export function itemKindLabel(i: Pick<LibraryItemView, "kind" | "auto">): string
       return "Clip";
     case "render":
       return i.auto ? "Auto clip" : "Edited clip";
+    case "thumbnail":
+      return "Thumbnail";
   }
 }
 

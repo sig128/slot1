@@ -12,7 +12,7 @@ import {
   type LibraryItemRow,
   type StreamSessionRow,
 } from "@slot1/db";
-import { QUEUES } from "@slot1/platform";
+import { QUEUES, storageKeys } from "@slot1/platform";
 import type { ServerContext } from "./context";
 import { playbackUrlTtl } from "./views";
 
@@ -49,10 +49,12 @@ export async function libraryItemView(ctx: ServerContext, row: LibraryItemRow, o
     durationMs: row.duration_ms,
     bytes: row.bytes,
     url,
-    posterUrl: (await sign(row.poster_asset_id)) ?? (row.kind === "screenshot" ? url : null),
+    posterUrl: (await sign(row.poster_asset_id)) ?? (row.kind === "screenshot" || row.kind === "thumbnail" ? url : null),
     externalUrl: row.external_url,
     viewPath: `/v/${row.id}`,
     canEdit: opts.canEdit,
+    preset: (row.preset as LibraryItemView["preset"]) ?? null,
+    format: row.format ?? "mp4",
   };
 }
 
@@ -70,12 +72,39 @@ export function momentEdl(sessionId: string, inMs: number, outMs: number, opts: 
   });
 }
 
-/** Queue a render of a project into a new library item (status processing until done). */
+/** Where a session's waveform peaks are cached (removed with the session's files). */
+export const sessionWaveformKey = (broadcasterId: string, sessionId: string) => `${storageKeys.sessionPrefix(broadcasterId, sessionId)}/waveform.json`;
+/** Where an edit's generated captions wait until the creator applies them (removed with the edit). */
+export const projectCaptionsKey = (broadcasterId: string, projectId: string) => storageKeys.library(broadcasterId, projectId, "generated-captions.json");
+
+/**
+ * Queue a render of a project into a new library item (status processing until done). Without
+ * preset or options the render is "as edited", exactly like renders made before presets existed.
+ */
 export async function queueRender(
   ctx: ServerContext,
-  p: { broadcasterId: string; projectId: string; title: string; sessionId: string | null; delayMs?: number },
+  p: {
+    broadcasterId: string;
+    projectId: string;
+    title: string;
+    sessionId: string | null;
+    delayMs?: number;
+    preset?: string | null;
+    format?: "mp4" | "gif" | "audio";
+    renderOptions?: Record<string, unknown> | null;
+  },
 ): Promise<LibraryItemRow> {
-  const item = await insertLibraryItem(ctx.db, { broadcasterId: p.broadcasterId, kind: "render", title: p.title, status: "processing", sessionId: p.sessionId, projectId: p.projectId });
+  const item = await insertLibraryItem(ctx.db, {
+    broadcasterId: p.broadcasterId,
+    kind: "render",
+    title: p.title,
+    status: "processing",
+    sessionId: p.sessionId,
+    projectId: p.projectId,
+    preset: p.preset ?? null,
+    format: p.format ?? "mp4",
+    renderOptions: p.renderOptions ?? null,
+  });
   const job = await createJobRun(ctx.db, { broadcasterId: p.broadcasterId, sessionId: p.sessionId, queue: QUEUES.library, name: "render-project" });
   const row = (await updateLibraryItem(ctx.db, item.id, { jobRunId: job.id }))!;
   await ctx.enqueue(QUEUES.library, "render-project", { itemId: item.id, projectId: p.projectId, jobRunId: job.id }, { jobId: `render-${item.id}`, delay: p.delayMs ?? 0, attempts: 4 });

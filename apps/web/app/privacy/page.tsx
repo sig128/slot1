@@ -58,7 +58,7 @@ function sections(cfg: LegalConfig): LegalSection[] {
           <li>Visitor statistics use no cookies. Visits are counted with an ID that changes every day and can’t be traced back to you.</li>
           <li>SLOT1’s only cookie keeps you signed in and protects forms. It is not used for tracking.</li>
           <li>Creators decide what is analyzed, recorded and public, how long it is kept, and can delete it at any time in Studio.</li>
-          <li>SLOT1 receives a creator’s whole stream, including any webcam, overlays and microphone. It goes to an outside AI service only when the operator has switched one on; section 6 lists what is switched on right now.</li>
+          <li>SLOT1 receives a creator’s whole stream, including any webcam, overlays and microphone. It goes to an outside AI service only when the operator has switched one on; section 6 lists what is switched on right now. Creators can hide their webcam area from all analysis in Studio.</li>
         </ul>
       ),
     },
@@ -139,6 +139,13 @@ function sections(cfg: LegalConfig): LegalSection[] {
             That full picture and sound is what is analyzed, shown to viewers of public sessions, recorded, forwarded to other platforms you add and, when
             the operator has switched an AI service on, sampled and sent to it (section 6). You decide what is in your stream. People who can be seen
             or heard in it are part of your content, and you need their permission where the law requires it.
+          </p>
+          <p>
+            <strong>You can hide your webcam from the AI.</strong> In Studio → Stream setup, draw up to three boxes over your webcam (or anything else in
+            your picture). SLOT1 fills them with black inside its own server before any analysis: on-screen text reading, AI vision, SLOT1’s GTA model,
+            the evidence frames it keeps and “What the AI sees” never receive what is inside, and no outside AI service does either. Viewers, recordings,
+            clips, instant replays and forwarding still get your full stream. The box covers a fixed area: if your webcam moves outside it, the part
+            outside is analyzed like the rest of the picture.
           </p>
           <DataItem
             title="Video and audio you send to SLOT1"
@@ -299,15 +306,16 @@ function sections(cfg: LegalConfig): LegalSection[] {
                     </span>
                   ))}
                   . They receive the sampled frames, audio or evidence needed for that, not your account details. A sampled frame is the whole stream
-                  picture, so it includes a creator’s webcam, overlays and alerts when those are in the stream, and audio includes the creator’s
-                  microphone.
+                  picture, so it includes a creator’s webcam, overlays and alerts when those are in the stream (except areas the creator has hidden
+                  from the AI, which are black), and audio includes the creator’s microphone.
                 </>
               ) : (
                 <>
                   None is switched on right now: frames are analyzed only on SLOT1’s own server (on-screen text reading and video measurements). If the
                   operator switches one on, such as Anthropic or OpenAI for AI vision or a speech-to-text service, it will be listed here and receive only
                   the sampled frames, audio or evidence needed for that. A sampled frame is the whole stream picture, so it would include a creator’s
-                  webcam, overlays and alerts when those are in the stream, and audio would include the creator’s microphone.
+                  webcam, overlays and alerts when those are in the stream (except areas the creator has hidden from the AI, which are black), and
+                  audio would include the creator’s microphone.
                 </>
               )}
             </li>

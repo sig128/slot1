@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
+import { openPrimaryNav } from "./support/nav";
 
 /**
  * The home intro: a game-style loading screen that resolves into SLOT1's title card. The HUD's
@@ -37,7 +38,7 @@ test.describe("home intro (reduced motion)", () => {
 
     await expect(page.getByRole("heading", { level: 1, name: "SLOT1: Your AI sidekick for GTA." })).toBeVisible();
     await expect(page.getByText(/turns them into clips, instant replays and highlights/)).toBeVisible();
-    await expect(page.getByText("Everything it tells you comes with proof: the exact frames.")).toBeVisible();
+    await expect(page.getByText("Stream GTA. Get clips. Train the AI.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Watch the live demo" })).toHaveAttribute("href", "/demo");
     await expect(page.getByRole("link", { name: /^(Connect my Twitch|How creators connect)$/ }).first()).toBeVisible();
 
@@ -47,7 +48,7 @@ test.describe("home intro (reduced motion)", () => {
     await expect(page.locator(".gx-star-on")).toHaveCount(Math.min(5, live));
 
     // The training line points to the honest explanation further down.
-    await expect(page.getByText(/your streams help train SLOT1’s own GTA AI, getting ready for/)).toBeVisible();
+    await expect(page.getByText(/Building the GTA AI, one stream at a time\. Next stop:/)).toBeVisible();
     await page.getByRole("link", { name: "How it learns" }).click();
     await expect(page).toHaveURL(/#gta-ai$/);
     const gtaAi = page.getByRole("region", { name: "The GTA AI we’re building together" });
@@ -111,9 +112,9 @@ test.describe("home intro (with motion)", () => {
     await expect(hero).toHaveAttribute("data-paused", "false");
 
     // Coming back within the app goes straight to the final frame.
-    await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Setup" }).click();
+    await (await openPrimaryNav(page)).getByRole("link", { name: "Setup" }).click();
     await expect(page).toHaveURL(/\/setup$/);
-    await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "On Air" }).click();
+    await (await openPrimaryNav(page)).getByRole("link", { name: "On Air" }).click();
     await expect(page.locator("[data-scene]")).toHaveAttribute("data-intro", "skip");
     expect(await page.locator(".gx-reveal").first().evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
 

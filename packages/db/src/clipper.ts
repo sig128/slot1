@@ -218,6 +218,10 @@ export interface LibraryItemRow {
   height: number | null;
   duration_ms: number | null;
   bytes: number | null;
+  /** Export preset of a render (tiktok, shorts, reels, x, youtube, original). */
+  preset: string | null;
+  format: "mp4" | "gif" | "audio" | "png";
+  render_options: Record<string, unknown> | null;
   created_at: Date;
   updated_at: Date;
   /** Joined from edit_projects when listed: auto clips are renders of auto projects. */
@@ -248,13 +252,16 @@ export interface NewLibraryItem {
   height?: number | null;
   durationMs?: number | null;
   bytes?: number | null;
+  preset?: string | null;
+  format?: LibraryItemRow["format"];
+  renderOptions?: Record<string, unknown> | null;
 }
 
 export async function insertLibraryItem(db: Queryable, i: NewLibraryItem): Promise<LibraryItemRow> {
   const { rows } = await db.query<LibraryItemRow>(
     `INSERT INTO library_items (broadcaster_id, kind, title, status, visibility, session_id, recording_id, project_id, clip_job_id, job_run_id,
-       asset_id, poster_asset_id, external_url, media_ms, width, height, duration_ms, bytes)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING *`,
+       asset_id, poster_asset_id, external_url, media_ms, width, height, duration_ms, bytes, preset, format, render_options)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) RETURNING *`,
     [
       i.broadcasterId,
       i.kind,
@@ -274,6 +281,9 @@ export async function insertLibraryItem(db: Queryable, i: NewLibraryItem): Promi
       i.height ?? null,
       i.durationMs ?? null,
       i.bytes ?? null,
+      i.preset ?? null,
+      i.format ?? "mp4",
+      i.renderOptions ? JSON.stringify(i.renderOptions) : null,
     ],
   );
   return mapItem(rows[0]!);

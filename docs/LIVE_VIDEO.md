@@ -25,6 +25,31 @@ For low delay, use a keyframe every 1 s, no B-frames, and the encoder's low-late
 
 Every publisher is checked by SLOT1 through MediaMTX's HTTP auth hook. A WHIP publisher must present the exact stream key for its path. Revoking or rotating the key in Studio refuses it from then on.
 
+### Hiding your webcam from the AI
+
+Studio → Stream setup → **Hide your camera from the AI**. A creator draws up to three boxes over their webcam (or anything else) on their newest analyzed frame, or picks a corner preset. When nothing is live, they draw on a 16:9 placeholder. The boxes are stored on the live source as fractions of the picture (`media_sources.camera_mask`, migration `0006_camera_mask.sql`; `PUT /api/studio/sources/:id/camera-mask`, owner only).
+
+Where the boxes are applied:
+
+- **Before any analysis.** The worker's reader fills each box with black inside ffmpeg (`drawbox`, padded by 2 px), in the filter chain that produces the analysis frames (`LiveIngestAdapter` in `packages/analysis/src/sources.ts`). No unmasked analysis frame leaves ffmpeg.
+- **Everything downstream of the reader** gets the masked frame and never the area inside a box:
+  - on-screen text reading (OCR)
+  - AI vision (Anthropic or OpenAI)
+  - SLOT1's GTA model and the shared inference service
+  - stored evidence frames and Studio's preview frame
+  - "What the AI sees", which labels the black area "Hidden by the creator"
+- **Not applied to what viewers get.** SLOT1's live video, the rolling buffer (instant replays), recordings, clips and forwarding stay the creator's full stream.
+- **A changed box applies within a few seconds.** The worker notices the change and restarts its reader for the new mask. This restarts the rolling buffer and starts a new recording segment run.
+- **It covers a fixed area.** If the creator moves their webcam in OBS, the part outside the box is analyzed like the rest of the picture.
+- **Only frames from a live source.** Uploaded replays and analyzed Twitch clips aren't masked.
+
+Verified in `tests/integration/camera-mask.test.ts` with real ffmpeg, nginx-rtmp and tesseract, and a stand-in for Anthropic's API that records the images it receives:
+- Text inside the box is never read, while text outside it is.
+- The box is black in every image sent to vision, in stored evidence frames and in the AI view.
+- The rolling buffer still shows the webcam.
+- A changed box applies within seconds.
+- Only the source's creator can set the boxes.
+
 ### Sending to Twitch at the same time
 
 OBS streams to one service by default. To send to Twitch and SLOT1 at once, add a second output with a multi-output plugin for OBS.

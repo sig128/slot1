@@ -202,9 +202,9 @@ describe.skipIf(!hasTools)("hide your camera from the AI", () => {
       // The "webcam": a white box in the top left with text on it.
       "drawbox=x=0:y=0:w=512:h=288:color=white:t=fill",
       `drawtext=fontfile=${FONT}:textfile=${secret}:fontsize=44:fontcolor=black:x=40:y=120`,
-      // Text the AI should read, outside the box.
-      "drawbox=x=720:y=520:w=520:h=110:color=black:t=fill",
-      `drawtext=fontfile=${FONT}:textfile=${passed}:fontsize=52:fontcolor=white:x=760:y=545`,
+      // Text the AI should read, outside the box (dark on light: tesseract's most reliable case).
+      "drawbox=x=700:y=520:w=560:h=110:color=white:t=fill",
+      `drawtext=fontfile=${FONT}:textfile=${passed}:fontsize=52:fontcolor=black:x=730:y=545`,
     ].join(",");
     publisher = spawn(
       "ffmpeg",
@@ -229,10 +229,6 @@ describe.skipIf(!hasTools)("hide your camera from the AI", () => {
     const observations = await waitFor(async () => {
       await snapshot();
       const page = (await creator.get(`/api/sessions/${sessionId}/observations?limit=500`)).json<{ observations: any[] }>();
-      if (process.env.MASK_DEBUG) {
-        const v = (await creator.get(`/api/sessions/${sessionId}/ai-view`)).json<any>();
-        console.info("DEBUG obs", JSON.stringify(page.observations.map((o) => [o.type, o.origin, o.rawText, o.description])).slice(0, 600), "ocr", String(JSON.stringify(v.snapshot?.ocr)).slice(0, 500), "vision", visionImages.length);
-      }
       return page.observations.some((o) => /MISSION PASSED/i.test(`${o.rawText ?? ""} ${o.description ?? ""}`)) ? page.observations : null;
     }, 90_000, "OCR to read MISSION PASSED");
     // …and never the text inside it.

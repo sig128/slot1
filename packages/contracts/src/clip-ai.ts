@@ -44,12 +44,38 @@ export const TextModelStatus = z.object({
   reason: z.string().nullable(),
   /** True when this server has AI prices set, so replies can show an estimated cost. */
   pricesConfigured: z.boolean(),
+  /** The server's prices in US dollars per million tokens, when set. */
+  pricePerMTok: z.object({ input: z.number(), output: z.number() }).nullable(),
 });
 export type TextModelStatus = z.infer<typeof TextModelStatus>;
 
 /** Tokens a text-model call used, and its estimated cost when this server has prices set. */
 export const AiUsage = z.object({ inputTokens: z.number(), outputTokens: z.number(), estimatedCostUsd: z.number().nullable() });
 export type AiUsage = z.infer<typeof AiUsage>;
+
+/** Dollars for some tokens at per-million prices. */
+export function tokenCostUsd(t: { inputTokens: number; outputTokens: number }, p: { input: number; output: number }): number {
+  return (t.inputTokens * p.input + t.outputTokens * p.output) / 1_000_000;
+}
+
+/**
+ * Fixed part of every "Edit it for me" request in characters: the instructions and the reply
+ * schema (the edit format). A unit test keeps this close to the real prompt.
+ */
+export const EDIT_REQUEST_BASE_CHARS = 21_000;
+
+/**
+ * A rough, deliberately generous token estimate for one "Edit it for me" request, from the size
+ * of what's sent (about 4 characters per token): the fixed instructions and schema, the request,
+ * the current edit, a typical list of detected moments and the library catalogue. The reply is
+ * a whole new edit. The real count comes back with the answer.
+ */
+export function estimateEditTokens(edl: Edl, request: string, libraryItems: number): { inputTokens: number; outputTokens: number } {
+  const edlChars = JSON.stringify(edl).length;
+  const input = EDIT_REQUEST_BASE_CHARS + request.length + edlChars + 8_000 + Math.min(100, libraryItems) * 110;
+  const output = Math.round(edlChars * 1.2) + 500;
+  return { inputTokens: Math.ceil(input / 4), outputTokens: Math.min(6000, Math.ceil(output / 4)) };
+}
 
 export const ClipAiSession = z.object({
   id: z.string(),
@@ -73,6 +99,9 @@ export const ClipAiSessionsResponse = z.object({
   libraryAssets: z.number(),
 });
 export type ClipAiSessionsResponse = z.infer<typeof ClipAiSessionsResponse>;
+
+export const ClipAiStatusResponse = z.object({ textModel: TextModelStatus, libraryAssets: z.number() });
+export type ClipAiStatusResponse = z.infer<typeof ClipAiStatusResponse>;
 
 /* ------------------------------------------------------------------------------------------ */
 /* Best moments                                                                               */
@@ -539,9 +568,14 @@ const ASPECT_WORD: Record<string, string> = { "9:16": "vertical", "16:9": "wides
 const EFFECT_WORD: Record<string, string> = { wasted: "WASTED", passed: "MISSION PASSED", punch: "punch-in zoom", shake: "camera shake", flash: "flash", glitch: "glitch" };
 const LAYOUT_WORD: Record<string, string> = { crop: "Fills the frame (crops the sides)", fit: "Shows the whole frame over a blurred backdrop", split: "Facecam panel and gameplay stacked" };
 
-/** m:ss.t */
+/** m:ss.t, the way the editor shows times. */
 export function clipTime(ms: number): string {
-  return `${formatMediaTime(ms)}.${Math.floor((Math.max(0, ms) % 1000) / 100)}`;
+  const t = Math.max(0, Math.round((Number.isFinite(ms) ? ms : 0) / 100));
+  const total = Math.floor(t / 10);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = String(total % 60).padStart(2, "0");
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${s}.${t % 10}` : `${m}:${s}.${t % 10}`;
 }
 const human = (key: string) => key.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/ ms$/i, "").toLowerCase();
 const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -552,11 +586,12 @@ const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringif
  */
 export function describeEdlChanges(before: Edl, after: Edl, assetName: (id: string) => string | null = () => null): string[] {
   const out: string[] = [];
-  const named = (src: { kind: string; assetId: string }) => (src.kind === "library" ? `“${assetName(src.assetId) ?? src.assetId}”` : "an uploaded file");
+  const libName = (id: string) => `“${assetName(id) ?? id}”`;
+  const sound = (src: { kind: string; assetId: string }) => (src.kind === "library" ? `sound ${libName(src.assetId)}` : "an uploaded sound");
   const lenA = edlDurationMs(before);
   const lenB = edlDurationMs(after);
   if (Math.abs(lenA - lenB) >= 100) out.push(`Length ${clipTime(lenA)} → ${clipTime(lenB)}`);
-  if (before.aspect !== after.aspect) out.push(`Format ${ASPECT_WORD[before.aspect]} → ${ASPECT_WORD[after.aspect]} (${ASPECT_SIZE[after.aspect].label})`);
+  if (before.aspect !== after.aspect) out.push(`Format ${ASPECT_WORD[before.aspect]} → ${ASPECT_WORD[after.aspect]} (${ASPECT_SIZE[after.aspect].width}×${ASPECT_SIZE[after.aspect].height})`);
   if (before.layout !== after.layout) out.push(LAYOUT_WORD[after.layout] ?? `Layout ${after.layout}`);
   else if (after.layout === "split" && !sameJson(before.split, after.split)) out.push("Moves the facecam panel");
 
@@ -594,7 +629,7 @@ export function describeEdlChanges(before: Edl, after: Edl, assetName: (id: stri
   for (const x of before.texts) if (!newTextIds.has(x.id)) out.push(`Removes text “${x.text}”`);
 
   // Overlays.
-  const itemLabel = (it: OverlayItem) => (it.type === "text" ? `text “${it.text}”` : it.type === "image" ? named(it.source) : "picture-in-picture");
+  const itemLabel = (it: OverlayItem) => (it.type === "text" ? `text “${it.text}”` : it.type === "image" ? (it.source.kind === "library" ? libName(it.source.assetId) : "an uploaded image") : "picture-in-picture");
   const oldItems = new Map(before.overlays.flatMap((t) => t.items.map((it) => [it.id, it] as const)));
   const newItems = new Map(after.overlays.flatMap((t) => t.items.map((it) => [it.id, it] as const)));
   for (const [id, it] of newItems) {
@@ -611,10 +646,10 @@ export function describeEdlChanges(before: Edl, after: Edl, assetName: (id: stri
   const newClips = new Map(after.audioTracks.flatMap((t) => t.clips.map((c) => [c.id, c] as const)));
   for (const [id, c] of newClips) {
     const prev = oldClips.get(id);
-    if (!prev) out.push(`Adds sound ${named(c.source)} at ${clipTime(c.startMs)}${c.loop ? " (looped)" : ""}`);
-    else if (!sameJson(prev, c)) out.push(`Changes sound ${named(c.source)}`);
+    if (!prev) out.push(`Adds ${sound(c.source)} at ${clipTime(c.startMs)}${c.loop ? " (looped)" : ""}`);
+    else if (!sameJson(prev, c)) out.push(`Changes ${sound(c.source)}`);
   }
-  for (const [id, c] of oldClips) if (!newClips.has(id)) out.push(`Removes sound ${named(c.source)}`);
+  for (const [id, c] of oldClips) if (!newClips.has(id)) out.push(`Removes ${sound(c.source)}`);
   const newTrackIds = new Set(after.audioTracks.map((t) => t.id));
   for (const t of before.audioTracks) if (!newTrackIds.has(t.id)) out.push(`Removes the audio track “${t.name}”`);
 
@@ -652,3 +687,23 @@ export function describeEdlChanges(before: Edl, after: Edl, assetName: (id: stri
   }
   return out;
 }
+
+/* ------------------------------------------------------------------------------------------ */
+/* What the text model must return (validated again after the reply)                          */
+/* ------------------------------------------------------------------------------------------ */
+
+/** Sound placement chosen by the model from SLOT1's cues and the library. */
+export const ModelSoundPlan = z.object({
+  sounds: z.array(z.object({ assetId: z.string(), atMs: z.number(), volume: z.number(), reason: z.string() })),
+});
+export type ModelSoundPlan = z.infer<typeof ModelSoundPlan>;
+
+/** Posts as the model writes them; SLOT1 trims them to each platform's limits. */
+export const ModelPosts = z.object({
+  posts: z.array(z.object({ platform: PostPlatform, title: z.string(), caption: z.string(), hashtags: z.array(z.string()) })),
+});
+export type ModelPosts = z.infer<typeof ModelPosts>;
+
+/** A complete new edit plus a one-line summary. */
+export const ModelEditProposal = z.object({ summary: z.string(), edl: Edl });
+export type ModelEditProposal = z.infer<typeof ModelEditProposal>;

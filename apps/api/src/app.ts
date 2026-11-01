@@ -31,6 +31,9 @@ import { analyticsRoutes } from "./routes/analytics";
 import { contactRoutes } from "./routes/contact";
 import { aiViewRoutes } from "./routes/aiview";
 import { demoRoutes } from "./routes/demo";
+import { clipAiRoutes } from "./routes/clip-ai";
+import { studioAssetRoutes } from "./routes/studio-assets";
+import { editorRoutes } from "./routes/editor";
 
 declare module "fastify" {
   interface FastifyContextConfig {
@@ -115,5 +118,8 @@ export async function buildApp({ ctx, hub }: AppDeps): Promise<FastifyInstance> 
   await app.register(adminRoutes(ctx));
   await app.register(aiViewRoutes(ctx));
   await app.register(demoRoutes(ctx));
+  await app.register(clipAiRoutes(ctx));
+  await app.register(studioAssetRoutes(ctx));
+  await app.register(editorRoutes(ctx));
   return app;
 }

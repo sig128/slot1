@@ -101,13 +101,12 @@ def env_bell(dur: float, peak: float = 0.5, sharp: float = 2.0) -> np.ndarray:
     x = np.linspace(0, 1, n_of(dur))
     up = np.clip(x / max(peak, 1e-3), 0, 1)
     down = np.clip((1 - x) / max(1 - peak, 1e-3), 0, 1)
-    return np.minimum(up, down) ** sharp * (3 - 2 * np.minimum(up, down)) ** 0
+    return np.minimum(up, down) ** sharp
 
 
 def fade(x: np.ndarray, fin: float = 0.003, fout: float = 0.01) -> np.ndarray:
     y = x.copy()
     a, b = n_of(fin), n_of(fout)
-    sl = (slice(None),) * (y.ndim - 1)
     if a > 1:
         w = np.linspace(0, 1, a)
         y[..., :a] *= w
@@ -487,6 +486,17 @@ def normalize(x: np.ndarray, target_lufs: float, mode: str = "integrated", ceili
 # ------------------------------------------------------------------------------------------------
 # Waveform peaks and encoding
 # ------------------------------------------------------------------------------------------------
+
+def trim_tail(x: np.ndarray, thresh_db: float = -58.0, keep: float = 0.04) -> np.ndarray:
+    """Cut the silent end (reverb tails that faded out) and fade the last bit."""
+    m = np.abs(mono(x))
+    th = 10 ** (thresh_db / 20)
+    idx = np.nonzero(m > th)[0]
+    if len(idx) == 0:
+        return x
+    end = min(m.shape[-1], idx[-1] + n_of(keep))
+    return fade(x[..., :end], 0.0, min(0.03, end / SR / 4))
+
 
 def waveform_peaks(x: np.ndarray, bins: int = 48) -> list[float]:
     m = np.abs(mono(x))

@@ -102,7 +102,7 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "What does the AI actually see?",
-    a: "Frames from the creator's stream, sampled every few seconds. A frame is the whole picture the creator sends, so it includes their webcam and overlays if those are in the stream. SLOT1 reads on-screen text such as mission titles and MISSION PASSED on its own server, and an AI vision model describes the gameplay when this site has one switched on. Every entry must point to real frames, and anything about motion needs several. SLOT1's own GTA model is still being trained and isn't used for the log yet.",
+    a: "Frames from the creator's stream, sampled every few seconds. A frame is the whole picture the creator sends, so it includes their webcam and overlays if those are in the stream, unless the creator hides them: in Studio, a creator can draw a box over their webcam, and SLOT1 blacks that box out of every frame before anything analyzes it. On-screen text reading, AI vision, the evidence frames SLOT1 keeps and “What the AI sees” never get what's inside; viewers still see the full stream. It only works while the camera stays inside the box. SLOT1 reads on-screen text such as mission titles and MISSION PASSED on its own server, and an AI vision model describes the gameplay when this site has one switched on. Every entry must point to real frames, and anything about motion needs several. SLOT1's own GTA model is still being trained and isn't used for the log yet.",
   },
   {
     q: "How close to live is it?",

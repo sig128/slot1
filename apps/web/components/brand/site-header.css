@@ -1,0 +1,323 @@
+/*
+ * The site header below 768 px (components/brand/MobileMenu.tsx): the sign-in action, a Menu
+ * button styled like a game's on-screen button prompt, and the full-screen pause menu it opens.
+ * The page stays behind the menu, blurred, and the current page sits on the same ivory selection
+ * bar as the desktop tabs. Motion only answers the button, and there is none with reduced motion.
+ * Plain CSS outside Tailwind's layers, so it wins over `.btn` (and over utilities on the same
+ * element, so these elements take none); colours are the theme variables from app/globals.css.
+ */
+
+/* --- the bar --- */
+.sh-bar-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+@media (min-width: 768px) {
+  .sh-bar-actions {
+    display: none;
+  }
+}
+
+/* "Connect my Twitch" next to the Menu button, where both fit. */
+.sh-bar-connect {
+  display: none;
+  position: relative;
+  height: 36px;
+  padding: 0 11px;
+  font-size: 0.95rem;
+}
+.sh-bar-connect::after {
+  /* a 44 px tall touch target around the 36 px button */
+  content: "";
+  position: absolute;
+  inset: -5px 0;
+}
+@media (min-width: 360px) {
+  .sh-bar-connect {
+    display: inline-flex;
+  }
+}
+.sh-bar-avatar {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+}
+
+/* --- Menu / Close: a key cap and a word, like a game's button prompt --- */
+.sh-prompt {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 44px;
+  padding: 0 6px;
+  /* the label's edge lines up with the page gutter */
+  margin-right: -6px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.08rem;
+  letter-spacing: 0.02em;
+  color: var(--color-ivory);
+  border-radius: 2px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.sh-key {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  background: var(--color-ivory);
+  color: var(--color-graphite);
+  transition: background-color 140ms var(--ease-broadcast);
+}
+.sh-key svg {
+  display: block;
+}
+/* "Menu" and "Close" take the same width, so the key cap doesn't move when the menu opens. */
+.sh-prompt-label {
+  min-width: 2.3em;
+  text-align: left;
+}
+
+/* --- the pause menu --- */
+.sh-menu {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  color: var(--color-ivory);
+  /* the page, paused: still there, blurred under a night-sky tint that deepens toward the bottom */
+  background: linear-gradient(180deg, rgb(24 8 30 / 0.56) 0%, rgb(16 16 20 / 0.8) 48%, rgb(11 11 14 / 0.92) 100%);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  backdrop-filter: blur(18px) saturate(1.3);
+}
+.sh-menu[open] {
+  display: flex;
+  flex-direction: column;
+}
+.sh-menu::backdrop {
+  background: transparent;
+}
+
+/* The header again, at the same height, with Close where Menu was. */
+.sh-menu-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  height: 65px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--color-line);
+  background: rgb(16 16 20 / 0.94);
+}
+
+.sh-menu-body {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  width: 100%;
+  max-width: 34rem;
+  padding: 18px 16px max(14px, env(safe-area-inset-bottom));
+}
+@media (min-width: 640px) {
+  .sh-menu-bar,
+  .sh-menu-body {
+    padding-inline: 24px;
+  }
+}
+
+/* The pages: dark glass rows; the current one is the ivory selection bar. */
+.sh-items {
+  display: grid;
+  gap: 3px;
+}
+.sh-item {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-height: 70px;
+  padding: 11px 16px 12px;
+  border-radius: 2px;
+  background: rgb(8 4 12 / 0.74);
+  color: var(--color-ivory);
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 140ms var(--ease-broadcast);
+}
+.sh-item-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 2rem;
+  line-height: 0.92;
+  letter-spacing: 0.005em;
+}
+.sh-item-hint {
+  font-size: 0.875rem;
+  line-height: 1.3;
+  color: var(--color-ivory-2);
+}
+.sh-item:active {
+  background: rgb(244 237 226 / 0.16);
+}
+.sh-item[aria-current="page"] {
+  background: var(--color-ivory);
+  color: var(--color-graphite);
+}
+.sh-item[aria-current="page"] .sh-item-hint {
+  color: rgb(16 16 20 / 0.72);
+}
+
+/* The account: the same action as the desktop header. */
+.sh-account {
+  margin-top: 18px;
+}
+.sh-connect {
+  width: 100%;
+  height: 48px;
+  font-size: 1.1rem;
+}
+.sh-me {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 10px 14px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 2px;
+  transition: border-color 140ms var(--ease-broadcast);
+}
+.sh-me-name {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.3rem;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+.sh-me-hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.82rem;
+  color: var(--color-ivory-2);
+}
+
+/* The small print, at the foot of the screen. */
+.sh-more {
+  margin-top: auto;
+  padding-top: 28px;
+}
+.sh-more ul {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 16px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-line);
+}
+.sh-more-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  /* a little wider to tap than it looks */
+  margin-inline: -5px;
+  padding-inline: 5px;
+  font-size: 0.95rem;
+  color: var(--color-ivory-2);
+}
+.sh-more-link[aria-current="page"] {
+  color: var(--color-ivory);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+}
+
+@media (hover: hover) {
+  .sh-prompt:hover {
+    color: #fff;
+  }
+  .sh-prompt:hover .sh-key {
+    background: #fff;
+  }
+  .sh-item:not([aria-current="page"]):hover {
+    background: rgb(244 237 226 / 0.1);
+  }
+  .sh-me:hover {
+    border-color: var(--color-ivory-2);
+  }
+  .sh-more-link:hover {
+    color: var(--color-ivory);
+  }
+}
+
+/* Landscape phones: tighter rows so more of the list fits before it scrolls. */
+@media (max-height: 560px) {
+  .sh-item {
+    min-height: 56px;
+    padding-block: 7px 8px;
+  }
+  .sh-item-name {
+    font-size: 1.7rem;
+  }
+}
+
+/* A quick fade, the list settling in from the bar; closing just fades. */
+@media (prefers-reduced-motion: no-preference) {
+  .sh-menu[open][data-state="open"] {
+    animation: sh-menu-in 180ms var(--ease-broadcast) both;
+  }
+  .sh-menu[data-state="open"] .sh-menu-body {
+    animation: sh-menu-settle 260ms var(--ease-broadcast) both;
+  }
+  .sh-menu[open][data-state="closed"] {
+    animation: sh-menu-out 140ms ease-in both;
+  }
+}
+@keyframes sh-menu-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes sh-menu-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes sh-menu-settle {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+/* Windows high contrast drops backgrounds: keep the key caps and the current page visible. */
+@media (forced-colors: active) {
+  .sh-key {
+    border: 1px solid ButtonText;
+  }
+  .sh-item[aria-current="page"] {
+    outline: 3px solid Highlight;
+    outline-offset: -3px;
+  }
+}
+
+@media print {
+  .sh-bar-actions {
+    display: none;
+  }
+}

@@ -30,7 +30,9 @@ const BIG_STEP = 0.05;
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-const same = (a: readonly CameraMaskBox[], b: readonly CameraMaskBox[]) => JSON.stringify(a) === JSON.stringify(b);
+/** Same boxes in the same order (field order differs between the server's JSON and ours). */
+const same = (a: readonly CameraMaskBox[], b: readonly CameraMaskBox[]) =>
+  a.length === b.length && a.every((x, i) => x.x === b[i]!.x && x.y === b[i]!.y && x.w === b[i]!.w && x.h === b[i]!.h);
 
 function describe(b: CameraMaskBox): string {
   return `from ${pct(b.x)} across and ${pct(b.y)} down, ${pct(b.w)} wide and ${pct(b.h)} tall`;

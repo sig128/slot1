@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
+import { closeMenu, openPrimaryNav } from "./support/nav";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SAMPLE = path.resolve(HERE, "../fixtures/generated/sample-replay.mp4");
@@ -29,8 +30,10 @@ test.describe("SLOT1 journey", () => {
 
   test("On Air is honest about what this deployment can do", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "On Air" })).toHaveAttribute("aria-current", "page");
+    const nav = await openPrimaryNav(page);
+    await expect(nav).toBeVisible();
+    await expect(nav.getByRole("link", { name: "On Air" })).toHaveAttribute("aria-current", "page");
+    await closeMenu(page);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.getByText(/independent and not affiliated with Rockstar Games/)).toBeVisible();
     await noHorizontalOverflow(page);
@@ -118,7 +121,16 @@ test.describe("SLOT1 journey", () => {
     await expect(skip).toBeVisible();
     await page.keyboard.press("Tab");
     await expect(page.getByRole("link", { name: "SLOT1 home" })).toBeFocused();
-    await page.keyboard.press("Tab");
+    const menuButton = page.getByRole("button", { name: "Menu", exact: true });
+    if (await menuButton.isVisible()) {
+      // Phones: past the sign-in link, the Menu button opens the navigation with focus on its first page.
+      await page.keyboard.press("Tab");
+      await page.keyboard.press("Tab");
+      await expect(menuButton).toBeFocused();
+      await page.keyboard.press("Enter");
+    } else {
+      await page.keyboard.press("Tab");
+    }
     const onAir = page.getByRole("link", { name: "On Air" });
     await expect(onAir).toBeFocused();
     // A visible focus ring, not the browser default removed.

@@ -111,6 +111,10 @@ Where the data comes from:
 
 Channels without Twitch (only the demo) fall back to this frame feed in the player when the server has no WebRTC gateway.
 
+### The demo's webcam is hidden from the AI
+
+The demo scene has a placeholder webcam tile in the top left: a silhouette with a "CAM" label and no face (`DEMO_CAMERA_TILE`). The demo source hides it from the AI by default (`DEMO_CAMERA_MASK`, set on every start in `packages/services/src/demo.ts`). That shows "Hide your camera from the AI" at work in **What the AI sees**: the area is black in the analyzed frame and labelled "Hidden by the creator". The demo's video player still shows the tile, because the mask applies only to what SLOT1 analyzes. The tile and the mask sit above every OCR region of the GTA V profile, so the demo's text reading is unaffected; `tests/unit/camera-mask.test.ts` checks this. See [LIVE_VIDEO.md](LIVE_VIDEO.md#hiding-your-webcam-from-the-ai).
+
 ## What was verified
 
 **`tests/integration/demo.test.ts`** (8 tests) runs the real generator publishing to a real nginx-rtmp gateway, with the real hooks, live supervisor and tesseract OCR. It covers:

@@ -4,4 +4,4 @@
 -- Each box is {"x","y","w","h"} as fractions of the picture; at most three boxes.
 ALTER TABLE media_sources ADD COLUMN camera_mask jsonb NOT NULL DEFAULT '[]'::jsonb;
 ALTER TABLE media_sources ADD CONSTRAINT media_sources_camera_mask_check
-  CHECK (jsonb_typeof(camera_mask) = 'array' AND jsonb_array_length(camera_mask) <= 3);
+  CHECK (CASE WHEN jsonb_typeof(camera_mask) = 'array' THEN jsonb_array_length(camera_mask) <= 3 ELSE false END);
