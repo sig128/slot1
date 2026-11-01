@@ -179,7 +179,7 @@
 /* The training line: a subtitle strip, with "GTA VI" in SLOT1's own gold poster type (never the
    game's logo treatment). */
 .gx-train {
-  max-width: 38rem;
+  max-width: 35rem;
   padding: 8px 12px;
   background: rgb(10 5 14 / 0.74);
   color: #e9e1d5;
@@ -187,6 +187,7 @@
   line-height: 1.5;
 }
 .gx-vi {
+  white-space: nowrap;
   font-family: "SLOT1 Intro", "Passion One", Impact, sans-serif;
   font-weight: 900;
   font-size: 1.28em;

@@ -12,7 +12,7 @@ import {
 } from "@slot1/contracts";
 
 const identity = { sourceId: "s1", broadcasterId: "b1", sessionId: "x1", kind: "live_ingest" as const, label: "live" as const };
-const tools = { ffmpeg: "ffmpeg", ffprobe: "ffprobe", timeoutSec: 60 };
+const tools = { ffmpeg: "ffmpeg", ffprobe: "ffprobe", timeoutMs: 60_000 };
 const baseOpts = { readUrl: "rtmp://127.0.0.1/live/abcd?reader=pw", intervalMs: 2000, maxEdge: 1280, queueSize: 4, rollingBuffer: null, ioTimeoutSec: 15 };
 
 describe("camera mask: what creators may save", () => {

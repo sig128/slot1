@@ -1,12 +1,25 @@
 import { z } from "zod";
-import { ASPECT_SIZE, Edl, EdlAspect, edlDurationMs, edlOutputTime } from "./clipper";
+import {
+  ASPECT_SIZE,
+  Edl,
+  EdlAspect,
+  edlDurationMs,
+  edlOutputTime,
+  segmentOutputMs,
+  type AudioClip,
+  type EdlInput,
+  type EdlSegment,
+  type OverlayItem,
+} from "./clipper";
 import { SessionKind, SourceLabel } from "./enums";
 import { formatMediaTime } from "./presentation";
+import { StudioAssetKind } from "./studio-assets";
 
 /**
  * AI clip tools (docs/CLIP_AI.md): ranking a session's best moments, finding the boring parts of
- * an edit, writing social posts and editing on request. Everything a ranking says comes from
- * something SLOT1 measured or read, with its media time; model-written text is labeled as such.
+ * an edit, quick polish (sounds and GTA effects at real moments), writing social posts and editing
+ * on request. Every ranking reason is something SLOT1 measured or read, with its media time;
+ * model-written text is labeled as such, and every change is shown before it's applied.
  */
 
 /* ------------------------------------------------------------------------------------------ */
@@ -22,7 +35,7 @@ export const AudioAnalysisStatus = z.object({
 });
 export type AudioAnalysisStatus = z.infer<typeof AudioAnalysisStatus>;
 
-/** The text model behind "Write my post" and "Edit it for me". */
+/** The text model behind "Write my post", "Edit it for me" and polish refinement. */
 export const TextModelStatus = z.object({
   available: z.boolean(),
   provider: z.string().nullable(),
@@ -33,6 +46,10 @@ export const TextModelStatus = z.object({
   pricesConfigured: z.boolean(),
 });
 export type TextModelStatus = z.infer<typeof TextModelStatus>;
+
+/** Tokens a text-model call used, and its estimated cost when this server has prices set. */
+export const AiUsage = z.object({ inputTokens: z.number(), outputTokens: z.number(), estimatedCostUsd: z.number().nullable() });
+export type AiUsage = z.infer<typeof AiUsage>;
 
 export const ClipAiSession = z.object({
   id: z.string(),
@@ -49,7 +66,12 @@ export const ClipAiSession = z.object({
 });
 export type ClipAiSession = z.infer<typeof ClipAiSession>;
 
-export const ClipAiSessionsResponse = z.object({ sessions: z.array(ClipAiSession), textModel: TextModelStatus });
+export const ClipAiSessionsResponse = z.object({
+  sessions: z.array(ClipAiSession),
+  textModel: TextModelStatus,
+  /** Items in the Studio library (sounds, music, stickers…) the tools can place. */
+  libraryAssets: z.number(),
+});
 export type ClipAiSessionsResponse = z.infer<typeof ClipAiSessionsResponse>;
 
 /* ------------------------------------------------------------------------------------------ */
@@ -71,6 +93,9 @@ export const MomentReason = z.object({
 });
 export type MomentReason = z.infer<typeof MomentReason>;
 
+export const MomentTone = z.enum(["good", "bad", "neutral"]);
+export type MomentTone = z.infer<typeof MomentTone>;
+
 export const MomentCandidate = z.object({
   id: z.string(),
   sessionId: z.string(),
@@ -78,12 +103,14 @@ export const MomentCandidate = z.object({
   endMs: z.number().int(),
   /** The strongest single signal. */
   peakMs: z.number().int(),
-  /** 0–100, relative within SLOT1's own scale; not a measured quality. */
+  /** 0–100 on SLOT1's own scale; a ranking, not a measured quality. */
   score: z.number().int().min(0).max(100),
   /** Score as one to five stars. */
   stars: z.number().int().min(1).max(5),
   title: z.string(),
-  tone: z.enum(["good", "bad", "neutral"]),
+  tone: MomentTone,
+  /** The result text when this is a result screen ("MISSION PASSED", "WASTED"…). */
+  big: z.string().nullable(),
   reasons: z.array(MomentReason),
   /** A frame SLOT1 stored as evidence for the strongest observation, if any. */
   frameUrl: z.string().nullable(),
@@ -103,6 +130,11 @@ export const MomentPick = z.object({
   startMs: z.number().int().min(0),
   endMs: z.number().int().min(1),
   title: z.string().trim().min(1).max(60),
+  /** Media time of the moment itself; GTA effects land here. */
+  peakMs: z.number().int().min(0).nullable().default(null),
+  tone: MomentTone.default("neutral"),
+  /** Result text read on screen, if any. */
+  big: z.string().max(40).nullable().default(null),
 });
 export type MomentPick = z.infer<typeof MomentPick>;
 
@@ -123,38 +155,67 @@ export function scoreStars(score: number): number {
   return Math.max(1, Math.min(5, Math.ceil(Math.max(0, score) / 20)));
 }
 
+const TITLE_MS = 2600;
+const EFFECT_MS = 2400;
+
 /**
- * An edit from chosen moments of ONE session: one segment per moment. Vertical edits show the
- * whole frame over a blurred backdrop (like auto clips); a reel adds a title card per moment.
+ * An edit from chosen moments of ONE session, ready to render. Each moment gets a title on an
+ * overlay track (mission-style for result screens), a GTA effect where a result screen was read
+ * (MISSION PASSED banner or WASTED freeze), and a reel joins its moments with whip transitions.
+ * Vertical edits show the whole frame over a blurred backdrop, like auto clips.
  */
 export function momentsEdl(sessionId: string, picks: MomentPick[], opts: { aspect: EdlAspect; mode: "single" | "reel" }): Edl {
   const sorted = opts.mode === "reel" ? [...picks].sort((a, b) => a.startMs - b.startMs) : picks;
-  const segments = sorted.map((p, i) => ({
+  const segments: EdlInput["segments"] = sorted.map((p, i) => ({
     id: `m${i + 1}`,
     sessionId,
-    runId: null,
     inMs: p.startMs,
     outMs: Math.max(p.endMs, p.startMs + 300),
-    speed: 1 as const,
-    reframe: { x: 0.5, y: 0.5, zoom: 1 },
+    transitionIn: opts.mode === "reel" && i > 0 ? { kind: "whip" as const, durationMs: 250 } : { kind: "cut" as const, durationMs: 0 },
   }));
-  const texts: { id: string; text: string; startMs: number; endMs: number; position: "top"; style: "banner" | "poster" }[] = [];
-  let t = 0;
-  for (const [i, s] of segments.entries()) {
-    const len = s.outMs - s.inMs;
+  const timing = Edl.parse({ version: 1, aspect: opts.aspect, segments });
+  const items: OverlayItem[] = [];
+  const effects: Edl["effects"] = [];
+  for (const [i, p] of sorted.entries()) {
+    const seg = timing.segments[i]!;
+    const start = edlOutputTime(timing, i, seg.inMs);
+    const end = edlOutputTime(timing, i, seg.outMs);
+    const style = p.tone === "good" && p.big ? "mission" : p.tone === "bad" && p.big ? "wasted" : "title-card";
     if (opts.mode === "reel" || i === 0) {
-      texts.push({ id: `t${i + 1}`, text: sorted[i]!.title.slice(0, 90), startMs: t, endMs: t + Math.min(2500, len), position: "top", style: opts.mode === "reel" ? "banner" : "poster" });
+      items.push({
+        type: "text",
+        id: `title${i + 1}`,
+        startMs: start,
+        endMs: Math.min(end, start + TITLE_MS),
+        x: 0.5,
+        y: 0.16,
+        scale: 1,
+        rotation: 0,
+        opacity: 1,
+        keys: [],
+        text: p.title.slice(0, 160),
+        subtext: "",
+        style: opts.mode === "reel" ? "title-card" : style,
+        animation: "pop",
+      });
     }
-    t += len;
+    if (p.big && p.peakMs !== null && p.peakMs >= seg.inMs && p.peakMs < seg.outMs) {
+      const at = edlOutputTime(timing, i, p.peakMs);
+      const kind = p.tone === "bad" ? ("wasted" as const) : ("passed" as const);
+      effects.push({ id: `fx${i + 1}`, kind, startMs: at, endMs: Math.min(end, at + EFFECT_MS), text: p.big.slice(0, 60), amount: 0.5 });
+    }
   }
+  const total = edlDurationMs(timing);
   return Edl.parse({
     version: 1,
     aspect: opts.aspect,
     layout: opts.aspect === "16:9" ? "crop" : "fit",
     segments,
-    texts,
+    overlays: items.length ? [{ id: "titles", name: "Titles", items: items.filter((it) => it.endMs > it.startMs) }] : [],
+    effects: effects.filter((f) => f.endMs > f.startMs),
     fadeInMs: 0,
-    fadeOutMs: Math.min(400, Math.floor(t / 4)),
+    fadeOutMs: Math.min(400, Math.floor(total / 4)),
+    normalize: opts.mode === "reel",
   });
 }
 
@@ -199,13 +260,14 @@ export interface CutResult {
 const MIN_PIECE_MS = 300;
 
 /**
- * Remove source-time ranges from an edit's segments. Pieces shorter than 0.3 s go with the cut;
- * output-timeline items (texts, cover, and any other list with startMs/endMs) move with the
- * cut so they stay on the same picture. Returns an error instead of an invalid edit.
+ * Remove source-time ranges from an edit's segments. Pieces shorter than 0.3 s go with the cut.
+ * Everything placed on the finished timeline (texts, overlays, sounds, effects, captions, volume
+ * keys, cover) moves with the cut so it stays on the same picture; items that fall entirely
+ * inside a cut go with it. Returns an error instead of an invalid edit.
  */
 export function cutRangesFromEdl(edl: Edl, cuts: { segmentId: string; startMs: number; endMs: number }[]): CutResult {
-  const removedOut: [number, number][] = [];
-  const segments: Edl["segments"] = [];
+  const removed: [number, number][] = [];
+  const segments: EdlSegment[] = [];
   const usedIds = new Set(edl.segments.map((s) => s.id));
   for (const [i, seg] of edl.segments.entries()) {
     const mine = cuts
@@ -213,7 +275,6 @@ export function cutRangesFromEdl(edl: Edl, cuts: { segmentId: string; startMs: n
       .map((c) => [Math.max(seg.inMs, c.startMs), Math.min(seg.outMs, c.endMs)] as [number, number])
       .filter(([a, b]) => b > a)
       .sort((a, b) => a[0] - b[0]);
-    // Merge overlaps, then compute the pieces that remain.
     const merged: [number, number][] = [];
     for (const r of mine) {
       const last = merged.at(-1);
@@ -228,12 +289,13 @@ export function cutRangesFromEdl(edl: Edl, cuts: { segmentId: string; startMs: n
     }
     if (cursor < seg.outMs) pieces.push([cursor, seg.outMs]);
     const kept = pieces.filter(([a, b]) => b - a >= MIN_PIECE_MS);
-    // Everything not kept is removed: record it on the old output timeline.
     let pos = seg.inMs;
     for (const [a, b] of [...kept, [seg.outMs, seg.outMs] as [number, number]]) {
-      if (a > pos) removedOut.push([edlOutputTime(edl, i, pos), edlOutputTime(edl, i, a)]);
+      if (a > pos) removed.push([edlOutputTime(edl, i, pos), edlOutputTime(edl, i, a)]);
       pos = Math.max(pos, b);
     }
+    const span = seg.outMs - seg.inMs;
+    const speedAt = (t: number) => (seg.rampTo === null ? seg.speed : Math.round((seg.speed + ((seg.rampTo - seg.speed) * (t - seg.inMs)) / span) * 1000) / 1000);
     kept.forEach(([a, b], n) => {
       let id = seg.id;
       if (n > 0) {
@@ -242,40 +304,169 @@ export function cutRangesFromEdl(edl: Edl, cuts: { segmentId: string; startMs: n
         while (usedIds.has(id));
         usedIds.add(id);
       }
-      segments.push({ ...seg, id, inMs: a, outMs: b });
+      const keys = seg.keys.filter((k) => k.atMs >= a && k.atMs <= b);
+      const nearest = seg.keys.length && !keys.length ? [...seg.keys].sort((x, y) => Math.abs(x.atMs - a) - Math.abs(y.atMs - a))[0]! : null;
+      segments.push({
+        ...seg,
+        id,
+        inMs: a,
+        outMs: b,
+        speed: Math.min(4, Math.max(0.25, speedAt(a))),
+        rampTo: seg.rampTo === null ? null : Math.min(4, Math.max(0.25, speedAt(b))),
+        keys,
+        reframe: nearest ? { x: nearest.x, y: nearest.y, zoom: nearest.zoom } : seg.reframe,
+        transitionIn: n === 0 ? seg.transitionIn : { kind: "cut", durationMs: 0 },
+      });
     });
   }
-  const removedMs = removedOut.reduce((sum, [a, b]) => sum + (b - a), 0);
+  removed.sort((a, b) => a[0] - b[0]);
+  const ranges: [number, number][] = [];
+  for (const r of removed) {
+    const last = ranges.at(-1);
+    if (last && r[0] <= last[1]) last[1] = Math.max(last[1], r[1]);
+    else if (r[1] > r[0]) ranges.push([...r]);
+  }
+  const removedMs = ranges.reduce((sum, [a, b]) => sum + (b - a), 0);
   if (segments.length === 0) return { edl: null, removedMs, error: "That would cut the whole edit" };
   if (segments.length > 20) return { edl: null, removedMs, error: "That would split the edit into more than 20 parts. Cut fewer parts at once" };
 
+  // Transitions can't be longer than the (now shorter) parts they join.
+  segments.forEach((s, i) => {
+    if (i === 0) {
+      s.transitionIn = { kind: "cut", durationMs: 0 };
+      return;
+    }
+    if (s.transitionIn.kind === "cut") return;
+    const limit = Math.floor(Math.min(segmentOutputMs(s), segmentOutputMs(segments[i - 1]!)) - 100);
+    s.transitionIn = limit < 100 ? { kind: "cut", durationMs: 0 } : { ...s.transitionIn, durationMs: Math.min(s.transitionIn.durationMs, limit) };
+  });
+
+  const total = edlDurationMs({ segments });
   const shift = (t: number): number => {
     let out = t;
-    for (const [a, b] of removedOut) {
+    for (const [a, b] of ranges) {
       if (t >= b) out -= b - a;
       else if (t > a) out -= t - a;
     }
-    return Math.max(0, Math.round(out));
+    return Math.max(0, Math.min(total, Math.round(out)));
   };
-  const next: Record<string, unknown> = { ...edl, segments };
-  const total = edlDurationMs({ segments });
-  // Output-timeline items: texts, and any other list of {startMs, endMs} (kept generic on purpose).
-  for (const [key, value] of Object.entries(edl)) {
-    if (!Array.isArray(value) || key === "segments") continue;
-    if (!value.every((v) => v && typeof v === "object" && typeof (v as { startMs?: unknown }).startMs === "number" && typeof (v as { endMs?: unknown }).endMs === "number")) continue;
-    next[key] = (value as { startMs: number; endMs: number }[])
-      .map((v) => ({ ...v, startMs: shift(v.startMs), endMs: Math.min(total, shift(v.endMs)) }))
-      .filter((v) => v.endMs - v.startMs >= 200 && v.startMs < total);
-  }
-  if (typeof edl.coverMs === "number") next.coverMs = Math.min(total, shift(edl.coverMs));
-  if (edl.fadeInMs + edl.fadeOutMs > total) {
-    next.fadeInMs = Math.floor(Math.min(edl.fadeInMs, total / 4));
-    next.fadeOutMs = Math.floor(Math.min(edl.fadeOutMs, total / 4));
+  const span = <T extends { startMs: number; endMs: number }>(v: T): T => ({ ...v, startMs: shift(v.startMs), endMs: shift(v.endMs) });
+  const keysAt = <K extends { atMs: number }>(keys: K[]): K[] => keys.map((k) => ({ ...k, atMs: shift(k.atMs) }));
+  const alive = (v: { startMs: number; endMs: number }) => v.endMs - v.startMs >= 200 && v.startMs < total;
+
+  const next: Edl = {
+    ...edl,
+    segments,
+    texts: edl.texts.map(span).filter(alive),
+    overlays: edl.overlays.map((t) => ({ ...t, items: t.items.map((it) => ({ ...span(it), keys: keysAt(it.keys) })).filter(alive) })),
+    audioTracks: edl.audioTracks.map((t) => ({
+      ...t,
+      clips: t.clips
+        .map((c): AudioClip => {
+          const startMs = shift(c.startMs);
+          const durationMs = Math.max(50, Math.min(c.durationMs, total - startMs));
+          return { ...c, startMs, durationMs, fadeInMs: Math.min(c.fadeInMs, durationMs / 2), fadeOutMs: Math.min(c.fadeOutMs, durationMs / 2), envelope: keysAt(c.envelope) };
+        })
+        .filter((c) => c.startMs < total),
+    })),
+    effects: edl.effects.map(span).filter(alive),
+    captionTrack: {
+      ...edl.captionTrack,
+      cues: edl.captionTrack.cues
+        .map((c) => ({ ...span(c), words: c.words.map(span).filter((w) => w.endMs > w.startMs) }))
+        .filter(alive),
+    },
+    sourceAudio: { ...edl.sourceAudio, envelope: keysAt(edl.sourceAudio.envelope) },
+    coverMs: edl.coverMs === null ? null : shift(edl.coverMs),
+  };
+  if (next.fadeInMs + next.fadeOutMs > total) {
+    next.fadeInMs = Math.floor(Math.min(next.fadeInMs, total / 4));
+    next.fadeOutMs = Math.floor(Math.min(next.fadeOutMs, total / 4));
   }
   const parsed = Edl.safeParse(next);
   if (!parsed.success) return { edl: null, removedMs, error: `The cut edit isn't valid: ${parsed.error.issues[0]?.message ?? "unknown problem"}` };
   return { edl: parsed.data, removedMs, error: null };
 }
+
+/* ------------------------------------------------------------------------------------------ */
+/* Library assets inside an edit                                                              */
+/* ------------------------------------------------------------------------------------------ */
+
+/** A Studio library item a tool placed, with a time on the finished edit and a preview link. */
+export const PlacedAsset = z.object({
+  assetId: z.string(),
+  name: z.string(),
+  kind: StudioAssetKind,
+  atMs: z.number().int().nullable(),
+  previewUrl: z.string().nullable(),
+  /** Why it was placed there, e.g. "MISSION PASSED read on screen". */
+  reason: z.string().nullable(),
+});
+export type PlacedAsset = z.infer<typeof PlacedAsset>;
+
+/** Every Studio library item an edit uses: images on overlay tracks and clips on audio tracks. */
+export function edlLibraryRefs(edl: Edl): { assetId: string; atMs: number; where: "overlay" | "audio" }[] {
+  const out: { assetId: string; atMs: number; where: "overlay" | "audio" }[] = [];
+  for (const t of edl.overlays) for (const it of t.items) if (it.type === "image" && it.source.kind === "library") out.push({ assetId: it.source.assetId, atMs: it.startMs, where: "overlay" });
+  for (const t of edl.audioTracks) for (const c of t.clips) if (c.source.kind === "library") out.push({ assetId: c.source.assetId, atMs: c.startMs, where: "audio" });
+  return out;
+}
+
+/**
+ * Remove library items that don't exist and uploaded files the edit didn't already use, so a
+ * proposal can only place real files. Returns the cleaned edit and what was removed.
+ */
+export function stripUnknownAssets(edl: Edl, knownLibrary: ReadonlySet<string>, allowedUploads: ReadonlySet<string>): { edl: Edl; removed: string[] } {
+  const removed: string[] = [];
+  const ok = (src: { kind: "library" | "upload"; assetId: string }) => {
+    const good = src.kind === "library" ? knownLibrary.has(src.assetId) : allowedUploads.has(src.assetId);
+    if (!good) removed.push(src.kind === "library" ? `library item “${src.assetId}”` : "an uploaded file the edit didn't use");
+    return good;
+  };
+  const cleaned: Edl = {
+    ...edl,
+    overlays: edl.overlays.map((t) => ({ ...t, items: t.items.filter((it) => it.type !== "image" || ok(it.source)) })),
+    audioTracks: edl.audioTracks.map((t) => ({ ...t, clips: t.clips.filter((c) => ok(c.source)) })),
+  };
+  return { edl: cleaned, removed };
+}
+
+/** Uploaded files (by id) an edit already uses. */
+export function edlUploadIds(edl: Edl): Set<string> {
+  const ids = new Set<string>();
+  for (const t of edl.overlays) for (const it of t.items) if (it.type === "image" && it.source.kind === "upload") ids.add(it.source.assetId);
+  for (const t of edl.audioTracks) for (const c of t.clips) if (c.source.kind === "upload") ids.add(c.source.assetId);
+  return ids;
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Quick polish: sounds and GTA effects at real moments                                       */
+/* ------------------------------------------------------------------------------------------ */
+
+export const PolishInput = z.object({
+  edl: Edl,
+  /** Sound effects at the clip's moments and a whoosh on each cut. */
+  sounds: z.boolean().default(true),
+  /** A music bed under the whole clip (ducked under voices). */
+  music: z.boolean().default(false),
+  /** WASTED / MISSION PASSED effects and punch-ins at real moments, flash transitions between parts. */
+  effects: z.boolean().default(false),
+  /** Let the text model pick and time the sounds (needs an AI key). */
+  refine: z.boolean().default(false),
+});
+export type PolishInput = z.infer<typeof PolishInput>;
+
+export const PolishResponse = z.object({
+  edl: Edl,
+  changes: z.array(z.string()),
+  placed: z.array(PlacedAsset),
+  /** What couldn't be done, e.g. no sounds in the library yet. */
+  note: z.string().nullable(),
+  /** True when the text model chose the sounds. */
+  usedAi: z.boolean(),
+  usage: AiUsage.nullable(),
+});
+export type PolishResponse = z.infer<typeof PolishResponse>;
 
 /* ------------------------------------------------------------------------------------------ */
 /* Write my post                                                                              */
@@ -305,9 +496,6 @@ export const PlatformPost = z.object({
 });
 export type PlatformPost = z.infer<typeof PlatformPost>;
 
-export const AiUsage = z.object({ inputTokens: z.number(), outputTokens: z.number(), estimatedCostUsd: z.number().nullable() });
-export type AiUsage = z.infer<typeof AiUsage>;
-
 export const WritePostResponse = z.object({
   posts: z.array(PlatformPost),
   /** What the model was given. */
@@ -331,76 +519,136 @@ export const EditForMeResponse = z.object({
   /** The model's own one-line summary (AI-written). */
   summary: z.string(),
   edl: Edl,
-  /** What actually changed, computed by SLOT1 from the two edits (not written by the model). */
+  /** What actually changes, computed by SLOT1 from the two edits (not written by the model). */
   changes: z.array(z.string()),
+  /** Library items the proposal adds, with previews. */
+  placed: z.array(PlacedAsset),
+  /** Things SLOT1 removed from the proposal because they don't exist (unknown library ids…). */
+  stripped: z.array(z.string()),
   unchanged: z.boolean(),
   model: z.string(),
   usage: AiUsage,
 });
 export type EditForMeResponse = z.infer<typeof EditForMeResponse>;
 
+/* ------------------------------------------------------------------------------------------ */
+/* Readable diff                                                                              */
+/* ------------------------------------------------------------------------------------------ */
+
 const ASPECT_WORD: Record<string, string> = { "9:16": "vertical", "16:9": "widescreen", "1:1": "square" };
-const t1 = (ms: number) => {
-  const tenths = Math.round(ms / 100) % 10;
-  return `${formatMediaTime(ms)}.${tenths}`;
-};
-const human = (key: string) => key.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/Ms$/, "").toLowerCase();
+const EFFECT_WORD: Record<string, string> = { wasted: "WASTED", passed: "MISSION PASSED", punch: "punch-in zoom", shake: "camera shake", flash: "flash", glitch: "glitch" };
+const LAYOUT_WORD: Record<string, string> = { crop: "Fills the frame (crops the sides)", fit: "Shows the whole frame over a blurred backdrop", split: "Facecam panel and gameplay stacked" };
+
+/** m:ss.t */
+export function clipTime(ms: number): string {
+  return `${formatMediaTime(ms)}.${Math.floor((Math.max(0, ms) % 1000) / 100)}`;
+}
+const human = (key: string) => key.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/ ms$/i, "").toLowerCase();
+const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 /**
  * What changed between two edits, in plain sentences. Computed, never model-written, so the
- * creator sees exactly what applying a proposal does.
+ * creator sees exactly what applying a proposal does. `assetName` turns library ids into names.
  */
-export function describeEdlChanges(before: Edl, after: Edl): string[] {
+export function describeEdlChanges(before: Edl, after: Edl, assetName: (id: string) => string | null = () => null): string[] {
   const out: string[] = [];
+  const named = (src: { kind: string; assetId: string }) => (src.kind === "library" ? `“${assetName(src.assetId) ?? src.assetId}”` : "an uploaded file");
   const lenA = edlDurationMs(before);
   const lenB = edlDurationMs(after);
-  if (Math.abs(lenA - lenB) >= 100) out.push(`Length ${t1(lenA)} → ${t1(lenB)}`);
-  if (before.aspect !== after.aspect) {
-    out.push(`Format ${ASPECT_WORD[before.aspect] ?? before.aspect} → ${ASPECT_WORD[after.aspect] ?? after.aspect} (${ASPECT_SIZE[after.aspect]?.label ?? after.aspect})`);
-  }
-  if (before.layout !== after.layout) out.push(after.layout === "fit" ? "Shows the whole frame over a blurred backdrop" : "Fills the frame (crops the sides)");
+  if (Math.abs(lenA - lenB) >= 100) out.push(`Length ${clipTime(lenA)} → ${clipTime(lenB)}`);
+  if (before.aspect !== after.aspect) out.push(`Format ${ASPECT_WORD[before.aspect]} → ${ASPECT_WORD[after.aspect]} (${ASPECT_SIZE[after.aspect].label})`);
+  if (before.layout !== after.layout) out.push(LAYOUT_WORD[after.layout] ?? `Layout ${after.layout}`);
+  else if (after.layout === "split" && !sameJson(before.split, after.split)) out.push("Moves the facecam panel");
 
-  const oldById = new Map(before.segments.map((s, i) => [s.id, { s, i }]));
+  // Main track.
+  const oldSeg = new Map(before.segments.map((s) => [s.id, s]));
   const newIds = new Set(after.segments.map((s) => s.id));
   for (const [i, s] of after.segments.entries()) {
-    const prev = oldById.get(s.id);
-    const range = `${t1(s.inMs)}–${t1(s.outMs)}`;
+    const prev = oldSeg.get(s.id);
+    const n = i + 1;
     if (!prev) {
-      out.push(`Adds part ${i + 1}: ${range}${s.speed !== 1 ? ` at ${s.speed}×` : ""}`);
+      out.push(`Adds part ${n}: ${clipTime(s.inMs)}–${clipTime(s.outMs)}${s.speed !== 1 ? ` at ${s.speed}×` : ""}`);
       continue;
     }
-    if (prev.s.inMs !== s.inMs || prev.s.outMs !== s.outMs) out.push(`Part ${i + 1} now ${range} (was ${t1(prev.s.inMs)}–${t1(prev.s.outMs)})`);
-    if (prev.s.speed !== s.speed) out.push(`Part ${i + 1} speed ${prev.s.speed}× → ${s.speed}×`);
-    if (JSON.stringify(prev.s.reframe) !== JSON.stringify(s.reframe)) out.push(`Part ${i + 1} framing changes`);
-    if (prev.s.sessionId !== s.sessionId) out.push(`Part ${i + 1} uses a different session`);
+    if (prev.inMs !== s.inMs || prev.outMs !== s.outMs) out.push(`Part ${n} now ${clipTime(s.inMs)}–${clipTime(s.outMs)} (was ${clipTime(prev.inMs)}–${clipTime(prev.outMs)})`);
+    if (prev.speed !== s.speed || prev.rampTo !== s.rampTo) out.push(s.rampTo !== null ? `Part ${n} ramps ${s.speed}× → ${s.rampTo}×` : `Part ${n} plays at ${s.speed}×`);
+    if (!sameJson(prev.reframe, s.reframe) || !sameJson(prev.keys, s.keys)) out.push(s.keys.length ? `Part ${n} gets ${s.keys.length} pan and zoom keyframes` : `Part ${n} framing changes`);
+    if (prev.volume !== s.volume) out.push(`Part ${n} volume ${Math.round(prev.volume * 100)}% → ${Math.round(s.volume * 100)}%`);
+    if (i > 0 && !sameJson(prev.transitionIn, s.transitionIn)) out.push(s.transitionIn.kind === "cut" ? `Part ${n} starts with a hard cut` : `Part ${n} starts with a ${s.transitionIn.kind} (${clipTime(s.transitionIn.durationMs)})`);
+    if (prev.sessionId !== s.sessionId) out.push(`Part ${n} uses a different session`);
   }
-  for (const s of before.segments) if (!newIds.has(s.id)) out.push(`Removes ${t1(s.inMs)}–${t1(s.outMs)}`);
-  const keptOrder = after.segments.map((s) => s.id).filter((id) => oldById.has(id));
+  for (const s of before.segments) if (!newIds.has(s.id)) out.push(`Removes ${clipTime(s.inMs)}–${clipTime(s.outMs)}`);
+  const keptOrder = after.segments.map((s) => s.id).filter((id) => oldSeg.has(id));
   const oldOrder = before.segments.map((s) => s.id).filter((id) => newIds.has(id));
   if (keptOrder.join("|") !== oldOrder.join("|")) out.push("Reorders the parts");
 
+  // Legacy texts.
   const oldTexts = new Map(before.texts.map((x) => [x.id, x]));
   const newTextIds = new Set(after.texts.map((x) => x.id));
   for (const x of after.texts) {
     const prev = oldTexts.get(x.id);
-    if (!prev) out.push(`Adds text “${x.text}” at ${t1(x.startMs)}`);
+    if (!prev) out.push(`Adds text “${x.text}” at ${clipTime(x.startMs)}`);
     else if (prev.text !== x.text) out.push(`Text “${prev.text}” → “${x.text}”`);
-    else if (prev.startMs !== x.startMs || prev.endMs !== x.endMs || prev.position !== x.position || prev.style !== x.style) out.push(`Moves or restyles text “${x.text}”`);
+    else if (!sameJson(prev, x)) out.push(`Moves or restyles text “${x.text}”`);
   }
   for (const x of before.texts) if (!newTextIds.has(x.id)) out.push(`Removes text “${x.text}”`);
 
-  if (before.captions !== after.captions) out.push(after.captions ? "Turns captions on" : "Turns captions off");
-  if (before.fadeInMs !== after.fadeInMs) out.push(`Fade in ${t1(before.fadeInMs)} → ${t1(after.fadeInMs)}`);
-  if (before.fadeOutMs !== after.fadeOutMs) out.push(`Fade out ${t1(before.fadeOutMs)} → ${t1(after.fadeOutMs)}`);
-  if (before.volume !== after.volume) out.push(`Volume ${Math.round(before.volume * 100)}% → ${Math.round(after.volume * 100)}%`);
-  if (before.coverMs !== after.coverMs) out.push(after.coverMs === null ? "Clears the cover frame" : `Cover frame at ${t1(after.coverMs)}`);
+  // Overlays.
+  const itemLabel = (it: OverlayItem) => (it.type === "text" ? `text “${it.text}”` : it.type === "image" ? named(it.source) : "picture-in-picture");
+  const oldItems = new Map(before.overlays.flatMap((t) => t.items.map((it) => [it.id, it] as const)));
+  const newItems = new Map(after.overlays.flatMap((t) => t.items.map((it) => [it.id, it] as const)));
+  for (const [id, it] of newItems) {
+    const prev = oldItems.get(id);
+    if (!prev) out.push(`Adds ${itemLabel(it)} at ${clipTime(it.startMs)}`);
+    else if (!sameJson(prev, it)) out.push(prev.type === "text" && it.type === "text" && prev.text !== it.text ? `Text “${prev.text}” → “${it.text}”` : `Moves or restyles ${itemLabel(it)}`);
+  }
+  for (const [id, it] of oldItems) if (!newItems.has(id)) out.push(`Removes ${itemLabel(it)}`);
+
+  // Audio.
+  const oldTracks = new Set(before.audioTracks.map((t) => t.id));
+  for (const t of after.audioTracks) if (!oldTracks.has(t.id)) out.push(`Adds the audio track “${t.name}”`);
+  const oldClips = new Map(before.audioTracks.flatMap((t) => t.clips.map((c) => [c.id, c] as const)));
+  const newClips = new Map(after.audioTracks.flatMap((t) => t.clips.map((c) => [c.id, c] as const)));
+  for (const [id, c] of newClips) {
+    const prev = oldClips.get(id);
+    if (!prev) out.push(`Adds sound ${named(c.source)} at ${clipTime(c.startMs)}${c.loop ? " (looped)" : ""}`);
+    else if (!sameJson(prev, c)) out.push(`Changes sound ${named(c.source)}`);
+  }
+  for (const [id, c] of oldClips) if (!newClips.has(id)) out.push(`Removes sound ${named(c.source)}`);
+  const newTrackIds = new Set(after.audioTracks.map((t) => t.id));
+  for (const t of before.audioTracks) if (!newTrackIds.has(t.id)) out.push(`Removes the audio track “${t.name}”`);
+
+  // Effects.
+  const oldFx = new Map(before.effects.map((f) => [f.id, f]));
+  const newFx = new Map(after.effects.map((f) => [f.id, f]));
+  for (const [id, f] of newFx) {
+    const prev = oldFx.get(id);
+    if (!prev) out.push(`Adds ${EFFECT_WORD[f.kind] ?? f.kind} at ${clipTime(f.startMs)}`);
+    else if (!sameJson(prev, f)) out.push(`Changes the ${EFFECT_WORD[f.kind] ?? f.kind} effect`);
+  }
+  for (const [id, f] of oldFx) if (!newFx.has(id)) out.push(`Removes ${EFFECT_WORD[f.kind] ?? f.kind}`);
+
+  // Whole-edit settings.
+  if (before.grade.preset !== after.grade.preset) out.push(after.grade.preset === "none" ? "Removes the colour look" : `Colour look: ${after.grade.preset.replace("-", " ")}`);
+  else if (!sameJson(before.grade, after.grade)) out.push("Adjusts the colour");
+  if (before.captionTrack.cues.length !== after.captionTrack.cues.length) out.push(`Caption lines ${before.captionTrack.cues.length} → ${after.captionTrack.cues.length}`);
+  else if (!sameJson(before.captionTrack, after.captionTrack)) out.push("Restyles the captions");
+  if (before.captions !== after.captions) out.push(after.captions ? "Turns transcript captions on" : "Turns transcript captions off");
+  if (before.normalize !== after.normalize) out.push(after.normalize ? "Normalizes loudness" : "Stops normalizing loudness");
+  if (before.fadeInMs !== after.fadeInMs) out.push(`Fade in ${clipTime(before.fadeInMs)} → ${clipTime(after.fadeInMs)}`);
+  if (before.fadeOutMs !== after.fadeOutMs) out.push(`Fade out ${clipTime(before.fadeOutMs)} → ${clipTime(after.fadeOutMs)}`);
+  if (before.volume !== after.volume) out.push(`Game audio ${Math.round(before.volume * 100)}% → ${Math.round(after.volume * 100)}%`);
+  if (!sameJson(before.sourceAudio, after.sourceAudio)) out.push("Changes how the game audio is processed");
+  if (before.coverMs !== after.coverMs) out.push(after.coverMs === null ? "Clears the cover frame" : `Cover frame at ${clipTime(after.coverMs)}`);
 
   // Anything the editor gains later is still reported, generically.
-  const handled = new Set(["version", "aspect", "layout", "segments", "texts", "captions", "fadeInMs", "fadeOutMs", "volume", "coverMs"]);
-  const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
-  for (const k of keys) {
+  const handled = new Set([
+    "version", "aspect", "layout", "split", "segments", "texts", "captions", "fadeInMs", "fadeOutMs", "volume", "coverMs",
+    "mainTrack", "sourceAudio", "overlays", "audioTracks", "effects", "grade", "captionTrack", "normalize",
+  ]);
+  for (const k of new Set([...Object.keys(before), ...Object.keys(after)])) {
     if (handled.has(k)) continue;
-    if (JSON.stringify((before as Record<string, unknown>)[k]) !== JSON.stringify((after as Record<string, unknown>)[k])) out.push(`Changes ${human(k)}`);
+    if (!sameJson((before as Record<string, unknown>)[k], (after as Record<string, unknown>)[k])) out.push(`Changes ${human(k)}`);
   }
   return out;
 }

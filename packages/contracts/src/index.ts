@@ -15,3 +15,4 @@ export * from "./seo";
 export * from "./aiview";
 export * from "./camera-mask";
 export * from "./studio-assets";
+export * from "./clip-ai";

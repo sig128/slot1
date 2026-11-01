@@ -8,7 +8,7 @@ import { FAQ, FEATURES } from "@/lib/home-content";
 const KNOWS: { cls: EvidenceClass; meaning: string }[] = [
   { cls: "visible_text", meaning: "Read from text on screen, like a mission title." },
   { cls: "visible", meaning: "Seen in the frames themselves." },
-  { cls: "inferred", meaning: "Worked out from several frames, and labeled as a guess." },
+  { cls: "inferred", meaning: "Worked out from several frames, and marked as a conclusion." },
   { cls: "heard", meaning: "From the stream’s audio, when transcription is on." },
   { cls: "measured", meaning: "Measured from the video: cuts, black screens, coverage." },
   { cls: "platform", meaning: "Reported by Twitch, like the title or category." },
