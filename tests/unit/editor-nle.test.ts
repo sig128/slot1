@@ -118,7 +118,7 @@ describe("tracks", () => {
     expect(e.mainTrack.locked).toBe(true);
     expect(isTrackLocked(e, "a1")).toBe(true);
     e = removeTrack(e, a.key);
-    expect(e.overlays.map((o) => o.name)).toEqual(["Video 2"]);
+    expect(e.overlays.map((o) => o.name)).toEqual(["Video 3"]);
     expect(removeTrack(e, "v1")).toBe(e);
   });
 

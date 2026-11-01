@@ -158,6 +158,13 @@ export function ClipEditor({ initial }: { initial: ProjectView }) {
   const tlBox = useRef<HTMLDivElement>(null);
   const seqPlayhead = useRef<Record<string, number>>({});
   const pps = clamp(layout.pps, MIN_PPS, MAX_PPS);
+  const [viewW, setViewW] = useState(1440);
+  useEffect(() => {
+    const on = () => setViewW(window.innerWidth);
+    on();
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
   const setPps = useCallback((v: number) => setLayout((l) => ({ ...l, pps: clamp(v, MIN_PPS, MAX_PPS) })), [setLayout]);
 
   const sources = useMemo(() => {
@@ -1118,6 +1125,11 @@ export function ClipEditor({ initial }: { initial: ProjectView }) {
     );
   };
   const zoomPos = Math.log(pps / MIN_PPS) / Math.log(MAX_PPS / MIN_PPS);
+  // The viewer keeps at least 460 px: the side panels give way on narrower screens.
+  const room = Math.max(440, viewW - 460 - 12);
+  const sideScale = Math.min(1, room / (layout.bin + layout.insp));
+  const binW = Math.max(200, Math.round(layout.bin * sideScale));
+  const inspW = Math.max(240, Math.round(layout.insp * sideScale));
 
   return (
     <EditorContext.Provider value={ctx}>
@@ -1182,7 +1194,7 @@ export function ClipEditor({ initial }: { initial: ProjectView }) {
         </p>
 
         <div className="nle-work" style={{ gridTemplateRows: `minmax(0,1fr) 6px ${layout.tl}px` }}>
-          <div className="nle-top" style={{ gridTemplateColumns: `${layout.bin}px 6px minmax(0,1fr) 6px ${layout.insp}px` }}>
+          <div className="nle-top" style={{ gridTemplateColumns: `${binW}px 6px minmax(0,1fr) 6px ${inspW}px` }}>
             <MediaBin
               projectSources={sources}
               inEdit={inEdit}

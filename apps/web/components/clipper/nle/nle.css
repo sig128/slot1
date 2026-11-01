@@ -133,6 +133,7 @@ body:has(.nle-root) {
   min-width: 4px;
 }
 .nle-alert {
+  grid-row: 2;
   margin: 0;
   padding: 6px 12px;
   font-size: 12px;
@@ -351,12 +352,14 @@ body:has(.nle-root) {
 /* ------------------------------------------ layout ----------------------------------------- */
 
 .nle-work {
+  grid-row: 3;
   display: grid;
   min-height: 0;
   min-width: 0;
 }
 .nle-top {
   display: grid;
+  grid-template-rows: minmax(0, 1fr);
   min-height: 0;
   min-width: 0;
 }
@@ -606,12 +609,11 @@ body:has(.nle-root) {
 }
 .nle-transport {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
   min-width: 0;
   padding: 5px 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
   background: var(--nle-panel);
   border-top: 1px solid var(--nle-line);
 }
@@ -764,6 +766,14 @@ body:has(.nle-root) {
   padding: 3px 7px !important;
   font-size: 12px !important;
   border-radius: 3px !important;
+}
+.nle-panels .font-display,
+.nle-panels .poster-title {
+  font-family: var(--font-sans) !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+  line-height: 1.3 !important;
 }
 .nle-panels p,
 .nle-panels li,

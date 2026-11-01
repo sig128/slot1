@@ -405,7 +405,7 @@ const XFADE: Record<Exclude<TransitionKind, "cut">, string> = {
 };
 
 /** Ref key for `refs`: one per library item or upload. */
-export const refKey = (r: MediaRef) => `${r.kind}:${r.assetId}`;
+export const refKey = (r: MediaRef) => (r.kind === "session" ? `session:${r.sessionId}` : `${r.kind}:${r.assetId}`);
 
 /** Library items, uploads and picture-in-picture sources an edit needs resolved before rendering. */
 export function edlMediaNeeds(edl: Edl): { refs: MediaRef[]; pips: { itemId: string; sessionId: string }[] } {

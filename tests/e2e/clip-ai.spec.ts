@@ -69,7 +69,8 @@ test.describe("AI clip tools", () => {
     await expect(page.getByText("AI writing off")).toBeVisible();
     await shot(page, "clip-ai-empty");
 
-    await page.getByRole("button", { name: "Add a video source" }).click();
+    // The empty state's own button (the readiness route offers the same action when ingest is set up).
+    await page.getByRole("tabpanel", { name: "AI clip tools" }).getByRole("button", { name: "Add a video source" }).click();
     await page.setInputFiles("#up-file", video);
     await page.getByLabel("Title").fill(`Docks run ${project}`);
     await page.getByLabel(/I own this recording/).check();

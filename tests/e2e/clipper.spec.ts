@@ -114,13 +114,13 @@ test.describe("creator clipper", () => {
     await expect(page.getByRole("slider", { name: "Out point of the selected segment" })).toHaveAttribute("aria-valuenow", String(outMs + 1000));
 
     // The multi-track timeline: split at the playhead, then undo and redo it.
-    await page.getByRole("radio", { name: "Edit" }).click();
+    await page.getByRole("radio", { name: "Program" }).click();
     const timeline = page.getByRole("group", { name: "Edit timeline" });
     await expect(timeline.getByRole("button", { name: /^Segment 1,/ })).toBeVisible();
     await page.getByRole("slider", { name: "Playhead in the edit" }).focus();
     await page.keyboard.press("Shift+ArrowRight");
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-    await page.keyboard.press("s");
+    await page.keyboard.press("Control+k");
     await expect(timeline.getByRole("button", { name: /^Segment 2,/ })).toBeVisible();
     await expect(page.getByRole("region", { name: "Segments" }).getByRole("button", { name: /Segment 2/ })).toBeVisible();
     await page.getByRole("button", { name: "Undo", exact: true }).click();

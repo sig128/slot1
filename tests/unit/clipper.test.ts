@@ -27,8 +27,8 @@ describe("edit decision lists", () => {
     expect(bad({})).toBe(true);
     expect(bad({ segments: [] })).toBe(false);
     expect(bad({ segments: [seg("a", 0, 200)] })).toBe(false); // shorter than 0.3 s
-    expect(bad({ segments: [seg("a", 0, 6 * 60_000)] })).toBe(false); // longer than 5 min
-    expect(bad({ segments: [seg("a", 0, 240_000), seg("b", 0, 240_000), seg("c", 0, 240_000)] })).toBe(false); // edit over 10 min
+    expect(bad({ segments: [seg("a", 0, 31 * 60_000)] })).toBe(false); // longer than 30 min
+    expect(bad({ segments: [seg("a", 0, 16 * 60_000), seg("b", 0, 16 * 60_000)] })).toBe(false); // edit over 30 min
     expect(bad({ segments: [seg("a", 0, 5000), seg("a", 6000, 9000)] })).toBe(false); // duplicate ids
     expect(bad({ segments: [seg("a", 0, 5000, { speed: 5 })] })).toBe(false); // beyond 4×
     expect(bad({ segments: [seg("a", 0, 5000, { reframe: { x: 0.5, y: 0.5, zoom: 5 } })] })).toBe(false);

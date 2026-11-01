@@ -275,7 +275,7 @@ describe("pro clip editor", () => {
     expect(r.status).toBe(409);
     expect(r.json().error.message).toContain("TRANSCRIPTION_PROVIDER");
     expect(r.json().error.requirement).toContain("TRANSCRIPTION_MODEL");
-    expect((await creator.get(`/api/projects/${projectId}/captions`)).json()).toEqual({ status: "none", error: null, cues: [] });
+    expect((await creator.get(`/api/projects/${projectId}/captions`)).json()).toEqual({ status: "none", error: null, cues: [], sequenceId: "main" });
   });
 
   it("deletes uploaded files for good", async () => {

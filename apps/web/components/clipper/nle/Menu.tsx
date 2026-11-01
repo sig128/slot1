@@ -109,10 +109,24 @@ export function ContextMenu({ menu, onClose }: { menu: MenuState | null; onClose
 /** A small modal dialog with a title; Escape closes it and focus goes back where it was. */
 export function Dialog({ title, onClose, children, className = "", labelledBy }: { title: string; onClose: () => void; children: ReactNode; className?: string; labelledBy?: string }) {
   const ref = useRef<HTMLDivElement>(null);
+  const close = useRef(onClose);
+  useEffect(() => {
+    close.current = onClose;
+  });
   useEffect(() => {
     const before = document.activeElement as HTMLElement | null;
     requestAnimationFrame(() => ref.current?.querySelector<HTMLElement>("[autofocus], button, [href], input, select, textarea")?.focus());
-    return () => before?.focus?.();
+    // Escape closes it even when focus fell out (a button that became disabled, say).
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || document.querySelector(".nle-menu")) return;
+      e.stopPropagation();
+      close.current();
+    };
+    window.addEventListener("keydown", esc, true);
+    return () => {
+      window.removeEventListener("keydown", esc, true);
+      before?.focus?.();
+    };
   }, []);
   const id = labelledBy ?? `dlg-${title.replace(/\W+/g, "-").toLowerCase()}`;
   return (
@@ -124,10 +138,6 @@ export function Dialog({ title, onClose, children, className = "", labelledBy }:
         aria-labelledby={id}
         className={`nle-dialog ${className}`}
         onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            e.stopPropagation();
-            onClose();
-          }
           if (e.key !== "Tab") return;
           const f = [...(ref.current?.querySelectorAll<HTMLElement>("button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex='0']") ?? [])];
           if (f.length === 0) return;

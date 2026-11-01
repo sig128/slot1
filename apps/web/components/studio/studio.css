@@ -319,21 +319,30 @@
   margin-top: 10px;
   justify-self: start;
 }
-/* Phones: only the next step opens up; the others stay one compact line each. */
+/*
+ * Phones: the next step opens up, and so does any step with something to do. The rest stay one
+ * compact line each; their detail is still read out by screen readers.
+ */
 @media (max-width: 899px) {
-  .st-step:not([data-current]) {
+  .st-step:not([data-current]):not(:has(> .st-step-action)) {
     padding-block: 9px;
     align-items: center;
   }
-  .st-step:not([data-current]) .st-step-num {
+  .st-step:not([data-current]):not(:has(> .st-step-action)) .st-step-num {
     grid-row: auto;
     width: 26px;
     height: 26px;
     font-size: 0.92rem;
   }
-  .st-step:not([data-current]) .st-step-detail,
-  .st-step:not([data-current]) .st-step-action {
-    display: none;
+  .st-step:not([data-current]):not(:has(> .st-step-action)) .st-step-detail {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }
 

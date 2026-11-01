@@ -29,7 +29,7 @@ export function ExportDialog({ title, renders, onRenders, onClose, busy }: { tit
       </div>
       <nav aria-label="Export sections" className="nle-pause-tabs">
         {SECTIONS.map((s) => (
-          <button key={s} type="button" aria-current={at === s ? "true" : undefined} onClick={() => go(s)}>
+          <button key={s} type="button" aria-label={`Go to ${s}`} aria-current={at === s ? "true" : undefined} onClick={() => go(s)}>
             {s}
             {s === "Renders" && busy > 0 && <span className="nle-pause-badge">{busy}</span>}
           </button>

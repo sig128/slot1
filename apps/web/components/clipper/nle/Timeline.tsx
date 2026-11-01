@@ -326,6 +326,8 @@ export function Timeline(p: Props) {
 
   const onBlockDown = (r: TimelineRef, e: React.PointerEvent, span: { startMs: number; endMs: number }, locked: boolean, edge: "start" | "end" | null) => {
     if (e.button !== 0) return;
+    // Keys go to the timeline after a click on it (not to a text field still focused).
+    (e.currentTarget as HTMLElement).closest<HTMLElement>("[data-ref]")?.focus({ preventScroll: true });
     const tool = p.tool;
     if (tool === "hand") return startPan(e);
     if (tool === "zoom") {
@@ -472,6 +474,8 @@ export function Timeline(p: Props) {
   /** Empty lane: click seeks and clears the selection, a drag draws a selection box. */
   const onLaneDown = (t: TrackInfo, e: React.PointerEvent) => {
     if (e.target !== e.currentTarget) return;
+    const ae = document.activeElement as HTMLElement | null;
+    if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.tagName === "SELECT" || ae.isContentEditable)) ae.blur();
     if (e.button === 1 || p.tool === "hand") return startPan(e);
     if (e.button !== 0) return;
     if (p.tool === "zoom") {
@@ -856,6 +860,7 @@ export function Timeline(p: Props) {
   const scrub = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
     e.preventDefault();
+    (e.currentTarget as HTMLElement).focus({ preventScroll: true });
     p.onSeek(Math.min(total, msAt(e.clientX)));
     const target = e.currentTarget as HTMLElement;
     target.setPointerCapture(e.pointerId);

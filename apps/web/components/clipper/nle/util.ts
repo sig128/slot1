@@ -2,15 +2,13 @@
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
-/** Timecode HH:MM:SS:FF (hours only when needed), at the edit's frame rate. */
+/** Timecode HH:MM:SS:FF at the edit's frame rate. */
 export function timecode(ms: number, fps = 30): string {
   const totalFrames = Math.max(0, Math.round((ms / 1000) * fps));
   const f = totalFrames % fps;
   const s = Math.floor(totalFrames / fps);
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
   const p = (n: number) => String(n).padStart(2, "0");
-  return `${h > 0 ? `${p(h)}:` : ""}${p(m)}:${p(s % 60)}:${p(f)}`;
+  return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}:${p(f)}`;
 }
 
 /** Ruler label: frames only when zoomed in that far. */

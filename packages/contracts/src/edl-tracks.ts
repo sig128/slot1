@@ -104,8 +104,8 @@ export function isTrackLocked(edl: Edl, key: TrackKey): boolean {
   return false;
 }
 
-const nextName = (prefix: string, taken: string[]) => {
-  for (let n = 1; ; n++) if (!taken.includes(`${prefix} ${n}`)) return `${prefix} ${n}`;
+const nextName = (prefix: string, taken: string[], from = 1) => {
+  for (let n = from; ; n++) if (!taken.includes(`${prefix} ${n}`)) return `${prefix} ${n}`;
 };
 
 /** Add a track: video and text tracks go on top of the overlay stack, audio tracks at the bottom. */
@@ -119,7 +119,8 @@ export function addTrack(edl: Edl, kind: "video" | "text" | "audio", audioKind: 
   }
   if (edl.overlays.length >= EDL_LIMITS.overlayTracks) return null;
   const id = edlId("o");
-  const name = nextName(kind === "text" ? "Text" : "Video", edl.overlays.map((t) => t.name));
+  // Video tracks start at 2: V1 is the main track.
+  const name = nextName(kind === "text" ? "Text" : "Video", edl.overlays.map((t) => t.name), kind === "text" ? 1 : 2);
   const track: OverlayTrack = { id, name, kind, hidden: false, locked: false, items: [] };
   return { edl: { ...edl, overlays: [...edl.overlays, track] }, key: `ov:${id}` };
 }

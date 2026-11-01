@@ -11,6 +11,7 @@
 #   slot1 ai            enter an Anthropic API key (turns on the AI that watches streams)
 #   slot1 domain NAME   move to your own domain (point its A record at this server first)
 #   slot1 admins NAMES  set the Twitch usernames that are SLOT1 admins (comma-separated)
+#   slot1 admin-password  set (or change) the password for the /admin dashboard
 #   slot1 admin-link    print a one-time link that signs you in to the /admin dashboard
 #   slot1 demo on|off   start or remove the live demo stream (synthetic test video) at /demo
 #   slot1 legal         business name, address, contact email and governing law for the legal pages
@@ -439,6 +440,36 @@ cmd_domain() {
   print_summary
 }
 
+cmd_admin_password() {
+  need_root
+  need_env
+  local pw pw2 out line
+  read -r -s -p "New admin password (12+ characters): " pw </dev/tty
+  printf '\n'
+  read -r -s -p "Same again: " pw2 </dev/tty
+  printf '\n'
+  if [ "$pw" != "$pw2" ]; then die "the passwords don't match."; fi
+  if [ "${#pw}" -lt 12 ]; then die "use at least 12 characters."; fi
+  # The password goes in on stdin (never as an argument), so it can't show up in the process list.
+  if ! out="$(printf '%s' "$pw" | compose exec -T api node dist/admin-password.js 2>&1)"; then
+    unset pw pw2
+    printf '%s\n' "$out" >&2
+    die "could not set the password. Is SLOT1 up to date and running? Try: slot1 update"
+  fi
+  unset pw pw2
+  line="$(printf '%s\n' "$out" | tail -n 1)"
+  case "$line" in
+    SLOT1_ADMIN_PASSWORD_HASH=scrypt\$*) ;;
+    *) die "the password tool answered unexpectedly." ;;
+  esac
+  # Single quotes: the hash contains "$", which Compose would otherwise read as variables.
+  env_set SLOT1_ADMIN_PASSWORD_HASH "'${line#SLOT1_ADMIN_PASSWORD_HASH=}'"
+  say "Restarting the API with the new password"
+  compose up -d --force-recreate --no-deps api
+  wait_healthy
+  note "Done. Sign in at $(env_get SLOT1_PUBLIC_ORIGIN)/admin (earlier admin sessions are signed out)."
+}
+
 cmd_admin_link() {
   need_root
   need_env
@@ -558,6 +589,7 @@ main() {
     ai) cmd_ai ;;
     domain) cmd_domain "$@" ;;
     admin-link) cmd_admin_link ;;
+    admin-password) cmd_admin_password ;;
     admins) cmd_admins "$@" ;;
     demo) cmd_demo "$@" ;;
     legal) cmd_legal ;;

@@ -108,7 +108,7 @@ export function ExportPanel({ renders, onRenders }: { renders: LibraryItemView[]
               {sequences.map((s) => (
                 <li key={s.id}>
                   <label className="flex min-h-9 cursor-pointer items-center gap-2 border hairline px-2.5 py-1.5 text-sm">
-                    <input type="checkbox" checked={seqIds.includes(s.id)} onChange={(e) => setSeqIds((ids) => (e.target.checked ? [...ids, s.id] : ids.filter((x) => x !== s.id)))} />
+                    <input type="checkbox" aria-label={`${s.name} (${s.edl.aspect})`} checked={seqIds.includes(s.id)} onChange={(e) => setSeqIds((ids) => (e.target.checked ? [...ids, s.id] : ids.filter((x) => x !== s.id)))} />
                     <span className="min-w-0 flex-1 truncate">{s.name}</span>
                     <span className="tnum text-[0.75rem] text-ivory-3">
                       {s.edl.aspect} · {editTime(s.id === sequenceId ? total : edlDurationMs(s.edl))}

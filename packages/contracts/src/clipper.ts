@@ -141,13 +141,19 @@ export type EdlText = z.infer<typeof EdlText>;
 
 /* -------------------------------- media references ----------------------------------------- */
 
-/** A file the edit uses: an item from SLOT1's Studio library, or something the creator uploaded. */
+const LibraryRef = z.object({ kind: z.literal("library"), assetId: StudioAsset.shape.id.describe("A Studio library item (sound, music, sticker, overlay, frame, transition).") });
+const UploadRef = z.object({ kind: z.literal("upload"), assetId: z.string().uuid().describe("A file the creator uploaded to this edit (music, voice-over, logo).") });
+/** A picture an overlay shows: an item from SLOT1's Studio library, or something the creator uploaded. */
+export const VisualRef = z.discriminatedUnion("kind", [LibraryRef, UploadRef]).describe("Where an overlay's image comes from.");
+export type VisualRef = z.infer<typeof VisualRef>;
+/** A file the edit uses: a library item, an upload, or the sound of one of the creator's stored videos. */
 export const MediaRef = z
   .discriminatedUnion("kind", [
-    z.object({ kind: z.literal("library"), assetId: StudioAsset.shape.id.describe("A Studio library item (sound, music, sticker, overlay, frame, transition).") }),
-    z.object({ kind: z.literal("upload"), assetId: z.string().uuid().describe("A file the creator uploaded to this edit (music, voice-over, logo).") }),
+    LibraryRef,
+    UploadRef,
+    z.object({ kind: z.literal("session"), sessionId: z.string().uuid().describe("A stored video whose own sound the clip plays (detached audio).") }),
   ])
-  .describe("Where an overlay's image or an audio clip's sound comes from.");
+  .describe("Where an audio clip's sound comes from.");
 export type MediaRef = z.infer<typeof MediaRef>;
 
 /* ---------------------------------- overlay tracks ----------------------------------------- */
@@ -198,7 +204,7 @@ export const OverlayImage = z
   .object({
     type: z.literal("image"),
     ...overlayBase,
-    source: MediaRef.describe("A library sticker, overlay, frame or transition, or an uploaded image."),
+    source: VisualRef.describe("A library sticker, overlay, frame or transition, or an uploaded image."),
     widthPct: z.number().min(0.03).max(1).default(0.3).describe("Width as a fraction of the frame width, before `scale` (1 = full width, for frames)."),
   })
   .describe("A visual element (sticker, logo, overlay, frame) on an overlay track; animated library items play and loop.");
@@ -248,6 +254,7 @@ export const AudioClip = z
     fadeOutMs: z.number().int().min(0).max(10_000).default(0),
     loop: z.boolean().default(false).describe("Repeat the file to fill the clip (music beds)."),
     envelope: z.array(VolumeKey).max(24).default([]).describe("Keyframed volume, multiplied with `volume`."),
+    link: Id.optional().describe("The V1 clip this sound was detached from, so it can be put back."),
   })
   .describe("One clip on an audio track.");
 export type AudioClip = z.infer<typeof AudioClip>;
