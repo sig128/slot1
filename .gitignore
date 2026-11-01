@@ -16,8 +16,9 @@ next-env.d.ts
 *.pem
 *.key
 
-# local runtime data (media, database, logs)
+# local runtime data (media, database, logs); state/ is the server's deploy and settings folder
 .data/
+/state/
 .local-services/
 tests/fixtures/generated/
 test-results/
