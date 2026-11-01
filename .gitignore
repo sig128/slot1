@@ -1,0 +1,47 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# env and secrets — never commit real values
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# local runtime data (media, database, logs)
+.data/
+.local-services/
+tests/fixtures/generated/
+test-results/
+playwright-report/
+docs/screenshots/_raw/
+
+# OS / editor
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# legacy prototype moved aside during the rebuild
+_legacy-prototype/
+tests/e2e/.results/
+_to_delete/
+ml/runs/
+__pycache__/
+*.onnx
+
+# Licensed font files are never committed (see docs/ASSET_MANIFEST.md)
+*.ttf
+*.otf
+# OFL fonts converted for server-side renders (see scripts/build-render-fonts.py)
+!packages/analysis/fonts/*.ttf
+.pytest_cache/
+*.pyc

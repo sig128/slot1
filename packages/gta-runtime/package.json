@@ -1,0 +1,18 @@
+{
+  "name": "@slot1/gta-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@slot1/analysis": "workspace:*",
+    "@slot1/contracts": "workspace:*",
+    "onnxruntime-node": "1.31.1",
+    "sharp": "0.35.5"
+  }
+}

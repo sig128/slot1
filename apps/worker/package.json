@@ -1,0 +1,31 @@
+{
+  "name": "@slot1/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/main.ts",
+    "start": "node --env-file-if-exists=../../.env dist/main.js",
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1161.0",
+    "@aws-sdk/s3-request-presigner": "^3.1161.0",
+    "@slot1/analysis": "workspace:*",
+    "@slot1/bot": "workspace:*",
+    "@slot1/contracts": "workspace:*",
+    "@slot1/db": "workspace:*",
+    "@slot1/gta-runtime": "workspace:*",
+    "@slot1/platform": "workspace:*",
+    "@slot1/services": "workspace:*",
+    "@slot1/twitch": "workspace:*",
+    "bullmq": "^5.81.5",
+    "ioredis": "^5.11.1",
+    "onnxruntime-node": "1.31.1",
+    "pg": "^8.23.1",
+    "pino": "^10.4.0",
+    "sharp": "0.35.5",
+    "zod": "^4.6.7"
+  }
+}

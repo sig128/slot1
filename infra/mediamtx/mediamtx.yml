@@ -1,0 +1,42 @@
+# MediaMTX as SLOT1's ingest gateway. Every publish and every read is decided by the SLOT1 API
+# (authMethod: http). The auth address, including ?hook_secret=..., is set by docker compose via
+# MTX_AUTHHTTPADDRESS so the secret is never written into this file.
+logLevel: info
+logDestinations: [stdout]
+
+authMethod: http
+authHTTPAddress: http://api:4000/api/ingest/hooks/mediamtx/auth
+authHTTPExclude:
+  - action: api
+  - action: metrics
+  - action: pprof
+
+api: no
+metrics: no
+pprof: no
+playback: no
+
+# Creators publish over RTMP (OBS: rtmp://<host>:1935/live, stream key from Studio).
+rtmp: yes
+rtmpAddress: :1935
+# The SLOT1 worker reads over RTSP on the private network.
+rtsp: yes
+rtspAddress: :8554
+hls: no
+
+# WebRTC: OBS 30+ publishes with WHIP (<base>/live/<name>/whip, bearer token = stream key) and
+# browsers watch with WHEP (<base>/live/<name>/whep, bearer token from SLOT1's API). Sub-second
+# delay. Public host names and STUN/TURN servers come from the environment, e.g.
+# MTX_WEBRTCADDITIONALHOSTS=live.example.com and MTX_WEBRTCICESERVERS2_0_URL=turn:turn.example.com:3478
+# (see docs/LIVE_VIDEO.md). Put TLS in front of :8889 in production (browsers need HTTPS).
+webrtc: yes
+webrtcAddress: :8889
+webrtcLocalUDPAddress: :8189
+
+# SRT publishing (srt://<host>:8890?streamid=publish:live/<name>:<name>:<key>).
+srt: yes
+srtAddress: :8890
+
+paths:
+  "~^live/[a-z0-9]{4,40}$":
+    source: publisher

@@ -1,0 +1,43 @@
+# Capability matrix
+
+What each part of SLOT1 needs, where it lives, how it was verified in this build, and what people see when it isn't available. SLOT1 never substitutes demo output for a missing capability. `/api/capabilities` and Studio → Advanced setup report the live state of every row marked *config*.
+
+Verification legend:
+
+- **E2E**: Playwright in a real browser at 1440, 1280 and 390 px (`tests/e2e`).
+- **Integration**: real Postgres, Redis, ffmpeg, tesseract and nginx-rtmp, running the real API and worker code (`tests/integration`).
+- **Mock Twitch**: SLOT1's real OAuth, Helix and EventSub code against a local mock of Twitch's endpoints. This proves SLOT1's side of each flow, not Twitch's.
+- **Unit**: pure logic (`tests/unit`).
+- **Not exercised**: implemented, but the service or hardware wasn't available where this was built.
+
+| Capability | Requires | Code | Verified | When unavailable |
+|---|---|---|---|---|
+| Watch any public channel | Hostname listed in `TWITCH_EMBED_PARENTS` | `apps/web/components/watch/TwitchPlayer.tsx` | E2E: official `player.twitch.tv` iframe with correct `channel` and `parent`. Playback itself not exercised (no internet access to Twitch). | Player smaller than 400×300, or host not listed → "Watch on Twitch" link. Page says "Watch-only … nothing on this page is analyzed or recorded." |
+| Twitch chat embed | Same as above | `WatchClient.tsx` | E2E: the chat panel and its Show control render; Twitch's chat itself not loaded (no internet access to Twitch) | Collapsed until the viewer shows it |
+| Creator sign-in with Twitch | *config* `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `TWITCH_REDIRECT_URI`, `SLOT1_TOKEN_ENCRYPTION_KEYS` | `apps/api/src/routes/auth.ts`, `packages/twitch/src/oauth.ts` | Mock Twitch: state bound to the browser session, single use, forged/stolen state refused; tokens stored encrypted | Studio step 1 "Unavailable. Not configured on this deployment. Missing …". Development offers a local workspace (uploads only). |
+| Token validation, refresh, revocation | Twitch configured | `packages/services/src/twitch.ts`, worker `validate-grants` (hourly) | Mock Twitch: invalid token refreshed; revoked refresh token → grant revoked, Studio stops showing Twitch as connected; disconnect revokes at Twitch | Studio shows "Reconnect Twitch"; dependent steps blocked |
+| Broadcast state (live/offline, title, category) | *config* `TWITCH_EVENTSUB_CALLBACK_URL` (HTTPS :443) + `TWITCH_EVENTSUB_SECRET` | `apps/api/src/routes/eventsub.ts`, `apps/worker/src/jobs/eventsub.ts` | Mock Twitch: signature verified, forged and stale rejected, challenge answered, duplicate delivery ignored, `stream.online` → "Live on Twitch" | Without EventSub: Helix polling every minute for listed channels. Without Twitch: "Status unknown". |
+| On Air directory | Creator opts in and sets the channel public | `apps/api/src/routes/channels.ts` | E2E (empty state) | "Nothing on air yet." with the exact reason channels can't connect |
+| Chat bot (`!slot1 …`) | *config* Twitch + EventSub + `SLOT1_BOT_TWITCH_LOGIN`; operator links the bot; creator grants `channel:bot` and turns the bot on | `packages/bot`, `apps/worker/src/jobs/chat.ts` | Unit (permissions, cooldowns, global limit, duplicate suppression, kill switches, honest vision wording). Mock Twitch: reply sent once, as the bot, with "vision isn't connected"; ordinary chat never queued or stored. | Studio step 2 explains the missing piece; operators get "Link bot account" |
+| Live clips | `clips:edit`, channel live on Twitch | `apps/worker/src/jobs/clips.ts` | Mock Twitch: link shown only after Get Clips confirms the clip; 15 s rule | Readable reason: not live, clipping disabled, missing permission, rate limited |
+| Clip analysis (download + analyze) | `channel:manage:clips` (opt-in) | `downloadAndAnalyzeClip` | Mock Twitch: without the scope the clip is ready and says "Analysis needs extra permission". Download and analysis of a real clip not exercised. | "Analysis needs extra permission" |
+| VOD clips (past moment) | `channel:manage:clips`, past Twitch broadcast | `createVodClip` | Not exercised | The API refuses with the reason ("VOD clips need a past Twitch broadcast") |
+| Replay upload and analysis | ffmpeg/ffprobe; tesseract for text | `apps/api/src/routes/uploads.ts`, `apps/worker/src/jobs/upload.ts` | Integration + E2E: rights confirmation, ffprobe validation, playback rendition, frames at real PTS, OCR text ("MISSION PASSED", "$12,450", "Vespucci Beach"), black screen at 12–14 s, scene cuts, coverage | Without tesseract: measurements only, and the reason says so |
+| Owned clip exports | Media SLOT1 holds (upload, or ingest rolling buffer with recording consent) | `renderOwnedClip` | Integration: landscape 1280×720 and vertical 1080×1920 with caption, idempotent. Rolling-buffer source not exercised. | "No media to render …" |
+| Evidence panel and signed media URLs | — | `apps/api/src/routes/media.ts`, `EvidencePanel.tsx` | Integration: signed URL works, tampered URL 403. E2E: real frame shown. | — |
+| AI vision | *config* `VISION_PROVIDER` + key + model (Anthropic Messages API or OpenAI Responses API) | `packages/analysis/src/providers/vision.ts` | Unit: strict JSON schema, frame citations required, motion claims need two frames and are labeled inferred. Real provider calls not exercised (no API keys here). | "AI vision isn't configured on this deployment, so SLOT1 only reports on-screen text and measurements …"; live chip reads "Live frames, text only" |
+| Ask SLOT1 / `!slot1 ask` | Retrieval always; model phrasing optional | `packages/services/src/qa.ts` | Integration: answers with citations; "I haven't observed that." when nothing matches | Retrieval-only answers |
+| Transcription | *config* `TRANSCRIPTION_PROVIDER=openai_compatible` + model | `packages/analysis/src/providers/transcription.ts` | Not exercised | Audio measurements only (silence) |
+| Continuous ingest via nginx-rtmp | *config* `INGEST_*`; gateway running | `infra/nginx-rtmp`, `apps/api/src/routes/ingest.ts`, `apps/worker/src/live/supervisor.ts` | Integration + manual: wrong key refused; anonymous and wrong-password readers refused; OCR on live frames; "Stale" after disconnect; revoking the key cut the active publisher in 13.8 s; revoked key can't republish | Studio step 4 "Unavailable … Uploaded replays still work." |
+| Continuous ingest via MediaMTX | Same, `INGEST_GATEWAY=mediamtx` | `infra/mediamtx/mediamtx.yml`, hook route | Integration: hook authorization (401 challenge, key check, worker-only reads, path validation). MediaMTX binary not run. | Same |
+| Live analysis states | Video source | `packages/analysis/src/state.ts` | Unit + integration: "Live vision" only while frames arrive and are analyzed; stale threshold from cadence and delay | — |
+| Automatic commentary | Bot ready, commentary mode rare/normal, live vision | `commentaryAllowed`, supervisor | Unit (policy). Posting not exercised. | Off by default; never posts on stale or missing vision |
+| Live updates (SSE) | Redis | `apps/api/src/routes/sessions.ts` | Integration: Last-Event-ID backfill exact, no duplicates, no other session's events | The rail says "Live connection interrupted, checking every 5 seconds" and polls |
+| Moments and search | — | `apps/api/src/routes/moments.ts` | E2E save and list; integration: invisible to other creators and anonymous viewers | — |
+| Multi-tenant isolation | — | `packages/services/src/access.ts` | Integration: private session → 404 for others on session, observations, events, ask, corrections, delete | — |
+| Session deletion and retention | — | `apps/worker/src/jobs/maintenance.ts` | Integration: delete removes observations, assets (files too), events, moments, clips. Hourly retention sweep not exercised. | — |
+| Storage: local disk | `STORAGE_DRIVER=fs` | `packages/platform/src/storage.ts` | Integration + E2E | — |
+| Storage: S3/MinIO | `STORAGE_DRIVER=s3` + credentials | same | Not exercised | Capabilities name the missing `S3_*` variable |
+| Docker images and compose | Docker | `infra/docker/app.Dockerfile`, `docker-compose.yml` | Not built here (no Docker). Production bundles were built and booted locally (`pnpm build`, `node dist/main.js`). | — |
+| PS5 chat display | A real PS5 | — | **Needs console verification** ([CONSOLE_TEST_CHECKLIST.md](CONSOLE_TEST_CHECKLIST.md)) | Shown as "Needs console verification" in Studio and Setup |
+| GTA V screen profile | `game_profile=gta5` | `packages/analysis/src/profiles.ts` | Synthetic footage only; regions are an **unvalidated draft** | Generic profile is the default |

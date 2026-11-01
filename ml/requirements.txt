@@ -1,0 +1,7 @@
+# Permissive licenses only (BSD / MIT / Apache-2.0). No Ultralytics (AGPL).
+torch>=2.3          # BSD-3-Clause
+torchvision>=0.18   # BSD-3-Clause
+onnx>=1.16          # Apache-2.0
+onnxruntime>=1.18   # MIT
+numpy>=1.26         # BSD-3-Clause
+pillow>=10.0        # MIT-CMU (HPND)

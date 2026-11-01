@@ -1,0 +1,51 @@
+{
+  "name": "slot1",
+  "private": true,
+  "version": "0.1.0",
+  "description": "SLOT1 — an evidence-backed AI broadcast companion for GTA streams on Twitch.",
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./apps/*\" dev",
+    "dev:web": "pnpm --filter @slot1/web dev",
+    "dev:api": "pnpm --filter @slot1/api dev",
+    "dev:worker": "pnpm --filter @slot1/worker dev",
+    "build": "pnpm -r --filter \"./apps/*\" build",
+    "typecheck": "pnpm -r typecheck && tsc -p tsconfig.tests.json",
+    "lint": "eslint .",
+    "test": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "test:all": "vitest run",
+    "test:e2e": "playwright test",
+    "db:migrate": "pnpm --filter @slot1/db migrate",
+    "services:up": "docker compose --profile infra up -d",
+    "services:down": "docker compose --profile infra down",
+    "services:local": "bash scripts/local-services.sh start",
+    "services:local:stop": "bash scripts/local-services.sh stop",
+    "sample:video": "bash scripts/make-sample-video.sh",
+    "ingest:test-publish": "bash scripts/publish-test-stream.sh"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@playwright/test": "1.63.0",
+    "@types/node": "^22.19.0",
+    "eslint": "^9.39.0",
+    "globals": "^16.5.0",
+    "tsup": "^8.5.0",
+    "tsx": "^4.23.15",
+    "typescript": "5.9.3",
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^5.0.5",
+    "werift": "0.26.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "@tailwindcss/oxide"
+    ]
+  }
+}

@@ -1,0 +1,38 @@
+# SLOT1 ingest gateway (nginx + nginx-rtmp-module).
+# Rendered by envsubst: SLOT1_HOOK_BASE is the API's private address, INGEST_HOOK_SECRET
+# authenticates the hooks, INGEST_RTMP_PORT is the listen port, NGINX_RUN_DIR holds the pid file.
+load_module /usr/lib/nginx/modules/ngx_rtmp_module.so;
+
+worker_processes 1;
+pid ${NGINX_RUN_DIR}/nginx.pid;
+error_log stderr warn;
+
+events {
+  worker_connections 256;
+}
+
+rtmp {
+  server {
+    listen ${INGEST_RTMP_PORT};
+    chunk_size 4096;
+    notify_method post;
+
+    application live {
+      live on;
+      record off;
+      # A publisher that stops sending media is dropped, which ends its SLOT1 session.
+      drop_idle_publisher 15s;
+      idle_streams off;
+
+      # Every publish and every read is authorized by SLOT1: the stream key for a creator's
+      # source, the worker credential for reading. Nothing is accepted without the API.
+      on_publish ${SLOT1_HOOK_BASE}/api/ingest/hooks/nginx/publish?hook_secret=${INGEST_HOOK_SECRET};
+      on_publish_done ${SLOT1_HOOK_BASE}/api/ingest/hooks/nginx/publish_done?hook_secret=${INGEST_HOOK_SECRET};
+      on_play ${SLOT1_HOOK_BASE}/api/ingest/hooks/nginx/play?hook_secret=${INGEST_HOOK_SECRET};
+
+      # Re-checked every 20 s: revoking or rotating a key disconnects an active publisher.
+      on_update ${SLOT1_HOOK_BASE}/api/ingest/hooks/nginx/update?hook_secret=${INGEST_HOOK_SECRET};
+      notify_update_timeout 20s;
+    }
+  }
+}

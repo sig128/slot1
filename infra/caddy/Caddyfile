@@ -1,0 +1,29 @@
+# Public edge for SLOT1: one origin, automatic HTTPS. Set SLOT1_DOMAIN (e.g. slot1.example.com).
+{$SLOT1_DOMAIN:localhost} {
+	# Compress documents and JSON, never the live event stream (text/event-stream).
+	encode {
+		gzip
+		match {
+			header Content-Type text/html*
+			header Content-Type text/css*
+			header Content-Type application/javascript*
+			header Content-Type application/json*
+			header Content-Type image/svg+xml*
+		}
+	}
+
+	# Ingest gateway hooks are private: only the gateway on the internal network may call them.
+	@hooks path /api/ingest/hooks/*
+	respond @hooks 404
+
+	handle /api/* {
+		reverse_proxy api:4000 {
+			# Server-sent events must reach the browser immediately.
+			flush_interval -1
+		}
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+}
