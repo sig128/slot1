@@ -24,7 +24,7 @@ export function BroadcastChip({ state, platform = "twitch" }: { state: Broadcast
     );
   if (state === "offline") return <span className="chip chip-muted" title="Twitch reports this channel is offline">Offline</span>;
   if (state === "error") return <span className="chip chip-error" title="Twitch data is temporarily unavailable">Twitch unavailable</span>;
-  return <span className="chip chip-muted" title="Broadcast status unknown — Twitch isn't connected on this deployment">Status unknown</span>;
+  return <span className="chip chip-muted" title="Broadcast status unknown: Twitch isn't connected to SLOT1 yet">Status unknown</span>;
 }
 
 /**

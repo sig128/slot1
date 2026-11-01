@@ -70,7 +70,7 @@ export function buildAiViewSnapshot(
   const v = i.vision;
   const findings = (v.result?.analysis.findings ?? []).slice(0, 8).map((f) => ({ type: f.type, description: f.description, confidence: f.confidence }));
   let visionNote = v.note;
-  if (!v.enabled) visionNote = c.demo ? "Paid AI vision is off for the demo stream: only OCR (and SLOT1's own model, once one is active) looks at it" : "No AI vision provider is configured on this server";
+  if (!v.enabled) visionNote = c.demo ? "Paid AI vision is off for the demo stream: only OCR (and SLOT1's own model, once one is active) looks at it" : "The AI that describes gameplay isn't switched on yet";
   else if (v.state === "batching") visionNote = `Waiting for ${v.batch.need - v.batch.have} more frame${v.batch.need - v.batch.have === 1 ? "" : "s"} to send a batch`;
 
   return AiViewSnapshot.parse({
@@ -110,7 +110,7 @@ export function buildAiViewSnapshot(
       label: i.model.label,
       top: top.slice(0, 5),
       note: !i.model.enabled
-        ? "No trained GTA model is active yet, so only OCR (and AI vision, when configured) look at the frames"
+        ? "No trained GTA model is active yet, so only OCR (and the AI that describes gameplay, when it's switched on) look at the frames"
         : i.model.error
           ? `The model failed on this frame: ${i.model.error.slice(0, 160)}`
           : p

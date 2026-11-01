@@ -6,8 +6,7 @@ import {
   createLocalBroadcaster,
   createLocalUser,
   createOAuthState,
-  getBroadcaster,
-  getGrant,
+  listSources,
   upsertConnection,
   upsertGrant,
   upsertTwitchBroadcaster,
@@ -17,8 +16,7 @@ import { QUEUES, randomToken, sanitizeErrorMessage, sha256 } from "@slot1/platfo
 import type { ServerContext } from "@slot1/services";
 import {
   BOT_SCOPES,
-  BROADCASTER_BASE_SCOPES,
-  BROADCASTER_CLIP_ANALYSIS_SCOPES,
+  BROADCASTER_CONNECT_SCOPES,
   BROADCASTER_RELAY_SCOPES,
   buildAuthorizeUrl,
   exchangeCode,
@@ -28,12 +26,18 @@ import {
 import { badRequest, forbidden, unavailable } from "../lib/errors";
 import { ensureSession, signIn, signOut } from "../lib/session";
 
-async function currentBroadcasterScopes(ctx: ServerContext, broadcasterId: string | null): Promise<string[]> {
-  if (!broadcasterId) return [];
-  const b = await getBroadcaster(ctx.db, broadcasterId);
-  if (!b?.twitch_user_id) return [];
-  const g = await getGrant(ctx.db, "broadcaster", b.twitch_user_id);
-  return g && g.status !== "revoked" ? g.scopes : [];
+/** Where new streamers land after connecting: Studio → Stream setup's guided OBS setup. */
+export const ONBOARDING_PATH = "/studio?tab=stream&onboarding=1";
+
+/**
+ * After "Connect my Twitch": a creator who hasn't set up streaming yet goes straight into the
+ * guided OBS setup. Everyone else, and every flow that asked for a specific page, returns there.
+ */
+async function connectLanding(ctx: ServerContext, broadcasterId: string, returnTo: string | null): Promise<string> {
+  const dest = returnTo ?? "/studio";
+  if (dest !== "/studio" || !ctx.config.capabilities.ingest.available) return dest;
+  const sources = await listSources(ctx.db, broadcasterId);
+  return sources.some((s) => s.kind === "live_ingest" && s.status !== "revoked" && !s.revoked_at) ? dest : ONBOARDING_PATH;
 }
 
 /** Only same-site relative paths are allowed as post-login destinations (no open redirects). */
@@ -69,25 +73,16 @@ export const authRoutes =
     app.get("/api/auth/twitch/start", { config: { csrf: false, rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (req, reply) => {
       const q = StartQuery.parse(req.query);
       if (!ctx.oauth || !ctx.config.env.TWITCH_REDIRECT_URI) {
-        throw unavailable("Twitch sign-in isn't configured on this deployment", ctx.config.capabilities.twitch.reason);
+        throw unavailable("Twitch sign-in isn't open on SLOT1 yet", ctx.config.capabilities.twitch.reason);
       }
       if (q.role === "bot" && !req.auth.user?.is_operator) throw forbidden("Only a SLOT1 operator can link the bot account");
       const { idHash } = await ensureSession(ctx, req, reply);
       const state = randomToken(32);
-      // Re-authorizing replaces the granted scopes, so keep every optional permission the creator
-      // already gave (clip analysis, forwarding) and add the one being asked for now.
-      const current = q.role === "bot" ? [] : await currentBroadcasterScopes(ctx, req.auth.broadcaster?.id ?? null);
-      const scopes =
-        q.role === "bot"
-          ? BOT_SCOPES
-          : [
-              ...new Set([
-                ...BROADCASTER_BASE_SCOPES,
-                ...current.filter((s) => BROADCASTER_CLIP_ANALYSIS_SCOPES.includes(s) || BROADCASTER_RELAY_SCOPES.includes(s)),
-                ...(q.clipAnalysis === "1" ? BROADCASTER_CLIP_ANALYSIS_SCOPES : []),
-                ...(q.relay === "1" ? BROADCASTER_RELAY_SCOPES : []),
-              ]),
-            ];
+      // One approval for everything a creator uses: chat bot, live clips, clip analysis and
+      // forwarding. Re-authorizing replaces the granted scopes, so asking for the full set every
+      // time also means a reconnect never drops one. (Older links still send clipAnalysis=1 or
+      // relay=1; those scopes are included anyway.)
+      const scopes = q.role === "bot" ? BOT_SCOPES : BROADCASTER_CONNECT_SCOPES;
       await createOAuthState(ctx.db, {
         stateHash: sha256(state),
         sessionIdHash: idHash,
@@ -114,7 +109,7 @@ export const authRoutes =
     app.get("/api/auth/twitch/callback", { config: { csrf: false, rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (req, reply) => {
       const q = CallbackQuery.parse(req.query);
       reply.header("cache-control", "no-store");
-      if (!ctx.oauth) throw unavailable("Twitch sign-in isn't configured on this deployment", ctx.config.capabilities.twitch.reason);
+      if (!ctx.oauth) throw unavailable("Twitch sign-in isn't open on SLOT1 yet", ctx.config.capabilities.twitch.reason);
       if (!q.state || !req.auth.sessionIdHash) throw badRequest("OAuth state mismatch — start the connection again from Studio");
       const st = await consumeOAuthState(ctx.db, sha256(q.state), req.auth.sessionIdHash);
       if (!st) throw badRequest("OAuth state mismatch or expired — start the connection again from Studio");
@@ -185,7 +180,7 @@ export const authRoutes =
       if (BROADCASTER_RELAY_SCOPES.every((s) => scopes.includes(s))) await clearRelayPermissionWait(ctx.db, b.id);
       await signIn(ctx, req, reply, user.id);
       await ctx.enqueue(QUEUES.twitch, "eventsub-reconcile", { broadcasterId: b.id, reason: "connected" });
-      return back(ctx, reply, st.return_to ?? "/studio", { twitch: "connected" });
+      return back(ctx, reply, await connectLanding(ctx, b.id, st.return_to), { twitch: "connected" });
     });
 
     /** Development-only local creator account so uploads work without Twitch credentials. */

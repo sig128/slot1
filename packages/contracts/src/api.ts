@@ -24,9 +24,14 @@ import { Observation } from "./observation";
 
 export const CapabilityStatus = z.object({
   available: z.boolean(),
-  /** Human-readable reason when unavailable, naming the exact missing requirement. */
+  /**
+   * Why it's unavailable, in plain words. Only operators (and /admin sessions) get the technical
+   * reason naming server settings; everyone else gets a friendly line with no internals.
+   */
   reason: z.string().nullable(),
   detail: z.string().nullable(),
+  /** Operators only: the exact missing settings and the server command that fixes them. */
+  setup: z.object({ missing: z.array(z.string()), command: z.string().nullable() }).nullable().optional(),
 });
 export type CapabilityStatus = z.infer<typeof CapabilityStatus>;
 
@@ -506,6 +511,8 @@ export const StudioOverview = z.object({
     linked: z.boolean(),
     login: z.string().nullable(),
     scopes: z.array(z.string()),
+    /** Creator scopes "Connect my Twitch" asks for that this grant doesn't have (older connections). */
+    missingScopes: z.array(z.string()).default([]),
     grantStatus: z.enum(["active", "refresh_failed", "revoked", "missing"]),
     lastValidatedAt: z.string().nullable(),
   }),

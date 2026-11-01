@@ -28,6 +28,7 @@ import {
 } from "@slot1/services";
 import { channelUrl, parseTwitchUrl, sizeThumbnail } from "@slot1/twitch";
 import { badRequest, notFound } from "../lib/errors";
+import { reasonForRequest } from "../lib/setup-details";
 
 const NO_SOURCE_STATUS = (visionConfigured: boolean) => ({
   state: "no_source" as const,
@@ -129,7 +130,7 @@ export const channelRoutes =
         } catch {
           reason = "Twitch metadata is temporarily unavailable";
         }
-      } else if (login) reason = ctx.config.capabilities.twitch.reason;
+      } else if (login) reason = await reasonForRequest(ctx, req, "twitch");
       const twitchUrl =
         parsed.kind === "clip" ? `https://clips.twitch.tv/${parsed.slug}` : parsed.kind === "video" ? `https://www.twitch.tv/videos/${parsed.videoId}` : channelUrl(parsed.login);
       return {

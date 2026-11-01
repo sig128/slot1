@@ -28,10 +28,10 @@ export const clipRoutes =
 
       let job;
       if (input.kind === "twitch_live") {
-        if (!ctx.config.capabilities.twitch.available) throw conflict("Twitch isn't configured", ctx.config.capabilities.twitch.reason);
+        if (!ctx.config.capabilities.twitch.available) throw conflict("Twitch isn't connected to SLOT1 yet", ctx.config.capabilities.twitch.reason);
         if (session.kind !== "twitch_broadcast" || session.broadcast_state !== "live") throw conflict("Live clips need the channel to be live on Twitch");
         if (!grant || grant.status !== "active") throw conflict("Twitch is not connected", "Connect Twitch in Studio");
-        if (!grant.scopes.includes("clips:edit")) throw conflict("Missing clip permission", "Reconnect Twitch to grant clips:edit");
+        if (!grant.scopes.includes("clips:edit")) throw conflict("Missing clip permission", "Grant the missing permissions in Studio → Stream setup");
         ({ job } = await createClipJob(ctx.db, {
           broadcasterId: b.id,
           sessionId: session.id,

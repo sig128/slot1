@@ -134,7 +134,7 @@ test.describe("SLOT1 journey", () => {
     await expect(page.getByText("Synthetic test video", { exact: true })).toBeVisible();
     await expect(page.getByRole("list", { name: "How a frame travels through SLOT1" }).getByRole("listitem")).toHaveCount(6);
     // The full live demo is covered by tests/e2e/demo.spec.ts against a stack that runs it.
-    if (!info.enabled) await expect(page.getByText("The demo is off on this server")).toBeVisible();
+    if (!info.enabled) await expect(page.getByText("The demo is off right now")).toBeVisible();
     await noHorizontalOverflow(page);
     await shot(page, "demo");
   });

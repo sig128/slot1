@@ -36,7 +36,7 @@ test.describe("home intro (reduced motion)", () => {
     await page.goto("/");
 
     await expect(page.getByRole("heading", { level: 1, name: "SLOT1: Your AI sidekick for GTA." })).toBeVisible();
-    await expect(page.getByText(/turns them into clips, instant replays and highlights/)).toBeVisible();
+    await expect(page.getByText(/watches your stream live, clips your big moments for you/)).toBeVisible();
     await expect(page.getByText("Stream GTA. Get clips. Train the AI.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Watch the live demo" })).toHaveAttribute("href", "/demo");
     await expect(page.getByRole("link", { name: /^(Connect my Twitch|How creators connect)$/ }).first()).toBeVisible();

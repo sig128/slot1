@@ -143,10 +143,16 @@ describe("live video capability without MediaMTX", () => {
   afterAll(async () => h?.close());
 
   it("explains that nginx-rtmp can't serve WebRTC and never hands out a player URL", async () => {
+    // Visitors read a plain line; an operator gets the exact settings and the command that fixes them.
     const caps = (await h.app.inject({ method: "GET", url: "/api/capabilities" })).json();
-    expect(caps.liveVideo.available).toBe(false);
-    expect(caps.liveVideo.reason).toMatch(/nginx-rtmp can't serve WebRTC/);
-    expect(caps.liveVideo.reason).toMatch(/INGEST_PUBLIC_WEBRTC_URL/);
+    expect(caps.liveVideo).toMatchObject({ available: false, reason: "SLOT1's own live video isn't switched on yet", setup: null });
+    const operator = new Browser(h);
+    const me = await operator.signInLocal("Live Video Operator");
+    await h.ctx.db.query(`UPDATE users SET is_operator = true WHERE id = $1`, [(me.user as { id: string }).id]);
+    const opCaps = (await operator.get("/api/capabilities")).json();
+    expect(opCaps.liveVideo.reason).toMatch(/nginx-rtmp can't serve WebRTC/);
+    expect(opCaps.liveVideo.reason).toMatch(/INGEST_PUBLIC_WEBRTC_URL/);
+    expect(opCaps.liveVideo.setup).toEqual({ missing: ["INGEST_GATEWAY=mediamtx", "INGEST_PUBLIC_WEBRTC_URL"], command: "SLOT1_GATEWAY=mediamtx slot1 update" });
     const creator = new Browser(h);
     await creator.signInLocal("RTMP Crew");
     const created = (await creator.request("POST", "/api/studio/sources", { json: { name: "OBS", label: "test" } })).json();
@@ -156,6 +162,6 @@ describe("live video capability without MediaMTX", () => {
     await setSourceSession(h.ctx.db, created.source.id, s.id);
     const grant = (await creator.get(`/api/sessions/${s.id}/live-video`)).json();
     expect(grant).toMatchObject({ available: false, whepUrl: null, token: null });
-    expect(grant.reason).toMatch(/nginx-rtmp/);
+    expect(grant.reason).toBe("SLOT1's own live video isn't switched on yet");
   });
 });

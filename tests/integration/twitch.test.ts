@@ -61,7 +61,8 @@ describe("Twitch integration against a mock Twitch", () => {
     expect(start.status).toBe(302);
     const loc = new URL(String(start.headers.location));
     expect(`${loc.origin}${loc.pathname}`).toBe(`${mock.base}/oauth2/authorize`);
-    expect(loc.searchParams.get("scope")!.split(" ").sort()).toEqual(["channel:bot", "clips:edit"]);
+    // One approval asks for everything a creator uses (docs/TWITCH_SCOPES.md).
+    expect(loc.searchParams.get("scope")!.split(" ").sort()).toEqual(["channel:bot", "channel:manage:clips", "channel:read:stream_key", "clips:edit"]);
     const state = loc.searchParams.get("state")!;
 
     const attacker = new Browser(h);

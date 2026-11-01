@@ -6,6 +6,7 @@ import { ZodError } from "zod";
 import { REDACT_PATHS, sanitizeErrorMessage } from "@slot1/platform";
 import type { ServerContext } from "@slot1/services";
 import { ApiProblem } from "./lib/errors";
+import { textForRequest } from "./lib/setup-details";
 import type { EventHub } from "./lib/hub";
 import { assertCsrf, loadAuth } from "./lib/session";
 import { authRoutes } from "./routes/auth";
@@ -72,9 +73,14 @@ export async function buildApp({ ctx, hub }: AppDeps): Promise<FastifyInstance> 
     assertCsrf(ctx, req);
   });
 
-  app.setErrorHandler((err, req, reply) => {
+  app.setErrorHandler(async (err, req, reply) => {
     if (err instanceof ApiProblem) {
-      return reply.status(err.status).send({ error: { code: err.code, message: err.message, requirement: err.requirement } });
+      // Requirements can name server settings: only operators see those (lib/setup-details.ts).
+      // Everyone else's friendly version can be the message itself; then it isn't said twice.
+      const text = await textForRequest(ctx, req, err.requirement);
+      const same = (x: string) => x.trim().replace(/[.!?]$/, "").toLowerCase();
+      const requirement = text && same(text) !== same(err.message) ? text : null;
+      return reply.status(err.status).send({ error: { code: err.code, message: err.message, requirement } });
     }
     if (err instanceof ZodError) {
       const issue = err.issues[0];

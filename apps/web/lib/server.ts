@@ -24,7 +24,8 @@ export async function serverApi<T>(path: string): Promise<ServerResult<T>> {
     }
     return { ok: true, data: (await res.json()) as T };
   } catch {
-    return { ok: false, status: 503, message: "The SLOT1 API is not reachable", requirement: "Start the API (pnpm dev:api)" };
+    // Visitors read "SLOT1 isn't answering"; only a developer's own machine gets the command.
+    return { ok: false, status: 503, message: "SLOT1 isn’t answering right now", requirement: process.env.NODE_ENV === "production" ? "Try again in a minute." : "Start the API (pnpm dev:api)" };
   }
 }
 

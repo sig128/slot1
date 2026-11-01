@@ -90,7 +90,7 @@ export function SessionPanel({ session, sources, clips, now }: { session: Sessio
         <dt className="text-ivory-3">Stale after</dt>
         <dd>{a.staleAfterMs ? `${formatAge(a.staleAfterMs)} without frames` : "Not applicable"}</dd>
         <dt className="text-ivory-3">Vision AI</dt>
-        <dd>{a.visionConfigured ? "Configured" : "Not configured on this deployment"}</dd>
+        <dd>{a.visionConfigured ? "On" : "Not switched on yet"}</dd>
       </dl>
       {a.reason && <p className="text-sm text-ivory-2">{a.reason}</p>}
       {sources.length > 0 && (

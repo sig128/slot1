@@ -145,14 +145,14 @@ On 1 November 2026 the Docker images were built and run for the first time on a 
 
 ## Configuration
 
-Every variable is documented in [.env.example](.env.example). The API logs each missing requirement at start. `/api/capabilities` returns the same list, and Studio shows it to the creator.
+Every variable is documented in [.env.example](.env.example). The API logs each missing requirement at start. For operators (and `/admin` sessions), `/api/capabilities` returns the same list with the `slot1` command that fixes each one, and Studio shows it to them. Visitors and creators get a short, plain reason ("Twitch sign-in isn't open yet") that never names a setting ([packages/platform/src/public-reasons.ts](packages/platform/src/public-reasons.ts)).
 
 ### Twitch app registration
 
 1. Create an application at <https://dev.twitch.tv/console/apps>, category "Website Integration".
 2. Add an OAuth Redirect URL for every origin you use. It must **exactly** match `TWITCH_REDIRECT_URI`, for example `http://localhost:3000/api/auth/twitch/callback` for development and `https://slot1.example.com/api/auth/twitch/callback` for production.
 3. Copy the Client ID into `TWITCH_CLIENT_ID`. Generate a secret for `TWITCH_CLIENT_SECRET`. Both stay server-side.
-4. Creators connect from **Studio → Connect my Twitch**. SLOT1 uses the authorization-code flow. The `state` is single-use and bound to the browser session that started the flow, and tokens are stored encrypted (AES-256-GCM, key ring in `SLOT1_TOKEN_ENCRYPTION_KEYS`).
+4. Creators connect from **Studio → Connect my Twitch**: one Twitch approval covers every creator scope, then a new streamer lands in Stream setup's guided OBS setup. SLOT1 uses the authorization-code flow. The `state` is single-use and bound to the browser session that started the flow, and tokens are stored encrypted (AES-256-GCM, key ring in `SLOT1_TOKEN_ENCRYPTION_KEYS`).
 5. Tokens are validated at start and hourly, as Twitch requires. Invalid tokens are refreshed. If refreshing fails, the connection is marked revoked and the features that depend on it switch off visibly.
 
 Scopes and endpoints are listed in [docs/TWITCH_SCOPES.md](docs/TWITCH_SCOPES.md).
@@ -175,7 +175,7 @@ Twitch's player and chat embeds only render on hostnames listed in their `parent
 Chat replies come from one dedicated Twitch account, not from the creator's account.
 
 1. Create a Twitch account for the bot and set `SLOT1_BOT_TWITCH_LOGIN` to its login.
-2. Put your own Twitch login in `SLOT1_OPERATOR_TWITCH_LOGINS`.
+2. Put your own Twitch login in `SLOT1_OPERATOR_TWITCH_LOGINS`. The list is read on every request, so after the API restarts it applies to people already signed in, and removing a login takes operator access away the same way.
 3. Sign in to SLOT1 with that operator account. Use **Link bot account**, offered in the Bot ready step and under Studio → Advanced setup. Twitch shows its account chooser (`force_verify`). Sign in as the bot account; any other account is refused.
 4. Each creator who connects grants `channel:bot`, which lets the bot join their chat. Chat is read with EventSub `channel.chat.message` and replies are sent with the app access token, as Twitch recommends for chat bots.
 5. The bot is **off by default** per channel. Creators turn it on in Studio. Kill switches:
@@ -268,7 +268,7 @@ docs/           one document per feature, plus the capability matrix, asset mani
 
 - PS5: nothing is installed on the console. Whether bot replies appear in the PS5's own chat overlay is unverified ([docs/CONSOLE_TEST_CHECKLIST.md](docs/CONSOLE_TEST_CHECKLIST.md)).
 - The Twitch player and SLOT1's analysis arrive over different paths and can be seconds apart. Times shown as estimates are estimates.
-- A clip is analyzed only after Twitch has made it available, and only with the extra `channel:manage:clips` permission.
+- A clip is analyzed only after Twitch has made it available, and only with the `channel:manage:clips` permission. Connect my Twitch asks for it; creators who connected earlier add it with Grant the missing permissions.
 - Forwarding puts SLOT1 in the path: while a creator forwards through SLOT1, a problem in SLOT1's ingest or workers stops their stream on every platform until it recovers ([docs/RELAY.md](docs/RELAY.md#reliability-trade-off)).
 - The GTA model loop has only run on synthetic test footage, and a model trained that way knows nothing about GTA. A useful one needs many hours of real, labeled gameplay and GPU training ([docs/GTA_MODEL.md](docs/GTA_MODEL.md#realistic-expectations)).
 - Real Twitch, real AI providers, MediaMTX, MinIO and the Docker images were not exercised where SLOT1 was built. The final report says exactly what was verified, and lists what still isn't under [Still not verified](docs/FINAL_REPORT.md#still-not-verified).

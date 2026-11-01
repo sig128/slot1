@@ -1,0 +1,84 @@
+/* The money bag in the home hero (MoneyBag.tsx) and its "Soon" tag. */
+.mb-bag {
+  display: inline-block;
+  width: 1.6em;
+  height: 1.6em;
+  overflow: visible;
+  /* The intro's hard ink shadow, as on "GTA VI". */
+  filter: drop-shadow(0.04em 0.07em 0 #140715);
+}
+.mb-bag .mb-hop,
+.mb-bag .mb-glint {
+  transform-box: fill-box;
+}
+.mb-bag .mb-hop {
+  transform-origin: 50% 100%;
+}
+.mb-bag .mb-glint {
+  transform-origin: 50% 50%;
+  opacity: 0;
+}
+
+/* "Get [bag] SOON" after the hero's punchline. */
+.gx-get {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18em;
+  white-space: nowrap;
+}
+.gx-get .mb-bag {
+  margin: -0.3em 0 -0.25em 0.04em;
+}
+.gx-soon {
+  margin-left: 0.3em;
+  padding: 0.28em 0.45em 0.22em;
+  border: 1px solid #ffc94d;
+  color: #ffc94d;
+  font-size: 0.56em;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* A small hop and a glint every few seconds; nothing moves under reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .mb-bag .mb-hop {
+    animation: mb-hop 4.8s cubic-bezier(0.3, 0.6, 0.3, 1) 3.4s infinite;
+  }
+  .mb-bag .mb-glint {
+    animation: mb-glint 4.8s ease-out 3.4s infinite;
+  }
+}
+@keyframes mb-hop {
+  0%,
+  68%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  74% {
+    transform: translateY(0) scale(1.06, 0.92);
+  }
+  82% {
+    transform: translateY(-12%) scale(0.97, 1.04);
+  }
+  90% {
+    transform: translateY(0) scale(1.03, 0.97);
+  }
+}
+@keyframes mb-glint {
+  0%,
+  84%,
+  100% {
+    opacity: 0;
+    transform: scale(0.2) rotate(0deg);
+  }
+  90% {
+    opacity: 1;
+    transform: scale(1.1) rotate(45deg);
+  }
+  96% {
+    opacity: 0;
+    transform: scale(0.4) rotate(90deg);
+  }
+}

@@ -61,7 +61,8 @@ async function chatNotice(ctx: ServerContext, broadcasterId: string, text: strin
 
 function mapHelixError(err: unknown): { code: string; message: string } {
   if (err instanceof GrantUnavailableError) return { code: "missing_auth", message: `${err.message}. ${err.requirement}.` };
-  if (err instanceof TwitchNotConfiguredError) return { code: "twitch_not_configured", message: err.requirement };
+  // The requirement names server settings, so it never reaches chat or the clip.
+  if (err instanceof TwitchNotConfiguredError) return { code: "twitch_not_configured", message: "Twitch isn't connected to SLOT1 yet" };
   if (err instanceof HelixError) {
     if (err.status === 401) return { code: "missing_scope", message: "Twitch rejected the token or scope — reconnect Twitch in Studio" };
     if (err.status === 403) return { code: "clips_disabled", message: "Twitch refused the clip — clipping may be disabled or restricted on this channel" };
@@ -117,7 +118,7 @@ export async function createLiveClip(ctx: ServerContext, data: { clipJobId: stri
   if (!job || job.state !== "requested" || job.kind !== "twitch_live") return;
   const b = await getBroadcaster(ctx.db, job.broadcaster_id);
   if (!b?.twitch_user_id) return fail(ctx, job, "not_twitch", "This channel isn't connected to Twitch");
-  if (!ctx.helix) return fail(ctx, job, "twitch_not_configured", ctx.config.capabilities.twitch.reason ?? "Twitch not configured");
+  if (!ctx.helix) return fail(ctx, job, "twitch_not_configured", "Twitch isn't connected to SLOT1 yet");
   const processing = await transitionClipJob(ctx.db, job.id, "processing");
   await publish(ctx, processing);
   try {
@@ -142,7 +143,7 @@ export async function createVodClip(ctx: ServerContext, data: { clipJobId: strin
   const b = await getBroadcaster(ctx.db, job.broadcaster_id);
   const session = await getSession(ctx.db, job.session_id);
   if (!b?.twitch_user_id || !session?.twitch_stream_id) return fail(ctx, job, "no_vod", "VOD clips need a Twitch broadcast session with a saved VOD");
-  if (!ctx.helix) return fail(ctx, job, "twitch_not_configured", ctx.config.capabilities.twitch.reason ?? "Twitch not configured");
+  if (!ctx.helix) return fail(ctx, job, "twitch_not_configured", "Twitch isn't connected to SLOT1 yet");
   await publish(ctx, await transitionClipJob(ctx.db, job.id, "processing"));
   try {
     const helix = ctx.helix;
@@ -212,7 +213,7 @@ export async function downloadAndAnalyzeClip(ctx: ServerContext, data: { clipJob
       return;
     }
     if (!allowedDownloadHost(url, process.env.TWITCH_CLIP_DOWNLOAD_HOSTS)) {
-      await publish(ctx, await setClipMediaState(ctx.db, job.id, "failed", { errorMessage: "Download URL host is not on the allowlist (TWITCH_CLIP_DOWNLOAD_HOSTS)" }));
+      await publish(ctx, await setClipMediaState(ctx.db, job.id, "failed", { errorMessage: "Twitch returned a download address SLOT1 doesn't trust, so the clip wasn't downloaded" }));
       return;
     }
     const file = path.join(work, "clip.mp4");

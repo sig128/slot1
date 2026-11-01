@@ -26,21 +26,21 @@ export const MODES: Mode[] = [
     level: 0,
     sees: "No gameplay. Asked what’s happening, it says vision isn’t connected.",
     what: "SLOT1 answers !slot1 commands and creates clips on request.",
-    needs: "The creator connects Twitch and the operator links the SLOT1 bot account.",
+    needs: "Connect my Twitch, then turn the bot on in Studio → Bot and chat.",
   },
   {
     name: "Clip analysis",
     level: 2,
     sees: "Only the clipped seconds, after Twitch has made the clip available.",
     what: "Clips come through Twitch’s official clip download and are analyzed frame by frame.",
-    needs: "The creator grants the extra clip permission (channel:manage:clips).",
+    needs: "Connect my Twitch. Its one approval includes downloading clips (channel:manage:clips).",
   },
   {
     name: "Continuous analysis",
     level: 4,
     sees: "The frames it receives, a few seconds behind, with gaps disclosed.",
     what: "A live copy of the gameplay video arrives at SLOT1’s authenticated ingest and is sampled continuously.",
-    needs: "OBS streaming to SLOT1, set up once in Studio → Stream setup. SLOT1 can pass the same stream on to Twitch, YouTube or Kick.",
+    needs: "OBS streaming to SLOT1, set up in one click in Studio → Stream setup. From a console, a capture card or Remote Play gets the picture into OBS. SLOT1 can pass the same stream on to Twitch, YouTube or Kick.",
   },
   {
     name: "Replay",
@@ -53,31 +53,94 @@ export const MODES: Mode[] = [
 
 export interface Permission {
   scope: string;
-  when: "Always" | "Optional";
-  what: string;
+  /** The feature it's for, in a few words. */
+  feature: string;
+  /** Why SLOT1 asks for it. */
+  why: string;
 }
 
-/** What Connect my Twitch asks for (docs/TWITCH_SCOPES.md). */
+/**
+ * What Connect my Twitch asks for, all in one approval (docs/TWITCH_SCOPES.md,
+ * BROADCASTER_CONNECT_SCOPES in packages/twitch/src/oauth.ts).
+ */
 export const PERMISSIONS: Permission[] = [
   {
     scope: "channel:bot",
-    when: "Always",
-    what: "Lets the SLOT1 bot account into your chat.",
+    feature: "Chat bot",
+    why: "Lets the SLOT1 bot account read and answer !slot1 commands in your chat. It stays quiet until you turn it on.",
   },
   {
     scope: "clips:edit",
-    when: "Always",
-    what: "Creates a clip when you, or the chat users you allow, ask for one.",
+    feature: "Live clips",
+    why: "Creates a clip when you, or the chat users you allow, ask for one.",
   },
   {
     scope: "channel:manage:clips",
-    when: "Optional",
-    what: "Downloads your clips so SLOT1 can analyze them. Add it later in Studio.",
+    feature: "Clip analysis",
+    why: "Downloads your clips so the AI can analyze them, and clips a past moment of a broadcast.",
   },
   {
     scope: "channel:read:stream_key",
-    when: "Optional",
-    what: "Forwards your stream to Twitch. Only when you choose it in Studio → Stream setup.",
+    feature: "Forwarding to Twitch",
+    why: "Reads your Twitch stream key so SLOT1 can pass your stream on to Twitch. Used only while forwarding to Twitch is on; stored encrypted and never shown, you included.",
+  },
+];
+
+export interface VideoOption {
+  name: string;
+  tag: string;
+  text: string;
+}
+
+export interface VideoChoice {
+  id: string;
+  title: string;
+  tag: string | null;
+  lines: string[];
+  options?: VideoOption[];
+  /** What this route can't do, said plainly. */
+  limit?: string;
+}
+
+/** /setup → Video sources: what the AI can watch, by what you play on. */
+export const VIDEO_CHOICES: VideoChoice[] = [
+  {
+    id: "pc",
+    title: "Streaming from a PC",
+    tag: "No extra hardware",
+    lines: [
+      "OBS sends your game to SLOT1. In Studio → Stream setup, one click puts SLOT1’s Server and Stream Key into OBS.",
+      "SLOT1 can pass the same stream on to Twitch, so you still stream only once.",
+    ],
+  },
+  {
+    id: "console",
+    title: "Streaming from PS5 or Xbox",
+    tag: null,
+    lines: [
+      "The console’s Broadcast button can only send to Twitch or YouTube, never to SLOT1. For the AI to watch, the picture goes through a computer running OBS. Two ways:",
+    ],
+    options: [
+      {
+        name: "Capture card + OBS",
+        tag: "Best quality",
+        text: "A capture card is a small box between the console and your TV that feeds the picture into a computer. OBS on that computer sends it to SLOT1.",
+      },
+      {
+        name: "PS Remote Play or the Xbox app + OBS",
+        tag: "No extra hardware",
+        text: "Play through the app on your PC and let OBS capture its window. The picture is lower quality than with a capture card.",
+      },
+    ],
+  },
+  {
+    id: "no-pc",
+    title: "No PC",
+    tag: null,
+    lines: [
+      "Keep broadcasting from the console as you do now. SLOT1 shows your stream in Twitch’s own player, the chat bot works, and SLOT1 can analyze your Twitch clips.",
+    ],
+    limit: "The AI can’t watch live gameplay this way: SLOT1 never gets its own copy of the video.",
   },
 ];
 

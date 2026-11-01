@@ -109,6 +109,8 @@ const overview = async (b: Browser) => (await b.get("/api/studio/relay")).json<R
 
 const CREATOR = { id: "7001", login: "relaycrew", displayName: "RelayCrew" };
 const BASE_SCOPES = ["channel:bot", "clips:edit"];
+/** What Connect my Twitch asks for, sorted: everything, in one approval. */
+const ALL_SCOPES = ["channel:bot", "channel:manage:clips", "channel:read:stream_key", "clips:edit"];
 const YT_KEY = "abcd-efgh-ijkl-mnop-qrst";
 const KICK_KEY = "sk_us-west-2_KickKey123456789";
 
@@ -264,7 +266,9 @@ describe("forwarding destinations: keys, permissions and the Twitch stream key",
       await tw.refreshCsrf();
       return { scopes: loc.searchParams.get("scope")!.split(" ").sort(), redirect: String(cb.headers.location) };
     };
-    expect((await connect("/api/auth/twitch/start")).scopes).toEqual(BASE_SCOPES);
+    // Connect asks for every creator scope; this creator's mock grant still has only the base ones,
+    // like a connection made before one-approval connect.
+    expect((await connect("/api/auth/twitch/start")).scopes).toEqual(ALL_SCOPES);
 
     let o = await overview(tw);
     expect(o.twitch).toEqual({ connected: true, forwardingPermission: false, permissionUrl: "/api/auth/twitch/start?relay=1&returnTo=%2Fstudio%3Ftab%3Dstream" });
@@ -279,16 +283,18 @@ describe("forwarding destinations: keys, permissions and the Twitch stream key",
     expect(mock.requests.filter((r) => r === "GET /helix/streams/key")).toHaveLength(0);
     await setRelayStatus(h.ctx.db, created.id, "needs_permission", "Allow SLOT1 to forward to Twitch");
 
-    // "Let SLOT1 forward to Twitch": the extra scope is added, nothing granted before is dropped.
+    // "Let SLOT1 forward to Twitch": a re-authorization that asks for the full set again, so the
+    // missing scope is added and nothing granted before is dropped.
     mock.users.get(CREATOR.id)!.scopes = [...BASE_SCOPES, "channel:read:stream_key"];
     const allowed = await connect(o.twitch.permissionUrl!);
-    expect(allowed.scopes).toEqual(["channel:bot", "channel:read:stream_key", "clips:edit"]);
+    expect(allowed.scopes).toEqual(ALL_SCOPES);
     expect(allowed.redirect).toBe("http://localhost:3000/studio?tab=stream&twitch=connected");
     o = await overview(tw);
     expect(o.twitch.forwardingPermission).toBe(true);
     expect(o.destinations.find((d) => d.id === created.id)).toMatchObject({ status: "idle", statusDetail: null });
     // A later plain reconnect keeps the forwarding permission.
-    expect((await connect("/api/auth/twitch/start")).scopes).toEqual(["channel:bot", "channel:read:stream_key", "clips:edit"]);
+    expect((await connect("/api/auth/twitch/start")).scopes).toEqual(ALL_SCOPES);
+    expect((await overview(tw)).twitch.forwardingPermission).toBe(true);
 
     const target = await resolveRelayTarget(h.ctx, (await getRelayDestination(h.ctx.db, created.id))!);
     const key = mock.streamKeys.get(CREATOR.id)!;

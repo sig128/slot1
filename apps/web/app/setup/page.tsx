@@ -6,6 +6,7 @@ import { CopyButton } from "@/components/setup/CopyButton";
 import { COMMANDS, CONSOLE_TEST, CREATOR_COMMANDS, MODES, PERMISSIONS, WONT_DO, type Command } from "@/components/setup/content";
 import { RouteMap } from "@/components/setup/RouteMap";
 import { SetupTabs } from "@/components/setup/SetupTabs";
+import { VideoSources } from "@/components/setup/VideoSources";
 import { pageMetadata } from "@/lib/site";
 
 export function generateMetadata(): Metadata {
@@ -73,7 +74,7 @@ export default function SetupPage() {
                 <li className="su-objective">
                   <b>Connect Twitch</b>
                   <span>
-                    <Link href="/studio">Studio</Link> → Connect my Twitch, with the account you broadcast from.
+                    <Link href="/studio">Studio</Link> → Connect my Twitch, with the account you broadcast from. One approval covers everything.
                   </span>
                 </li>
                 <li className="su-objective">
@@ -82,11 +83,11 @@ export default function SetupPage() {
                 </li>
                 <li className="su-objective">
                   <b>Send your video</b>
-                  <span>Optional. A capture card and OBS, set up in one click. Needed for live analysis.</span>
+                  <span>Right after connecting, Studio sets up OBS in one click. From a console, add a capture card or Remote Play. Needed for live analysis.</span>
                 </li>
                 <li className="su-objective">
                   <b>Go live everywhere</b>
-                  <span>Optional. SLOT1 passes the same stream on to Twitch, YouTube and Kick.</span>
+                  <span>SLOT1 passes the same stream on to Twitch (you choose, in the same setup), and to YouTube or Kick if you add them.</span>
                 </li>
               </ol>
             </div>
@@ -166,20 +167,24 @@ export default function SetupPage() {
             Connecting Twitch
           </h2>
           <p className="su-intro">
-            In Studio, choose Connect my Twitch and sign in with the account you broadcast from. SLOT1 asks only for what each feature needs.
+            In Studio, choose Connect my Twitch and sign in with the account you broadcast from. Twitch asks you once for everything below, then Studio takes you
+            straight to a one-minute OBS setup.
           </p>
           <div className="su-grid su-twitch">
             <div className="su-panel">
-              <h3 className="su-panel-title">What it asks Twitch for</h3>
+              <h3 className="su-panel-title flex flex-wrap items-center gap-2">
+                What it asks Twitch for <span className="su-tag su-muted">All on connect, one approval</span>
+              </h3>
               <ul className="su-perms">
                 {PERMISSIONS.map((p) => (
                   <li key={p.scope} className="su-perm">
                     <code>{p.scope}</code>
-                    <span className={p.when === "Always" ? "su-tag su-muted" : "su-tag su-gold"}>{p.when === "Always" ? "On connect" : "Optional"}</span>
-                    <p>{p.what}</p>
+                    <span className="su-tag su-gold">{p.feature}</span>
+                    <p>{p.why}</p>
                   </li>
                 ))}
               </ul>
+              <p className="su-note">Connected before this? Studio shows a Grant the missing permissions button. One approval on Twitch adds what’s new.</p>
             </div>
             <div className="grid content-start gap-3">
               <div className="su-panel">
@@ -187,8 +192,10 @@ export default function SetupPage() {
                 <p className="mt-2">Pasting another channel’s link opens a watch-only page, with no analysis and no recording.</p>
               </div>
               <div className="su-panel">
-                <h3 className="su-panel-title">Running your own SLOT1?</h3>
-                <p className="mt-2">The README covers registering a Twitch app, redirect URLs, the public HTTPS address EventSub needs, and embed hostnames.</p>
+                <h3 className="su-panel-title">You can take it back</h3>
+                <p className="mt-2">
+                  Disconnect in Studio at any time, or remove SLOT1 in your Twitch settings under Connections. SLOT1 then stops using your channel.
+                </p>
               </div>
             </div>
           </div>
@@ -240,23 +247,7 @@ export default function SetupPage() {
           <h2 id="sources-h" className="su-h2">
             Video sources
           </h2>
-          <div className="su-grid su-sources">
-            <div className="su-panel">
-              <h3 className="su-panel-title flex flex-wrap items-center gap-2">
-                Live analysis <span className="su-tag su-gold">Capture card + OBS</span>
-              </h3>
-              <p className="mt-2">
-                For continuous analysis, SLOT1 needs its own copy of the gameplay video. The common way is a capture card between the PS5 and your TV, with OBS
-                on a computer sending to the SLOT1 ingest address from Studio, and to Twitch, or SLOT1 forwards it there for you.
-              </p>
-              <p>Each source has its own stream key, which you can revoke at any time.</p>
-            </div>
-            <div className="su-panel">
-              <h3 className="su-panel-title">No capture card?</h3>
-              <p className="mt-2">Upload recordings as replays, or let SLOT1 analyze clips.</p>
-              <p>Looped or test recordings sent over the live ingest stay labeled TEST / REPLAY.</p>
-            </div>
-          </div>
+          <VideoSources />
         </section>
 
         <section id="stream" className="su-section" aria-labelledby="stream-h">
@@ -309,18 +300,18 @@ export default function SetupPage() {
           <div className="su-grid su-ai">
             <div className="su-panel">
               <h3 className="su-panel-title flex flex-wrap items-center gap-2">
-                With a vision model <span className="su-tag su-signal">Configured by the operator</span>
+                With the AI switched on <span className="su-tag su-signal">Vision model</span>
               </h3>
               <p className="mt-2">
-                Frames go to a vision-capable model configured by whoever runs SLOT1. Its output must match a strict schema, events over time need several
-                frames, and every entry links to the frames behind it.
+                Frames go to a vision-capable AI model. Its output must match a strict schema, events over time need several frames, and every entry links to
+                the frames behind it.
               </p>
             </div>
             <div className="su-panel">
-              <h3 className="su-panel-title">Without one</h3>
+              <h3 className="su-panel-title">While it’s off</h3>
               <p className="mt-2">
-                SLOT1 still reads on-screen text locally and measures the video itself (cuts, black screens, coverage), and it says AI isn’t configured rather
-                than guessing.
+                SLOT1 still reads on-screen text itself and measures the video (cuts, black screens, coverage), and it says the AI is off rather than
+                guessing.
               </p>
             </div>
             <div className="su-panel">

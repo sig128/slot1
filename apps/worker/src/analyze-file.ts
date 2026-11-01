@@ -228,9 +228,9 @@ export async function analyzeMediaFile(ctx: ServerContext, input: AnalyzeFileInp
     if (cov) await pipeline.addCandidate(cov);
 
     const notes: string[] = [];
-    if (!vision) notes.push("AI vision is not configured, so only on-screen text and measurements were analyzed.");
+    if (!vision) notes.push("The AI that describes gameplay isn't switched on yet, so only on-screen text and measurements were analyzed.");
     if (!ocr) notes.push("OCR is unavailable on this worker.");
-    if (probe.audio && !transcriber) notes.push("Audio was not transcribed (transcription not configured).");
+    if (probe.audio && !transcriber) notes.push("Audio wasn't transcribed (speech-to-text isn't switched on yet).");
     if (!probe.audio) notes.push("The recording has no audio track.");
     const summary = [
       `${pipeline.stats.frames} evidence frames ${pipeline.analyzers.length ? `analyzed by ${pipeline.analyzers.join(" and ")}` : "stored, but no analyzer ran"}.`,

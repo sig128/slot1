@@ -7,6 +7,7 @@ import type { Capabilities, ChannelSettings, ChannelSettingsPatch, MeResponse, R
 import { SkylineArt } from "@/components/brand/SkylineArt";
 import { api, ApiError, getMe } from "@/lib/api";
 import { requirementText } from "@/lib/requirements";
+import { SetupFix } from "@/components/ui/SetupFix";
 import { AdvancedSection, BotSection, JobsSection, OverviewSection, PrivacySection, SourcesSection } from "./StudioSections";
 import { GtaModelSection } from "./GtaModelSection";
 import { LibrarySection } from "./LibrarySection";
@@ -317,12 +318,20 @@ function SignIn({ caps, onSignedIn }: { caps: Capabilities; onSignedIn: () => Pr
                 Connect my Twitch
               </a>
             ) : (
-              <div className="max-w-[60ch] border-l-2 border-apricot pl-3 text-sm text-ivory-2">
-                <p>Twitch sign-in isn’t configured on this deployment.</p>
-                <p className="mt-1 text-ivory-3">{requirementText(caps.twitch.reason)}</p>
-                <Link href="/setup#twitch" className="mt-2 inline-block underline hover:text-ivory">
-                  How to register a Twitch app
-                </Link>
+              <div className="max-w-[60ch] border-l-2 border-apricot pl-3 text-sm text-ivory-2" data-testid="twitch-signin-closed">
+                <p className="font-display text-lg font-bold text-ivory">{caps.twitch.setup ? requirementText(caps.twitch.reason) : "Twitch sign-in isn’t open yet."}</p>
+                <p className="mt-1 text-ivory-3">
+                  Creators can’t connect a channel until it is. Meanwhile, watch the{" "}
+                  <Link href="/demo" className="underline hover:text-ivory">
+                    live demo
+                  </Link>{" "}
+                  or see{" "}
+                  <Link href="/setup" className="underline hover:text-ivory">
+                    how SLOT1 works
+                  </Link>
+                  .
+                </p>
+                <SetupFix cap={caps.twitch} />
               </div>
             )}
           </div>

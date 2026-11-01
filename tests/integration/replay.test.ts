@@ -77,7 +77,7 @@ describe("replay upload pipeline", () => {
     expect(session.label).toBe("replay");
     expect(session.analysis.state).toBe("replay");
     expect(session.analysis.visionConfigured).toBe(false);
-    expect(session.analysis.reason).toMatch(/AI vision is not configured/);
+    expect(session.analysis.reason).toMatch(/The AI that describes gameplay isn't switched on yet/);
 
     const page = (await creator.get(`/api/sessions/${sessionId}/observations?limit=200`)).json<{ observations: any[]; sources: any[] }>();
     const items = page.observations;

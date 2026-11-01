@@ -113,7 +113,8 @@ describe.skipIf(!hasNginxRtmp)("demo broadcast through nginx-rtmp", () => {
     expect(src).toMatchObject({ broadcaster_id: demoId, kind: "live_ingest", label: "test", status: "awaiting_publisher" });
     const info = (await anon.get("/api/demo")).json();
     expect(info).toMatchObject({ enabled: true, login: "slot1-demo", watchPath: "/watch/slot1-demo", onAir: false, sessionId: null, ocr: true, vision: false });
-    expect(info.reason).toMatch(/isn't sending/);
+    // Visitors read a plain line; the server command that checks the generator is for operators.
+    expect(info.reason).toBe("The demo stream isn't running right now.");
     const watch = await anon.get("/api/channels/slot1-demo/watch");
     expect(watch.status).toBe(200);
     expect(watch.json().channel.twitchUrl).toBe("");

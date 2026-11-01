@@ -188,9 +188,9 @@ async function build(ctx: ServerContext): Promise<NowResponse> {
     parts.push(
       ctx.config.capabilities.ingest.available
         ? "No creator is sending a public stream to SLOT1 right now."
-        : "This SLOT1 server can't receive streams yet (no ingest gateway is configured).",
+        : "Streaming to SLOT1 isn't open yet.",
     );
-    if (!ctx.config.capabilities.twitch.available) parts.push("Twitch isn't configured here, so Twitch-only channels can't be shown.");
+    if (!ctx.config.capabilities.twitch.available) parts.push("Twitch sign-in isn't open yet, so channels that stream only on Twitch can't be shown.");
     else parts.push(directory.length ? "None of the channels in the directory are live on Twitch." : "No channels have joined the directory yet.");
     emptyReason = parts.join(" ");
   }

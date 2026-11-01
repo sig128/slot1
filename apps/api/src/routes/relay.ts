@@ -31,6 +31,7 @@ import {
 } from "@slot1/services";
 import { badRequest, conflict, notFound, unavailable } from "../lib/errors";
 import { requireBroadcaster } from "../lib/session";
+import { reasonForRequest } from "../lib/setup-details";
 import { publishCredentials } from "./studio";
 
 const IdParam = z.object({ id: z.string().uuid() });
@@ -73,7 +74,7 @@ export const relayRoutes =
       const destinations = (await listRelayDestinations(ctx.db, b.id)).map((d) => relayDestinationView(d, ctx));
       return {
         available: cap.available,
-        reason: cap.reason,
+        reason: await reasonForRequest(ctx, req, "relay"),
         ingest: {
           server: env.INGEST_PUBLIC_RTMP_URL ?? null,
           sourceId: src?.id ?? null,
@@ -98,7 +99,7 @@ export const relayRoutes =
     app.post("/api/studio/relay/ingest-credentials", async (req): Promise<IngestCredentials> => {
       const b = requireBroadcaster(req);
       const { force } = z.object({ force: z.boolean().default(false) }).parse(req.body ?? {});
-      if (!ctx.config.capabilities.ingest.available) throw unavailable("Streaming to SLOT1 isn't configured on this deployment", ctx.config.capabilities.ingest.reason);
+      if (!ctx.config.capabilities.ingest.available) throw unavailable("Streaming to SLOT1 isn't open yet", ctx.config.capabilities.ingest.reason);
       let src = mainLiveSource(await listSources(ctx.db, b.id));
       if (src?.status === "publishing" && !force) {
         throw conflict("You're streaming to SLOT1 right now", "A new key would cut your stream. Stop streaming first, or keep using the key you have");
@@ -117,7 +118,7 @@ export const relayRoutes =
     app.post("/api/studio/relay/destinations", async (req): Promise<RelayDestinationView> => {
       const b = requireBroadcaster(req);
       const input = CreateRelayDestinationInput.parse(req.body);
-      if (!ctx.config.capabilities.relay.available) throw unavailable("Forwarding isn't configured on this deployment", ctx.config.capabilities.relay.reason);
+      if (!ctx.config.capabilities.relay.available) throw unavailable("Forwarding isn't switched on yet", ctx.config.capabilities.relay.reason);
       if ((await countRelayDestinations(ctx.db, b.id)) >= env.RELAY_MAX_DESTINATIONS) throw conflict(`You can forward to at most ${env.RELAY_MAX_DESTINATIONS} places`);
       if (input.platform === "twitch" && (b.kind !== "twitch" || !b.twitch_user_id)) throw badRequest("Connect your Twitch account first");
       try {

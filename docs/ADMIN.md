@@ -116,7 +116,7 @@ A hidden honeypot field catches bots: a message with it filled in gets a normal 
 
 | Variable | Default | Effect |
 |---|---|---|
-| `SLOT1_OPERATOR_TWITCH_LOGINS` | empty | Twitch logins that are operators (comma-separated) |
+| `SLOT1_OPERATOR_TWITCH_LOGINS` | empty | Twitch logins that are operators (comma-separated). Checked on every request: after an API restart, adding or removing a login applies to sessions already signed in. |
 | `SLOT1_ANALYTICS` | `true` | `false` stops visitor counting |
 | `SLOT1_CONTACT_EMAIL` | empty | Public contact address shown on `/contact` (web, read at request time) |
 | `SLOT1_VERSION` | empty | Version or commit shown under System. The server script can set it on each update. |

@@ -57,10 +57,10 @@ export function ReplayClient({
       notice={
         !session.analysis.visionConfigured ? (
           <p className="mt-5 max-w-[80ch] border-l-2 border-apricot pl-3 text-sm text-ivory-2">
-            AI vision isn’t configured on this deployment, so SLOT1 only reports on-screen text it could read and measurements of the video itself.
+            The AI that describes gameplay isn’t switched on yet, so SLOT1 only reports on-screen text it could read and measurements of the video itself.
             Nothing here is invented to fill the gap.{" "}
             <Link href="/setup#ai" className="underline hover:text-ivory">
-              Configure a vision provider
+              How the AI analysis works
             </Link>
           </p>
         ) : null

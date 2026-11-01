@@ -3,8 +3,9 @@ import { z } from "zod";
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
 /**
- * Least-privilege scopes, each tied to a feature. Documented in docs/TWITCH_SCOPES.md.
- * Broadcaster and bot identities are separate grants.
+ * Scopes, each tied to one feature. Documented in docs/TWITCH_SCOPES.md. "Connect my Twitch"
+ * asks for every creator scope in one approval (BROADCASTER_CONNECT_SCOPES), so a new streamer
+ * goes from connect to a working setup in one flow. Broadcaster and bot identities are separate grants.
  */
 export const SCOPES = {
   broadcaster: {
@@ -32,6 +33,8 @@ export const BROADCASTER_BASE_SCOPES = Object.keys(SCOPES.broadcaster);
 export const BROADCASTER_CLIP_ANALYSIS_SCOPES = Object.keys(SCOPES.broadcasterClipAnalysis);
 export const BROADCASTER_RELAY_SCOPES = Object.keys(SCOPES.broadcasterRelay);
 export const BOT_SCOPES = Object.keys(SCOPES.bot);
+/** Everything "Connect my Twitch" asks for, in one approval: chat bot, live clips, clip analysis, forwarding. */
+export const BROADCASTER_CONNECT_SCOPES = [...BROADCASTER_BASE_SCOPES, ...BROADCASTER_CLIP_ANALYSIS_SCOPES, ...BROADCASTER_RELAY_SCOPES];
 
 export const TokenResponse = z.object({
   access_token: z.string().min(1),
