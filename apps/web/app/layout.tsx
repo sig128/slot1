@@ -7,6 +7,7 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { SiteHeader } from "@/components/brand/SiteHeader";
+import { Beacon } from "@/components/analytics/Beacon";
 
 export const metadata: Metadata = {
   title: { default: "SLOT1", template: "%s — SLOT1" },
@@ -29,14 +30,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <footer className="border-t hairline">
           <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-6 gap-y-2 px-4 py-6 text-[0.82rem] text-ivory-3 sm:px-6 lg:px-10">
             <span>SLOT1 is independent and not affiliated with Rockstar Games, Take-Two, Sony or Twitch.</span>
-            <Link href="/setup" className="hover:text-ivory">
-              How SLOT1 works
-            </Link>
-            <Link href="/demo" className="hover:text-ivory">
-              Design demo (fixtures)
-            </Link>
+            <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2">
+              <Link href="/setup" className="hover:text-ivory">
+                How SLOT1 works
+              </Link>
+              <Link href="/demo" className="hover:text-ivory">
+                Live demo
+              </Link>
+              <Link href="/privacy" className="hover:text-ivory">
+                Privacy
+              </Link>
+              <Link href="/terms" className="hover:text-ivory">
+                Terms
+              </Link>
+              <Link href="/contact" className="hover:text-ivory">
+                Contact
+              </Link>
+            </nav>
           </div>
         </footer>
+        <Beacon />
       </body>
     </html>
   );

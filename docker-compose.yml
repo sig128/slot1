@@ -8,6 +8,11 @@
 # Full stack: docker compose --profile infra --profile app --profile ingest --profile edge up -d --build
 name: slot1
 
+# Container logs rotate at 3 × 10 MB per service, so they can't fill the disk.
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }
+
 x-app-env: &app-env
   DATABASE_URL: postgres://slot1:${POSTGRES_PASSWORD:-slot1}@postgres:5432/slot1
   REDIS_URL: redis://redis:6379
@@ -21,6 +26,7 @@ x-app-env: &app-env
 
 services:
   postgres:
+    logging: *logging
     image: postgres:16-alpine
     profiles: [infra]
     environment:
@@ -36,6 +42,7 @@ services:
       retries: 20
 
   redis:
+    logging: *logging
     image: redis:7-alpine
     profiles: [infra]
     command: ["redis-server", "--appendonly", "yes"]
@@ -48,6 +55,7 @@ services:
       retries: 20
 
   minio:
+    logging: *logging
     image: minio/minio:latest
     profiles: [s3]
     command: ["server", "/data", "--console-address", ":9001"]
@@ -60,6 +68,7 @@ services:
     volumes: [minio:/data]
 
   api:
+    logging: *logging
     build: { context: ., dockerfile: infra/docker/app.Dockerfile, target: api }
     profiles: [app]
     env_file: [.env]
@@ -79,6 +88,7 @@ services:
     restart: unless-stopped
 
   worker:
+    logging: *logging
     build: { context: ., dockerfile: infra/docker/app.Dockerfile, target: worker }
     profiles: [app]
     env_file: [.env]
@@ -93,6 +103,7 @@ services:
   # Shared GTA-model inference: batches frames from every live stream. Workers use it when .env
   # sets INFERENCE_URL=http://inference:4100 and the same INFERENCE_SHARED_SECRET.
   inference:
+    logging: *logging
     build: { context: ., dockerfile: infra/docker/app.Dockerfile, target: inference }
     # GPU: use target inference-gpu, set INFERENCE_EXECUTION_PROVIDERS=cuda,cpu, and uncomment the
     # reservation below (needs an NVIDIA driver and the NVIDIA Container Toolkit on the host).
@@ -116,6 +127,7 @@ services:
     #           capabilities: [gpu]
 
   web:
+    logging: *logging
     build:
       context: .
       dockerfile: infra/docker/app.Dockerfile
@@ -131,6 +143,7 @@ services:
 
   # nginx-rtmp gateway: creators publish to rtmp://<host>:1935/live/<name>?key=<key>.
   ingest:
+    logging: *logging
     build: { context: infra/nginx-rtmp }
     profiles: [ingest]
     environment:
@@ -141,6 +154,7 @@ services:
     restart: unless-stopped
 
   mediamtx:
+    logging: *logging
     # "1" is MediaMTX's latest 1.x release (kept backward compatible within 1.x).
     image: ${MEDIAMTX_IMAGE:-bluenviron/mediamtx:1}
     profiles: [mediamtx]
@@ -159,6 +173,7 @@ services:
     restart: unless-stopped
 
   caddy:
+    logging: *logging
     image: caddy:2
     profiles: [edge]
     environment:

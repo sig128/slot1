@@ -59,6 +59,10 @@ The `slot1` command is installed on the server:
 | `slot1 status` | Shows running containers and whether the API and the HTTPS site answer. |
 | `slot1 logs api` | Follows a service's logs. Services: `api`, `worker`, `web`, `inference`, `mediamtx`, `caddy`, `postgres`, `redis`. |
 | `slot1 domain NAME` | Moves to your own domain. |
+| `slot1 admin-link` | Prints a one-time link (valid 15 minutes, single use) that signs you in to the `/admin` dashboard. Works before Twitch is set up. |
+| `slot1 demo on` / `slot1 demo off` | Starts or removes the live demo stream at `/demo`. It's a synthetic test video sent through the real pipeline. |
+| `slot1 legal` | Sets the business name, address, contact email and governing law shown on the Privacy Policy, Terms and Contact pages. |
+| `slot1 seo` | Sets the Google Search Console and Bing site-verification codes. Afterwards, submit `/sitemap.xml`. |
 
 ### Twitch app (needed to sign in)
 

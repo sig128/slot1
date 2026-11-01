@@ -10,8 +10,12 @@
 #   slot1 twitch        enter your Twitch app's Client ID and Secret (turns on "Sign in with Twitch")
 #   slot1 ai            enter an Anthropic API key (turns on the AI that watches streams)
 #   slot1 domain NAME   move to your own domain (point its A record at this server first)
+#   slot1 admin-link    print a one-time link that signs you in to the /admin dashboard
+#   slot1 demo on|off   start or remove the live demo stream (synthetic test video) at /demo
+#   slot1 legal         business name, address, contact email and governing law for the legal pages
+#   slot1 seo           Google / Bing site-verification codes
 #   slot1 status        what is running, and whether the site answers
-#   slot1 logs [name]   follow the logs (api, worker, web, inference, mediamtx, caddy, postgres, redis)
+#   slot1 logs [name]   follow the logs (api, worker, web, inference, mediamtx, caddy, demo, ...)
 #
 # First-install overrides: SLOT1_DOMAIN (default <ip-with-dashes>.sslip.io, a free name that points
 # at this server), SLOT1_GATEWAY (mediamtx = sub-second video on the site, default; or nginx-rtmp),
@@ -185,6 +189,27 @@ apply_gateway() {
   esac
 }
 
+# Settings added after a server's first install get their defaults here; existing values stay.
+ensure_env_defaults() {
+  if [ -z "$(env_get SLOT1_DEMO_STREAM_KEY)" ]; then env_set SLOT1_DEMO_STREAM_KEY "$(rand_hex 24)"; fi
+  if [ -z "$(env_get SLOT1_DEMO)" ]; then env_set SLOT1_DEMO false; fi
+}
+
+# Free text for .env: one line, without characters the env-file format would interpret.
+clean_text() { printf '%s' "$1" | tr -d '\r\n$`"\\#' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'; }
+
+# ask_keep KEY "Question": shows the current value; Enter keeps it, "-" clears it.
+ask_keep() {
+  local key="$1" question="$2" current answer
+  current="$(env_get "$key")"
+  read -r -p "$question [${current:-not set}]: " answer </dev/tty
+  case "$answer" in
+    "") ;;
+    -) env_set "$key" "" ;;
+    *) env_set "$key" "$(clean_text "$answer")" ;;
+  esac
+}
+
 create_env() {
   local domain="$1" ip="$2" gateway="$3"
   cp "$DIR/.env.example" "$ENV_FILE"
@@ -208,13 +233,14 @@ create_env() {
 # --- docker compose --------------------------------------------------------------------------
 
 compose() {
-  local gateway_profile=()
+  local extra=()
   case "$(env_get INGEST_GATEWAY)" in
-    mediamtx) gateway_profile=(--profile mediamtx) ;;
-    nginx-rtmp) gateway_profile=(--profile ingest) ;;
+    mediamtx) extra+=(--profile mediamtx) ;;
+    nginx-rtmp) extra+=(--profile ingest) ;;
   esac
+  if [ "$(env_get SLOT1_DEMO)" = "true" ]; then extra+=(--profile demo); fi
   docker compose --project-directory "$DIR" -f "$DIR/docker-compose.yml" \
-    --profile infra --profile app --profile edge "${gateway_profile[@]}" "$@"
+    --profile infra --profile app --profile edge "${extra[@]}" "$@"
 }
 
 start_stack() {
@@ -288,6 +314,11 @@ EOF
 EOF
   fi
   cat <<EOF
+  Admin dashboard: run  slot1 admin-link  and open the link (or sign in with the Twitch
+  username you gave to slot1 twitch, then open $origin/admin).
+  Live demo stream: slot1 demo on   (slot1 demo off removes it again)
+  Business details on the legal pages: slot1 legal
+
   Streaming from OBS: sign in, open Studio, then "Stream setup" does it in one click.
   Server for OBS: rtmp://$domain:1935/live (the stream key is shown in Studio).
   Firewall: TCP 22, 80, 443, 1935 and UDP 8189 must be open.
@@ -323,6 +354,7 @@ cmd_install() {
     if [ -n "${SLOT1_GATEWAY:-}" ]; then apply_gateway "$SLOT1_GATEWAY"; fi
     if [ "$(env_get MEDIAMTX_PUBLIC_HOST)" != "$ip" ]; then env_set MEDIAMTX_PUBLIC_HOST "$ip"; fi
   fi
+  ensure_env_defaults
   install_cli
   start_stack
   wait_healthy
@@ -385,6 +417,81 @@ cmd_domain() {
   print_summary
 }
 
+cmd_admin_link() {
+  need_root
+  need_env
+  local out
+  if ! out="$(compose exec -T api node dist/admin-link.js 2>&1)"; then
+    printf '%s\n' "$out"
+    die "could not create the admin link. Is the API running? Check with: slot1 status"
+  fi
+  printf '\n  Open this link within 15 minutes. It works once and signs you in to /admin:\n\n  %s\n\n' \
+    "$(printf '%s\n' "$out" | tail -n 1)"
+}
+
+cmd_demo() {
+  need_root
+  need_env
+  case "${1:-}" in
+    on)
+      ensure_env_defaults
+      env_set SLOT1_DEMO true
+      # The API creates the demo channel on startup, so it goes first; then the stream starts.
+      restart_apps
+      say "Starting the demo stream"
+      compose up -d --build demo
+      note "Demo is on: $(env_get SLOT1_PUBLIC_ORIGIN)/demo (give it about 30 seconds)"
+      note "Remove it later with: slot1 demo off"
+      ;;
+    off)
+      say "Stopping the demo stream"
+      docker compose --project-directory "$DIR" -f "$DIR/docker-compose.yml" --profile demo rm -sf demo >/dev/null 2>&1 || true
+      env_set SLOT1_DEMO false
+      restart_apps
+      note "Demo is off and the demo channel is hidden. Turn it back on with: slot1 demo on"
+      ;;
+    *) die "usage: slot1 demo on   or   slot1 demo off" ;;
+  esac
+}
+
+cmd_legal() {
+  need_root
+  need_env
+  printf 'Business details for the Privacy Policy, Terms and Contact pages.\n'
+  printf 'Press Enter to keep the value in [brackets], or type - to clear it.\n\n'
+  ask_keep SLOT1_LEGAL_NAME "Business or legal name"
+  ask_keep SLOT1_LEGAL_ADDRESS "Registered address (one line)"
+  ask_keep SLOT1_CONTACT_EMAIL "Public contact email"
+  ask_keep SLOT1_GOVERNING_LAW "Country whose law governs the Terms (for example Norway)"
+  restart_apps
+  note "Done. Check $(env_get SLOT1_PUBLIC_ORIGIN)/privacy and /terms"
+}
+
+cmd_seo() {
+  need_root
+  need_env
+  local code key question
+  printf 'Paste the verification code (the content="..." value; the whole meta tag also works).\n'
+  printf 'Press Enter to keep the value in [brackets], or type - to clear it.\n\n'
+  for key in SLOT1_GOOGLE_SITE_VERIFICATION SLOT1_BING_SITE_VERIFICATION; do
+    case "$key" in
+      SLOT1_GOOGLE_SITE_VERIFICATION) question="Google Search Console code" ;;
+      *) question="Bing Webmaster Tools code" ;;
+    esac
+    read -r -p "$question [$(env_get "$key" | sed 's/^$/not set/')]: " code </dev/tty
+    case "$code" in
+      "") ;;
+      -) env_set "$key" "" ;;
+      *)
+        code="$(printf '%s' "$code" | sed -n 's/.*content="\([^"]*\)".*/\1/p;t;p' | head -n 1)"
+        env_set "$key" "$(clean_text "$code")"
+        ;;
+    esac
+  done
+  restart_apps
+  note "Now click Verify in Search Console / Bing, then submit $(env_get SLOT1_PUBLIC_ORIGIN)/sitemap.xml"
+}
+
 cmd_status() {
   need_env
   compose ps
@@ -407,6 +514,10 @@ main() {
     twitch) cmd_twitch ;;
     ai) cmd_ai ;;
     domain) cmd_domain "$@" ;;
+    admin-link) cmd_admin_link ;;
+    demo) cmd_demo "$@" ;;
+    legal) cmd_legal ;;
+    seo) cmd_seo ;;
     status) cmd_status ;;
     logs) need_env && compose logs -f --tail 100 "$@" ;;
     help | -h | --help) usage ;;
