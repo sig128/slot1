@@ -30,6 +30,11 @@ function psql(sql: string) {
   execFileSync("psql", [env("DATABASE_URL"), "-v", "ON_ERROR_STOP=1", "-q", "-c", sql], { stdio: "pipe" });
 }
 
+/** In dev every request comes from 127.0.0.1, so repeated runs would hit the 5-per-hour contact limit. */
+function resetContactLimit() {
+  execFileSync("redis-cli", ["-u", env("REDIS_URL"), "EVAL", "for _, k in ipairs(redis.call('KEYS', ARGV[1])) do redis.call('DEL', k) end return 1", "0", "slot1:contact:*"], { stdio: "pipe" });
+}
+
 /** The real CLI the server runs (`slot1 admin-link`), here with the dev environment. */
 function adminLink(): string {
   const out = execFileSync(path.join(ROOT, "node_modules/.bin/tsx"), ["--env-file-if-exists=../../.env", "src/admin-link.ts"], { cwd: path.join(ROOT, "apps/api"), encoding: "utf8" });
@@ -119,6 +124,7 @@ test.describe("Contact and admin", () => {
   test.afterEach(() => expect(errors, "browser console errors").toEqual([]));
 
   test("the contact form checks the fields and sends the message", async ({ page }, info) => {
+    resetContactLimit();
     await page.goto("/contact?topic=privacy");
     await expect(page.getByRole("heading", { name: "Contact", level: 1 })).toBeVisible();
     const topic = page.getByLabel("What it's about");

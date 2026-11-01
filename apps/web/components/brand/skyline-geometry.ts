@@ -137,6 +137,31 @@ export function buildingPath(b: Building): string {
   }
 }
 
+/**
+ * The focal tower's neon crown as two halves (left side up to the spire tip, right side up to
+ * the spire tip), so the intro can trace both sides at once until they meet at the top.
+ */
+export function crownTrace(b: Building): [string, string] {
+  const { x, w, top } = b;
+  const r = x + w;
+  const cx = x + w / 2;
+  const t2 = w * 0.74;
+  const t3 = w * 0.48;
+  const h1 = 26;
+  const h2 = 22;
+  const crown = top - h1 - h2 - 10;
+  const tip = crown - (b.mast ?? 0);
+  const side = (s: 1 | -1, edge: number) =>
+    [
+      `M${edge} ${top + 44}V${top}`,
+      `H${r1(cx + (s * t2) / 2)}V${top - h1}`,
+      `H${r1(cx + (s * t3) / 2)}V${top - h1 - h2}`,
+      `H${r1(cx + s * 4)}V${crown}`,
+      `H${r1(cx + s * 1.5)}V${tip}`,
+    ].join("");
+  return [side(-1, x), side(1, r)];
+}
+
 export const WINDOW_COLORS = ["#ffe6c2", "#ffc94d", "#ffad72", "#ff8fb0"] as const;
 
 /**

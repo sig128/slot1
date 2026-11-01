@@ -6,14 +6,16 @@ import {
   SIGN,
   VB,
   WHEEL,
+  WINDOW_COLORS,
   buildingPath,
+  crownTrace,
   farTowers,
   lightsDelay,
   px,
   py,
   rng,
   stars,
-  windowsPath,
+  windows,
 } from "./skyline-geometry";
 
 /**
@@ -37,7 +39,7 @@ export function SkylineArt({
   animated?: boolean;
   intro?: boolean;
   evidence?: boolean;
-  /** Unique per page when the artwork appears more than once (SVG gradient ids). */
+  /** Unique per page when the artwork appears more than once (SVG ids). */
   idPrefix?: string;
 }) {
   const cls = ["sk-scene", animated ? "sk-animated" : "", intro ? "sk-intro" : "", className].filter(Boolean).join(" ");
@@ -45,7 +47,7 @@ export function SkylineArt({
     <div className={cls} aria-hidden>
       <div className="sk-stage">
         <BackLayer id={idPrefix} />
-        <SkyFx />
+        <SkyFx evidence={evidence} />
         <FrontLayer id={idPrefix} intro={intro} />
         <FrontFx evidence={evidence} />
       </div>
@@ -53,25 +55,33 @@ export function SkylineArt({
   );
 }
 
+const H = VB.horizon;
 const FAR = farTowers(7);
-const STARS = stars(11, 46);
+const STARS = stars(11, 52);
+const WINDOWS = CITY.map((b, i) => windows(b, 101 + i * 7));
 
 function BackLayer({ id }: { id: string }) {
-  const H = VB.horizon;
   return (
     <svg viewBox={`0 0 ${VB.w} ${VB.h}`} preserveAspectRatio="none" className="sk-layer">
       <defs>
         <linearGradient id={`${id}-sky`} x1="0" y1="0" x2="0" y2={H} gradientUnits="userSpaceOnUse">
           <stop offset="0" stopColor="#101014" />
-          <stop offset="0.42" stopColor="#16111c" />
-          <stop offset="0.66" stopColor="#261227" />
-          <stop offset="0.82" stopColor="#4a1834" />
-          <stop offset="0.93" stopColor="#8f2a51" />
-          <stop offset="1" stopColor="#e2507a" />
+          <stop offset="0.4" stopColor="#15111b" />
+          <stop offset="0.64" stopColor="#231226" />
+          <stop offset="0.8" stopColor="#441733" />
+          <stop offset="0.92" stopColor="#87284d" />
+          <stop offset="1" stopColor="#df4d79" />
         </linearGradient>
-        <radialGradient id={`${id}-glow`} cx="1000" cy={H} r="760" gradientUnits="userSpaceOnUse" gradientTransform={`translate(0 ${H}) scale(1 0.32) translate(0 ${-H})`}>
-          <stop offset="0" stopColor="#ffad72" stopOpacity="0.62" />
-          <stop offset="0.35" stopColor="#ff4f87" stopOpacity="0.3" />
+        <radialGradient
+          id={`${id}-glow`}
+          cx="1040"
+          cy={H}
+          r="780"
+          gradientUnits="userSpaceOnUse"
+          gradientTransform={`translate(0 ${H}) scale(1 0.34) translate(0 ${-H})`}
+        >
+          <stop offset="0" stopColor="#ffad72" stopOpacity="0.66" />
+          <stop offset="0.32" stopColor="#ff4f87" stopOpacity="0.3" />
           <stop offset="1" stopColor="#ff4f87" stopOpacity="0" />
         </radialGradient>
         <radialGradient id={`${id}-moon`} cx="0.5" cy="0.5" r="0.5">
@@ -84,10 +94,10 @@ function BackLayer({ id }: { id: string }) {
         </mask>
       </defs>
       <rect width={VB.w} height={H} fill={`url(#${id}-sky)`} />
-      <ellipse cx="1000" cy={H} rx="800" ry="250" fill={`url(#${id}-glow)`} />
+      <ellipse cx="1040" cy={H} rx="820" ry="265" fill={`url(#${id}-glow)`} />
 
       {/* stars, in three brightnesses */}
-      {[0.22, 0.36, 0.52].map((o, i) => (
+      {[0.2, 0.34, 0.5].map((o, i) => (
         <path
           key={o}
           fill="#f4ede2"
@@ -99,19 +109,19 @@ function BackLayer({ id }: { id: string }) {
       ))}
 
       {/* crescent moon */}
-      <circle cx="1362" cy="116" r="62" fill={`url(#${id}-moon)`} />
-      <circle cx="1362" cy="116" r="15" fill="#f4ede2" opacity="0.88" mask={`url(#${id}-crescent)`} />
+      <circle cx="1362" cy="116" r="64" fill={`url(#${id}-moon)`} />
+      <circle cx="1362" cy="116" r="15" fill="#f4ede2" opacity="0.9" mask={`url(#${id}-crescent)`} />
 
       {/* hills behind the city; the station's transmitter stands on the highest one */}
-      <path d={`M0 ${H}V430C120 420 240 404 380 412C520 420 600 440 700 444V${H}Z`} fill="#1c1021" />
+      <path d={`M0 ${H}V436C140 424 260 410 400 416C540 422 620 440 720 446V${H}Z`} fill="#1a0f20" />
       <path
-        d={`M640 ${H}C760 446 880 420 1000 394C1090 374 1150 356 ${MAST.x} ${MAST.base}C1270 358 1350 386 1450 408C1520 422 1570 430 1600 434V${H}Z`}
-        fill="#22122a"
+        d={`M700 ${H}C820 450 930 424 1050 398C1140 378 1200 356 ${MAST.x} ${MAST.base}C1320 354 1390 382 1480 404C1540 418 1580 426 1600 430V${H}Z`}
+        fill="#211229"
       />
       <Mast />
 
       {/* far skyline, softened by haze */}
-      <g fill="#2a1631">
+      <g fill="#2b1632">
         {FAR.map((t, i) => (
           <path key={i} d={t.d} />
         ))}
@@ -124,22 +134,20 @@ function BackLayer({ id }: { id: string }) {
 function Mast() {
   const { x, base, top } = MAST;
   const h = base - top;
-  const legs = [];
-  // Lattice: two legs converging upward, with cross-bracing.
   const w0 = 16;
+  let lattice = "";
   for (let i = 0; i < 7; i++) {
     const y1 = base - (h * i) / 7;
     const y2 = base - (h * (i + 1)) / 7;
     const a = w0 * (1 - i / 7);
     const b = w0 * (1 - (i + 1) / 7);
-    legs.push(`M${x - a / 2} ${y1}L${x + b / 2} ${y2}M${x + a / 2} ${y1}L${x - b / 2} ${y2}M${x - b / 2} ${y2}H${x + b / 2}`);
+    lattice += `M${x - a / 2} ${y1}L${x + b / 2} ${y2}M${x + a / 2} ${y1}L${x - b / 2} ${y2}M${x - b / 2} ${y2}H${x + b / 2}`;
   }
   return (
     <g stroke="#140b18" strokeWidth="1.4" fill="none">
       <path d={`M${x - w0 / 2} ${base}L${x} ${top}L${x + w0 / 2} ${base}`} strokeWidth="2" />
-      <path d={legs.join("")} />
+      <path d={lattice} />
       <path d={`M${x} ${top}V${top - 16}`} strokeWidth="1.6" />
-      {/* the station's dish */}
       <path d={`M${x + 4} ${top + 34}a7 7 0 0 0 10 -8`} strokeWidth="2.4" />
     </g>
   );
@@ -147,53 +155,62 @@ function Mast() {
 
 const NEON = { coral: "#ff4f87", apricot: "#ffad72", gold: "#ffc94d" } as const;
 
+/** Light on the water: a soft column under each bright thing in the city, broken by ripples. */
+const REFLECT: [number, string, number, number][] = [
+  // x, colour, width, strength
+  [762, "#ff4f87", 46, 0.75],
+  [952, "#ff4f87", 18, 0.7],
+  [1048, "#ffc94d", 40, 0.6],
+  [1129, "#ffad72", 26, 0.5],
+  [1466, "#ffc94d", 120, 0.45],
+  [1362, "#f4ede2", 18, 0.35],
+  [92, "#ffad72", 24, 0.55],
+  [538, "#ffc94d", 22, 0.5],
+  [1352, "#ffc94d", 20, 0.5],
+  [330, "#ffc94d", 60, 0.28],
+  [1210, "#ffad72", 60, 0.25],
+];
+
 function FrontLayer({ id, intro }: { id: string; intro: boolean }) {
-  const H = VB.horizon;
   const R = rng(23);
-  // Light on the water: streaks under the brightest things in the city.
-  const sources: [number, string, number][] = [
-    [704, "#ff4f87", 26],
-    [812, "#ffc94d", 16],
-    [906, "#ff4f87", 18],
-    [996, "#ffad72", 18],
-    [1086, "#ffc94d", 22],
-    [1248, "#ffc94d", 16],
-    [1424, "#ffc94d", 40],
-    [1362, "#f4ede2", 10],
-    [104, "#ffad72", 22],
-    [372, "#ffc94d", 18],
-  ];
-  const streaks = sources.map(([x, color, w]) => {
-    let d = "";
-    for (let y = H + 6; y < CAUSEWAY_Y - 4; y += 6 + Math.floor(R() * 4)) {
-      const len = w * (0.4 + R() * 0.9) * (1 - (y - H) / 140);
-      if (len < 3) continue;
-      const jx = (R() - 0.5) * 10;
-      d += `M${(x + jx - len / 2).toFixed(1)} ${y}h${len.toFixed(1)}v1.4h-${len.toFixed(1)}z`;
+  // Ripple mask: thin broken horizontal lines, wider apart further down.
+  let ripples = "";
+  for (let y = H + 3, gap = 3; y < CAUSEWAY_Y + 50; y += gap, gap = Math.min(9, gap + 0.35)) {
+    for (let x = 0; x < VB.w; ) {
+      const len = 14 + R() * 90;
+      if (R() < 0.72) ripples += `M${x.toFixed(1)} ${y.toFixed(1)}h${len.toFixed(1)}v${(1 + R() * 0.9).toFixed(2)}h-${len.toFixed(1)}z`;
+      x += len + 4 + R() * 30;
     }
-    return { color, d };
-  });
+  }
   const lamps = Array.from({ length: 21 }, (_, i) => 20 + i * 80);
+  const focal = CITY.find((b) => b.outline);
   return (
     <svg viewBox={`0 0 ${VB.w} ${VB.h}`} preserveAspectRatio="none" className="sk-layer">
       <defs>
         <linearGradient id={`${id}-bld`} x1="0" y1="150" x2="0" y2={H} gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#1d1522" />
+          <stop offset="0" stopColor="#1e1623" />
           <stop offset="1" stopColor="#0d0b11" />
         </linearGradient>
         <linearGradient id={`${id}-water`} x1="0" y1={H} x2="0" y2={VB.h} gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#2a1222" />
-          <stop offset="0.35" stopColor="#140c15" />
+          <stop offset="0" stopColor="#2c1223" />
+          <stop offset="0.3" stopColor="#150c16" />
           <stop offset="1" stopColor="#09080c" />
         </linearGradient>
         <linearGradient id={`${id}-horizon`} x1="0" y1="0" x2={VB.w} y2="0" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#ff4f87" stopOpacity="0.15" />
+          <stop offset="0" stopColor="#ff4f87" stopOpacity="0.2" />
           <stop offset="0.45" stopColor="#ff4f87" stopOpacity="0.9" />
           <stop offset="0.66" stopColor="#ffad72" />
-          <stop offset="1" stopColor="#ff4f87" stopOpacity="0.2" />
+          <stop offset="1" stopColor="#ff4f87" stopOpacity="0.25" />
         </linearGradient>
-        <filter id={`${id}-neon`} x="-30%" y="-60%" width="160%" height="220%">
-          <feGaussianBlur stdDeviation="2.4" result="b" />
+        <linearGradient id={`${id}-fade`} x1="0" y1={H} x2="0" y2={CAUSEWAY_Y + 40} gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#fff" stopOpacity="1" />
+          <stop offset="1" stopColor="#fff" stopOpacity="0" />
+        </linearGradient>
+        <mask id={`${id}-ripple`} maskUnits="userSpaceOnUse" x="0" y={H} width={VB.w} height={VB.h - H}>
+          <path d={ripples} fill={`url(#${id}-fade)`} />
+        </mask>
+        <filter id={`${id}-neon`} x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="2.2" result="b" />
           <feMerge>
             <feMergeNode in="b" />
             <feMergeNode in="SourceGraphic" />
@@ -208,34 +225,51 @@ function FrontLayer({ id, intro }: { id: string; intro: boolean }) {
         ))}
       </g>
       {/* moderne ledges catch the glow */}
-      <g stroke="#3b2333" strokeWidth="1.2" opacity="0.8">
+      <g stroke="#3d2335" strokeWidth="1.1" opacity="0.75">
         {CITY.filter((b) => b.ledges).map((b, i) => {
           let d = "";
           for (let y = b.top + 7; y < H - 8; y += 16) d += `M${b.x + 2} ${y}H${b.x + b.w - 2}`;
           return <path key={i} d={d} />;
         })}
       </g>
-      {/* lit windows: one path per building; the intro lights them outward from the mast */}
+      {/* unlit panes, then the lit ones (one group per building; the intro lights a building as a
+          unit, outward from the mast) */}
+      <path fill="#f4ede2" opacity="0.055" d={WINDOWS.map((w) => w.dark).join("")} />
       {CITY.map((b, i) => (
-        <path
+        <g
           key={i}
           className={intro ? "sk-lit" : undefined}
           style={intro ? ({ "--d": `${lightsDelay(b)}ms` } as CSSProperties) : undefined}
-          fill={i % 3 === 1 ? "#ffad72" : "#ffc94d"}
-          opacity="0.88"
-          d={windowsPath(b, 101 + i)}
-        />
+          opacity="0.92"
+        >
+          {WINDOWS[i]!.lit.map((d, c) => (d ? <path key={c} d={d} fill={WINDOW_COLORS[c]} /> : null))}
+        </g>
       ))}
-      {/* neon fins and strips */}
+      {/* neon: fins, the dome's strip and the focal tower's crown */}
       <g filter={`url(#${id}-neon)`}>
         {CITY.filter((b) => b.neon).map((b, i) => (
           <rect key={i} x={b.neon!.x - 1.5} y={b.neon!.y1} width="3" height={b.neon!.y2 - b.neon!.y1} fill={NEON[b.neon!.color]} />
         ))}
+        {focal &&
+          crownTrace(focal).map((d, i) => (
+            <path
+              key={i}
+              d={d}
+              className={intro ? "sk-trace" : undefined}
+              pathLength={100}
+              strokeDasharray="100"
+              fill="none"
+              stroke="#ff4f87"
+              strokeWidth="1.5"
+              strokeLinejoin="miter"
+              opacity="0.95"
+            />
+          ))}
       </g>
 
       {/* the station's rooftop sign */}
       <g>
-        <path d={`M${SIGN.x + 14} ${SIGN.y + SIGN.h}V320M${SIGN.x + SIGN.w - 14} ${SIGN.y + SIGN.h}V320`} stroke="#0d0b11" strokeWidth="3" />
+        <path d={`M${SIGN.x + 14} ${SIGN.y + SIGN.h}V330M${SIGN.x + SIGN.w - 14} ${SIGN.y + SIGN.h}V330`} stroke="#0d0b11" strokeWidth="3" />
         <rect x={SIGN.x} y={SIGN.y} width={SIGN.w} height={SIGN.h} rx="2" fill="#1a0d16" stroke="#3a1a2b" strokeWidth="1.5" />
         <g className={intro ? "sk-neon" : undefined} filter={`url(#${id}-neon)`}>
           <rect x={SIGN.x + 3} y={SIGN.y + 3} width={SIGN.w - 6} height={SIGN.h - 6} rx="1.5" fill="none" stroke="#ff4f87" strokeWidth="1.3" />
@@ -257,24 +291,27 @@ function FrontLayer({ id, intro }: { id: string; intro: boolean }) {
       <g fill="#0c0a10" stroke="#0c0a10">
         <path d={`M${WHEEL.cx - 40} ${H - 2}L${WHEEL.cx} ${WHEEL.cy}L${WHEEL.cx + 40} ${H - 2}`} fill="none" strokeWidth="3.4" />
         <path d={`M${WHEEL.cx - 26} ${H - 30}H${WHEEL.cx + 26}`} fill="none" strokeWidth="1.6" />
-        <rect x="1296" y={H - 6} width="304" height="6" stroke="none" />
-        <path d={`M1296 ${H - 13}H1600`} fill="none" strokeWidth="1.2" />
-        {Array.from({ length: 13 }, (_, i) => (
-          <path key={i} d={`M${1302 + i * 24} ${H - 13}V${H}M${1302 + i * 24} ${H}V${H + 18}`} fill="none" strokeWidth={i % 2 ? 1 : 2.4} />
+        <rect x="1340" y={H - 6} width="260" height="6" stroke="none" />
+        <path d={`M1340 ${H - 13}H1600`} fill="none" strokeWidth="1.2" />
+        {Array.from({ length: 11 }, (_, i) => (
+          <path key={i} d={`M${1346 + i * 24} ${H - 13}V${H}M${1346 + i * 24} ${H}V${H + 18}`} fill="none" strokeWidth={i % 2 ? 1 : 2.4} />
         ))}
       </g>
 
       {/* the bay */}
       <rect x="0" y={H} width={VB.w} height={VB.h - H} fill={`url(#${id}-water)`} />
+      <g mask={`url(#${id}-ripple)`}>
+        {REFLECT.map(([x, color, w, o], i) => (
+          <rect key={i} x={x - w / 2} y={H} width={w} height={CAUSEWAY_Y + 40 - H} fill={color} opacity={o} />
+        ))}
+        <rect x="0" y={H} width={VB.w} height="34" fill="#ff4f87" opacity="0.22" />
+      </g>
       <rect x="0" y={H - 1} width={VB.w} height="2.2" fill={`url(#${id}-horizon)`} />
-      {streaks.map((s, i) => (
-        <path key={i} d={s.d} fill={s.color} opacity="0.5" />
-      ))}
 
       {/* causeway with its lamps */}
       <g>
         <rect x="-10" y={CAUSEWAY_Y} width={VB.w + 20} height="5" fill="#0b090e" />
-        <rect x="-10" y={CAUSEWAY_Y - 0.6} width={VB.w + 20} height="0.9" fill="#ffad72" opacity="0.28" />
+        <rect x="-10" y={CAUSEWAY_Y - 0.6} width={VB.w + 20} height="0.9" fill="#ffad72" opacity="0.3" />
         {lamps.map((x) => (
           <g key={x}>
             <path d={`M${x} ${CAUSEWAY_Y}V${CAUSEWAY_Y - 11}h4`} stroke="#0b090e" strokeWidth="1.2" fill="none" />
@@ -290,35 +327,39 @@ function FrontLayer({ id, intro }: { id: string; intro: boolean }) {
       </g>
 
       {/* beach */}
-      <path d={`M0 ${VB.h}V606C260 598 520 612 800 608C1080 604 1340 600 1600 612V${VB.h}Z`} fill="#09080b" />
-      <path d="M0 606C260 598 520 612 800 608C1080 604 1340 600 1600 612" stroke="#3a1a2b" strokeWidth="1" fill="none" opacity="0.7" />
+      <path d={`M0 ${VB.h}V612C260 604 520 618 800 614C1080 610 1340 606 1600 618V${VB.h}Z`} fill="#09080b" />
+      <path d="M0 612C260 604 520 618 800 614C1080 610 1340 606 1600 618" stroke="#3a1a2b" strokeWidth="1" fill="none" opacity="0.7" />
     </svg>
   );
 }
 
-function SkyFx() {
+function SkyFx({ evidence }: { evidence: boolean }) {
   return (
     <div className="sk-fx">
+      {/* thin cloud lit from below by the city, drifting */}
+      <span className="sk-wisp" style={{ left: px(180), top: py(262), width: px(760), height: py(26) }} />
+      <span className="sk-wisp sk-wisp-2" style={{ left: px(860), top: py(214), width: px(620), height: py(20) }} />
+
       {/* searchlights from behind downtown */}
-      <span className="sk-beam sk-beam-a" style={{ left: px(918 - 60), bottom: py(VB.h - VB.horizon), width: px(120), height: py(VB.horizon) }} />
-      <span className="sk-beam sk-beam-b" style={{ left: px(1096 - 60), bottom: py(VB.h - VB.horizon), width: px(120), height: py(VB.horizon) }} />
+      <span className="sk-beam sk-beam-a" style={{ left: px(985 - 60), bottom: py(VB.h - H), width: px(120), height: py(H) }} />
+      <span className="sk-beam sk-beam-b" style={{ left: px(1150 - 60), bottom: py(VB.h - H), width: px(120), height: py(H) }} />
 
       {/* neon halo behind the ON AIR sign */}
-      <span className="sk-halo" style={{ left: px(SIGN.x - 40), top: py(SIGN.y - 34), width: px(SIGN.w + 80), height: py(SIGN.h + 68) }} />
+      <span className="sk-halo" style={{ left: px(SIGN.x - 44), top: py(SIGN.y - 36), width: px(SIGN.w + 88), height: py(SIGN.h + 72) }} />
 
       {/* the station transmits */}
-      <span className="sk-ring" style={{ left: px(MAST.x), top: py(MAST.top - 8), width: px(260) }} />
-      <span className="sk-ring sk-ring-2" style={{ left: px(MAST.x), top: py(MAST.top - 8), width: px(260) }} />
+      <span className="sk-ring" style={{ left: px(MAST.x), top: py(MAST.top - 8), width: px(280) }} />
+      <span className="sk-ring sk-ring-2" style={{ left: px(MAST.x), top: py(MAST.top - 8), width: px(280) }} />
       <span className="sk-beacon" style={{ left: px(MAST.x), top: py(MAST.top - 16) }} />
-      <span className="sk-beacon sk-beacon-slow" style={{ left: px(MAST.x), top: py(MAST.top + 40) }} />
+      <span className="sk-beacon sk-beacon-slow" style={{ left: px(MAST.x), top: py(MAST.top + 44) }} />
 
       {/* a few stars breathe */}
       {(
         [
           [212, 64],
           [538, 128],
-          [1090, 46],
-          [1490, 168],
+          [1180, 40],
+          [1490, 178],
           [760, 30],
         ] as const
       ).map(([x, y], i) => (
@@ -326,23 +367,27 @@ function SkyFx() {
       ))}
 
       {/* a helicopter crosses the bay; SLOT1 notices it */}
-      <div className="sk-heli" style={{ top: py(188) }}>
-        <div className="sk-heli-craft" style={{ width: px(46) }}>
-          <svg viewBox="0 0 46 20" className="block h-auto w-full">
-            <path d="M3 4h40" stroke="#08070a" strokeWidth="1.2" />
-            <path d="M23 4v3" stroke="#08070a" strokeWidth="1.4" />
-            <path d="M16 9c0-2 3-3 7-3h4c4 0 7 2 7 5s-3 4-7 4h-6c-3 0-5-2-5-6z" fill="#08070a" />
-            <path d="M16 10H4l-1-3" stroke="#08070a" strokeWidth="1.6" fill="none" />
-            <path d="M20 15l-2 3h16l-2-3" stroke="#08070a" strokeWidth="1" fill="none" />
+      <div className="sk-heli" style={{ top: py(104) }}>
+        <div className="sk-heli-craft" style={{ width: px(48) }}>
+          <span className="sk-heli-cone" />
+          <svg viewBox="0 0 46 20" className="relative block h-auto w-full">
+            <path d="M2 4h42" stroke="#3a2a36" strokeWidth="1.1" />
+            <path d="M23 4v3" stroke="#3a2a36" strokeWidth="1.4" />
+            <path d="M16 9c0-2 3-3 7-3h4c4 0 7 2 7 5s-3 4-7 4h-6c-3 0-5-2-5-6z" fill="#2c2230" />
+            <path d="M18 13.5c3 1 9 1 13 0" stroke="#7a4a5c" strokeWidth="0.9" fill="none" />
+            <path d="M16 10H4l-1-3" stroke="#2c2230" strokeWidth="1.6" fill="none" />
+            <path d="M20 15l-2 3h16l-2-3" stroke="#2c2230" strokeWidth="1" fill="none" />
           </svg>
           <span className="sk-heli-light" />
-          <span className="sk-heli-cone" />
-          <span className="sk-bracket sk-bracket-heli">
-            <span className="sk-bracket-label">
-              <i className="sk-glyph sk-glyph-visible" />
-              Visible
+          <span className="sk-heli-strobe" />
+          {evidence && (
+            <span className="sk-bracket sk-bracket-heli">
+              <span className="sk-bracket-label">
+                <i className="sk-glyph sk-glyph-visible" />
+                Visible
+              </span>
             </span>
-          </span>
+          )}
         </div>
       </div>
     </div>
@@ -360,43 +405,43 @@ const CARS: { dir: "l" | "r"; dur: number; delay: number; x: string }[] = [
 
 const FLICKER: [number, number, number][] = [
   // x, y, seconds
-  [652, 344, 23],
-  [826, 300, 31],
-  [1060, 300, 27],
-  [372, 404, 37],
-  [1252, 412, 29],
+  [748, 370, 23],
+  [930, 300, 31],
+  [1062, 250, 27],
+  [318, 436, 37],
+  [1186, 330, 29],
+];
+
+const TOWER_LIGHTS: [number, number, number][] = [
+  [952, 168, 0],
+  [1048, 48, -0.9],
+  [1129, 179, -1.6],
+  [1291, 256, -0.4],
 ];
 
 function FrontFx({ evidence }: { evidence: boolean }) {
   return (
     <div className="sk-fx">
       {/* the water's light breathes */}
-      <span className="sk-shimmer" style={{ left: px(660), top: py(VB.horizon + 4), width: px(470), height: py(CAUSEWAY_Y - VB.horizon - 10) }} />
-      <span className="sk-shimmer sk-shimmer-2" style={{ left: px(1360), top: py(VB.horizon + 4), width: px(130), height: py(CAUSEWAY_Y - VB.horizon - 10) }} />
+      <span className="sk-shimmer" style={{ left: px(700), top: py(H + 4), width: px(520), height: py(CAUSEWAY_Y - H - 8) }} />
+      <span className="sk-shimmer sk-shimmer-2" style={{ left: px(1400), top: py(H + 4), width: px(140), height: py(CAUSEWAY_Y - H - 8) }} />
 
       {/* traffic on the causeway: headlights head west, tail lights east */}
       {CARS.map((c, i) => (
         <span
           key={i}
           className={`sk-car sk-car-${c.dir}`}
-          style={{ top: py(CAUSEWAY_Y - 3.2), ["--x" as string]: c.x, animationDuration: `${c.dur}s`, animationDelay: `${c.delay}s` }}
+          style={{ top: py(CAUSEWAY_Y - 3.4), ["--x" as string]: c.x, animationDuration: `${c.dur}s`, animationDelay: `${c.delay}s` }}
         />
       ))}
 
       {/* a few windows switch on and off over time */}
       {FLICKER.map(([x, y, s], i) => (
-        <span key={i} className="sk-window" style={{ left: px(x), top: py(y), width: px(4), height: py(6), animationDuration: `${s}s`, animationDelay: `${-i * 5}s` }} />
+        <span key={i} className="sk-window" style={{ left: px(x), top: py(y), width: px(3), height: py(4.4), animationDuration: `${s}s`, animationDelay: `${-i * 5}s` }} />
       ))}
 
       {/* aviation lights on the towers */}
-      {(
-        [
-          [812, 114, 0],
-          [906, 150, -0.9],
-          [996, 133, -1.6],
-          [1165, 174, -0.4],
-        ] as const
-      ).map(([x, y, d], i) => (
+      {TOWER_LIGHTS.map(([x, y, d], i) => (
         <span key={i} className="sk-beacon sk-beacon-tower" style={{ left: px(x), top: py(y), animationDelay: `${d}s` }} />
       ))}
 
@@ -404,10 +449,10 @@ function FrontFx({ evidence }: { evidence: boolean }) {
       <Wheel />
 
       {/* palms */}
-      <Palm x={34} h={300} tilt={-4} />
-      <Palm x={156} h={232} tilt={5} flip />
-      <Palm x={1488} h={286} tilt={3} flip />
-      <Palm x={1566} h={220} tilt={-6} />
+      <Palm x={26} h={226} tilt={-5} />
+      <Palm x={112} h={176} tilt={6} flip />
+      <Palm x={1548} h={268} tilt={4} flip />
+      <Palm x={1604} h={206} tilt={-6} />
 
       {evidence && (
         <span
@@ -469,7 +514,7 @@ function Palm({ x, h, tilt, flip = false }: { x: number; h: number; tilt: number
       className="sk-palm"
       style={{
         left: px(x - w / 2),
-        top: py(624 - h),
+        top: py(628 - h),
         width: px(w),
         height: py(h),
         ["--tilt" as string]: `${tilt}deg`,

@@ -21,9 +21,14 @@ export function OnAirView({ directory, capabilities }: { directory: DirectoryRes
   return (
     <>
       <section data-scene data-mode={mode} aria-labelledby="intro-title" className="sk-hero flex flex-col">
-        <div className="mx-auto w-full max-w-[1600px] px-4 pb-10 pt-[clamp(2.75rem,8vh,6.5rem)] sm:px-6 lg:px-10 lg:pb-16">
-          <div className="max-w-[46rem]">
-            <h1 id="intro-title" className={`poster-title leading-[0.86] ${mode === "empty" ? "text-[clamp(3.1rem,6.9vw,6.9rem)]" : "text-[clamp(2.7rem,5.6vw,5.6rem)]"}`}>
+        <div className="mx-auto w-full max-w-[1600px] px-4 pb-12 pt-7 sm:px-6 lg:px-10 lg:pb-16 lg:pt-[clamp(2.75rem,8vh,6.5rem)]">
+          <div>
+            <h1
+              id="intro-title"
+              className={`poster-title sk-title max-w-[64rem] leading-[0.86] ${
+                mode === "empty" ? "text-[clamp(3rem,12.4vw,4.6rem)] lg:text-[clamp(4.2rem,5.5vw,6.2rem)]" : "text-[clamp(2.7rem,11vw,4rem)] lg:text-[clamp(3.6rem,4.6vw,5.1rem)]"
+              }`}
+            >
               <span className="sk-line">
                 <span className="sk-rise" style={{ animationDelay: "60ms" }}>
                   The AI that watches
@@ -35,7 +40,7 @@ export function OnAirView({ directory, capabilities }: { directory: DirectoryRes
                 </span>
               </span>
             </h1>
-            <p className="sk-reveal mt-6 max-w-[34rem] text-[1.075rem] leading-relaxed text-ivory-2 sm:text-[1.15rem]" style={{ animationDelay: "520ms" }}>
+            <p className="sk-reveal mt-5 max-w-[34rem] text-[1.05rem] leading-relaxed text-ivory-2 sm:text-[1.15rem] lg:mt-7" style={{ animationDelay: "520ms" }}>
               SLOT1 sits beside a GTA broadcast, logs what it actually sees and links every line to the frames it came from. Streams sent to SLOT1 also get live
               video, instant replays and clips.
             </p>
@@ -58,7 +63,7 @@ export function OnAirView({ directory, capabilities }: { directory: DirectoryRes
             </div>
           </div>
         </div>
-        <div className="sk-hero-art mt-auto">
+        <div className="sk-hero-art order-first lg:order-none">
           <SkylineArt animated intro evidence idPrefix="skh" className="h-full w-full" />
         </div>
         <ScenePlayback />
@@ -71,7 +76,7 @@ export function OnAirView({ directory, capabilities }: { directory: DirectoryRes
 
 function EmptyStatus() {
   return (
-    <p className="flex max-w-[34rem] items-start gap-2.5 text-[0.98rem] text-ivory-2">
+    <p className="flex max-w-[40rem] items-start gap-2.5 text-[0.98rem] text-ivory-2">
       <span className="stale-dot mt-[0.45rem] text-ivory-3" aria-hidden />
       <span>
         <span className="font-display text-[1.08rem] font-semibold text-ivory">Nothing on air yet.</span> Channels appear here the moment their creator goes live.

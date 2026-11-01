@@ -44,11 +44,15 @@ function send(url: string, payload: Record<string, string>) {
 export function Beacon() {
   const pathname = usePathname();
   const current = useRef<string | null>(null);
+  const lastSent = useRef<string | null>(null);
   const firstView = useRef(true);
 
   useEffect(() => {
     if (!pathname) return;
     current.current = pathname;
+    // One view per page: React's development double-run of effects must not count twice.
+    if (lastSent.current === pathname) return;
+    lastSent.current = pathname;
     if (!counted() || excluded(pathname)) return;
     const payload: Record<string, string> = { p: pathname, b: bucket() };
     if (firstView.current) {
