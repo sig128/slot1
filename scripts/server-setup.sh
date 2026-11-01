@@ -10,6 +10,7 @@
 #   slot1 twitch        enter your Twitch app's Client ID and Secret (turns on "Sign in with Twitch")
 #   slot1 ai            enter an Anthropic API key (turns on the AI that watches streams)
 #   slot1 domain NAME   move to your own domain (point its A record at this server first)
+#   slot1 admins NAMES  set the Twitch usernames that are SLOT1 admins (comma-separated)
 #   slot1 admin-link    print a one-time link that signs you in to the /admin dashboard
 #   slot1 demo on|off   start or remove the live demo stream (synthetic test video) at /demo
 #   slot1 legal         business name, address, contact email and governing law for the legal pages
@@ -384,7 +385,7 @@ cmd_twitch() {
   read -r -p "Client ID: " id </dev/tty
   read -r -s -p "Client Secret (hidden while you paste): " secret </dev/tty
   printf '\n'
-  read -r -p "Your Twitch username, allowed to connect the SLOT1 chat bot (Enter to skip): " me </dev/tty
+  read -r -p "Your Twitch username: makes you a SLOT1 admin (several: comma-separated; Enter to skip): " me </dev/tty
   read -r -p "The bot account's Twitch username (Enter to skip): " bot </dev/tty
   id="$(printf '%s' "$id" | tr -d '[:space:]')"
   secret="$(printf '%s' "$secret" | tr -d '[:space:]')"
@@ -516,6 +517,21 @@ cmd_seo() {
   note "Now click Verify in Search Console / Bing, then submit $(env_get SLOT1_PUBLIC_ORIGIN)/sitemap.xml"
 }
 
+cmd_admins() {
+  need_root
+  need_env
+  local names="${1:-}"
+  if [ -z "$names" ]; then
+    printf 'Current admins: %s\n' "$(env_get SLOT1_OPERATOR_TWITCH_LOGINS | sed 's/^$/none/')"
+    read -r -p "Twitch usernames to make admins (comma-separated): " names </dev/tty
+  fi
+  names="$(printf '%s' "$names" | tr '[:upper:]' '[:lower:]' | tr -d ' @')"
+  [ -n "$names" ] || die "no usernames given."
+  env_set SLOT1_OPERATOR_TWITCH_LOGINS "$names"
+  restart_apps
+  note "Admins: $names. Sign out and in again on the site if /admin still says not found."
+}
+
 cmd_status() {
   need_env
   compose ps
@@ -539,6 +555,7 @@ main() {
     ai) cmd_ai ;;
     domain) cmd_domain "$@" ;;
     admin-link) cmd_admin_link ;;
+    admins) cmd_admins "$@" ;;
     demo) cmd_demo "$@" ;;
     legal) cmd_legal ;;
     seo) cmd_seo ;;
