@@ -5,7 +5,8 @@ import { SECTIONS } from "./content";
 
 /**
  * The pause-menu tab strip. Plain in-page links (every section stays in the page for readers and
- * search engines); the white selection bar follows the section being read.
+ * search engines); the white selection bar (aria-current, styled in setup.css) follows the
+ * section being read.
  */
 export function SetupTabs() {
   const [active, setActive] = useState<string>(SECTIONS[0].id);
@@ -45,7 +46,7 @@ export function SetupTabs() {
               href={`#${s.id}`}
               data-tab={s.id}
               aria-current={active === s.id ? "location" : undefined}
-              className={active === s.id ? "su-tab select-bar" : "su-tab"}
+              className="su-tab"
               onClick={() => setActive(s.id)}
             >
               {s.label}
