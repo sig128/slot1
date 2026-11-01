@@ -96,7 +96,7 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "What does the AI actually see?",
-    a: "Frames from the creator's video, sampled every few seconds. SLOT1 reads on-screen text such as mission titles and MISSION PASSED on its own server, and an AI vision model describes the gameplay when this site has one switched on. Every entry must point to real frames, and anything about motion needs several. SLOT1's own GTA model is still being trained and isn't used for the log yet.",
+    a: "Frames from the creator's stream, sampled every few seconds. A frame is the whole picture the creator sends, so it includes their webcam and overlays if those are in the stream. SLOT1 reads on-screen text such as mission titles and MISSION PASSED on its own server, and an AI vision model describes the gameplay when this site has one switched on. Every entry must point to real frames, and anything about motion needs several. SLOT1's own GTA model is still being trained and isn't used for the log yet.",
   },
   {
     q: "How close to live is it?",

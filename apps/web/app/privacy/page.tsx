@@ -58,7 +58,7 @@ function sections(cfg: LegalConfig): LegalSection[] {
           <li>Visitor statistics use no cookies. Visits are counted with an ID that changes every day and can’t be traced back to you.</li>
           <li>SLOT1’s only cookie keeps you signed in and protects forms. It is not used for tracking.</li>
           <li>Creators decide what is analyzed, recorded and public, how long it is kept, and can delete it at any time in Studio.</li>
-          <li>Video, audio and questions go to an outside AI service only when the operator has switched one on. Section 6 lists what is switched on right now.</li>
+          <li>SLOT1 receives a creator’s whole stream, including any webcam, overlays and microphone. It goes to an outside AI service only when the operator has switched one on; section 6 lists what is switched on right now.</li>
         </ul>
       ),
     },
@@ -133,16 +133,24 @@ function sections(cfg: LegalConfig): LegalSection[] {
           />
 
           <h3>If you stream or upload as a creator</h3>
+          <p>
+            <strong>SLOT1 receives your whole stream, not just the game.</strong> Whatever your streaming software (for example OBS) sends is what SLOT1
+            gets: the gameplay plus your webcam or facecam, overlays and alerts if they are in your scene, and the sound, including your microphone.
+            That full picture and sound is what is analyzed, shown to viewers of public sessions, recorded, forwarded to other platforms you add and, when
+            the operator has switched an AI service on, sampled and sent to it (section 6). You decide what is in your stream. People who can be seen
+            or heard in it are part of your content, and you need their permission where the law requires it.
+          </p>
           <DataItem
-            title="Video you send to SLOT1"
+            title="Video and audio you send to SLOT1"
             what={
               <>
-                The live stream your streaming software sends to SLOT1, recordings you upload, and Twitch clips you let SLOT1 download. SLOT1 samples
-                frames from the video (every 5 seconds by default) to analyze them, and keeps the frames each log entry cites as its evidence. Full
-                recordings, and the rolling buffer used to cut clips, are kept only if you consent to recording in Studio.
+                The live stream your streaming software sends to SLOT1 (picture and sound, as described above), recordings you upload, and Twitch clips
+                you let SLOT1 download. SLOT1 samples frames from the video (every 5 seconds by default) to analyze them, and keeps the frames each log
+                entry cites as its evidence. Full recordings, and the rolling buffer used to cut clips, are kept only if you consent to recording in
+                Studio.
               </>
             }
-            why="Analyzing the gameplay, showing the live log with its evidence, live video for viewers, replays, clips and recordings: the features you turn on."
+            why="Analyzing the stream, showing the live log with its evidence, live video for viewers, forwarding, replays, clips and recordings: the features you turn on."
             kept={
               <>
                 Analysis, evidence frames, transcripts and moments: for the number of days you choose in Studio (30 by default, up to 365) after the
@@ -160,7 +168,7 @@ function sections(cfg: LegalConfig): LegalSection[] {
           />
           <DataItem
             title="Analysis results"
-            what="The log entries: what was observed, when, the on-screen text SLOT1 read, how it knows (read on screen, seen, heard, inferred, measured), and links to the evidence frames. With transcription switched on, the text of what is said on stream. Corrections you make."
+            what="The log entries: what was observed, when, the on-screen text SLOT1 read, how it knows (read on screen, seen, heard, inferred, measured), and links to the evidence frames, which show the whole stream picture. With transcription switched on, the text of what is said on stream, including into your microphone. Corrections you make."
             why="The live log, search, moments and chat answers."
             kept="Same as the session they belong to (see above)."
           />
@@ -290,13 +298,16 @@ function sections(cfg: LegalConfig): LegalSection[] {
                       <strong>{p.name}</strong>, which {p.purpose}
                     </span>
                   ))}
-                  . These services receive the sampled frames, audio or evidence needed for that, not your account details.
+                  . They receive the sampled frames, audio or evidence needed for that, not your account details. A sampled frame is the whole stream
+                  picture, so it includes a creator’s webcam, overlays and alerts when those are in the stream, and audio includes the creator’s
+                  microphone.
                 </>
               ) : (
                 <>
                   None is switched on right now: frames are analyzed only on SLOT1’s own server (on-screen text reading and video measurements). If the
                   operator switches one on, such as Anthropic or OpenAI for AI vision or a speech-to-text service, it will be listed here and receive only
-                  the sampled frames, audio or evidence needed for that.
+                  the sampled frames, audio or evidence needed for that. A sampled frame is the whole stream picture, so it would include a creator’s
+                  webcam, overlays and alerts when those are in the stream, and audio would include the creator’s microphone.
                 </>
               )}
             </li>
@@ -309,8 +320,8 @@ function sections(cfg: LegalConfig): LegalSection[] {
             </li>
           </ul>
           <p>
-            When you forward your stream to Twitch, YouTube, Kick or another server, SLOT1 sends your stream there because you asked it to; those
-            platforms handle it under their own policies. Sharing a clip to TikTok, YouTube or Instagram happens in your own device’s share sheet:
+            When you forward your stream to Twitch, YouTube, Kick or another server, SLOT1 sends your whole stream there, exactly as it received it,
+            because you asked it to; those platforms handle it under their own policies. Sharing a clip to TikTok, YouTube or Instagram happens in your own device’s share sheet:
             SLOT1 doesn’t send anything to those apps.
           </p>
           <p>

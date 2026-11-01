@@ -104,7 +104,8 @@ The watch page has a **What the AI sees** button under the timeline. On `/demo` 
 
 Where the data comes from:
 - The worker builds the snapshot from what the pipeline did on that frame (`FrameInsight` in `packages/analysis/src/pipeline.ts`). Nothing is summarized or filled in.
-- It is stored only in Redis: the snapshot expires after 60 s and the image after 90 s. It never goes to the database or object storage.
+- It is stored only in Redis, and only while someone has the panel or the frame player open: each poll keeps snapshots coming for 30 s. Unwatched streams cost nothing extra.
+- The snapshot expires after 60 s and the image after 90 s. Neither ever goes to the database or object storage.
 - `GET /api/sessions/:id/ai-view` and `…/ai-view/frame/:id` follow the same access rules as the session's live video: the creator always, everyone else only for public sessions with public analysis.
 - The page polls every 2 s while the panel is open, and swaps the image only after the new one has loaded, so the boxes always match the frame.
 

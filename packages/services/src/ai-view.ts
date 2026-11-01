@@ -17,7 +17,11 @@ export const AI_VIEW_FRAME_WIDTH = 640;
 export const aiViewKeys = {
   meta: (sessionId: string) => `slot1:aiview:${sessionId}`,
   frame: (sessionId: string, snapshotId: string) => `slot1:aiview:${sessionId}:f:${snapshotId}`,
+  /** Set while somebody has the AI view open; workers only store snapshots then. */
+  watched: (sessionId: string) => `slot1:aiview:${sessionId}:watched`,
 };
+/** How long one look at the AI view keeps snapshots coming without another poll. */
+export const AI_VIEW_WATCH_TTL_SEC = 30;
 
 /** Plain-words names for the OCR regions of the game profiles (packages/analysis/src/profiles.ts). */
 export const REGION_LABELS: Record<string, string> = {
@@ -116,6 +120,16 @@ export function buildAiViewSnapshot(
     produced: i.produced.slice(0, 12),
     source: { label: c.label, demo: c.demo },
   });
+}
+
+/** Someone is looking at this session's AI view (called by the API on every poll). */
+export async function markAiViewWatched(ctx: Pick<ServerContext, "redis">, sessionId: string): Promise<void> {
+  await ctx.redis.set(aiViewKeys.watched(sessionId), "1", "EX", AI_VIEW_WATCH_TTL_SEC);
+}
+
+/** Whether a worker should store snapshots for this session right now. */
+export async function aiViewWatched(ctx: Pick<ServerContext, "redis">, sessionId: string): Promise<boolean> {
+  return (await ctx.redis.exists(aiViewKeys.watched(sessionId))) === 1;
 }
 
 /** The latest snapshot for a session, or null when nothing was analyzed in the last minute. */

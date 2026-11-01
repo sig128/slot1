@@ -159,7 +159,9 @@ export function DemoBroadcast({
         <section className="mx-auto max-w-[1600px] px-4 py-10 sm:px-6 lg:px-10" aria-label="Demo status">
           <div className="max-w-[70ch] border-l-2 border-apricot pl-4">
             <p className="font-display text-xl font-bold text-ivory">{info.enabled ? "The demo channel isn’t ready yet" : "The demo is off on this server"}</p>
-            <p className="mt-1 text-sm text-ivory-2">{info.reason ?? "Reload in a moment."}</p>
+            <p className="mt-1 text-sm text-ivory-2">
+              {info.reason ?? (info.enabled ? "Reload in a moment." : "Nothing is being generated or analyzed for the demo right now.")}
+            </p>
             {!info.enabled && (
               <p className="mt-3 text-sm text-ivory-3">
                 Server operators can switch it on with <code className="bg-graphite-800 px-1.5 py-0.5 text-ivory">slot1 demo on</code> and off again with{" "}

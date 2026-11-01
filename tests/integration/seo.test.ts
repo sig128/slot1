@@ -113,8 +113,12 @@ describe("search engine listing", () => {
 
   it("lists On Air channels, public creators and public items", async () => {
     const s = await sitemap();
-    expect(s.channels.map((c) => c.login)).toEqual(["listedcruiser"]);
-    expect(s.creators.map((c) => c.login).sort()).toEqual(["clipsharer", "listedcruiser"]);
+    // Other test files share this database, so check membership rather than the whole list.
+    const channels = s.channels.map((c) => c.login);
+    const creators = s.creators.map((c) => c.login);
+    expect(channels).toContain("listedcruiser");
+    expect(channels).not.toContain("clipsharer");
+    expect(creators).toEqual(expect.arrayContaining(["clipsharer", "listedcruiser"]));
     const ids = s.items.map((i) => i.id);
     expect(ids).toContain(publicClip.id);
     expect(ids).toContain(publicShot.id);

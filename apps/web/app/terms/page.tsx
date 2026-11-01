@@ -81,8 +81,10 @@ function sections(cfg: LegalConfig): LegalSection[] {
       body: (
         <>
           <p>
-            You keep all rights you have in what you stream, upload, record and clip (“your content”). You are responsible for it, and you confirm that
-            you have the rights and permissions needed to send it to SLOT1 and to make it public. That includes:
+            You keep all rights you have in what you stream, upload, record and clip (“your content”). Your content is everything your streaming
+            software sends to SLOT1: the gameplay and also your webcam or facecam, overlays, alerts and microphone audio, plus anyone who can be seen
+            or heard in it. You decide what goes into it. You are responsible for it, and you confirm that you have the rights and permissions needed to
+            send it to SLOT1 and to make it public. That includes:
           </p>
           <ul>
             <li>

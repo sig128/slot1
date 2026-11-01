@@ -257,6 +257,13 @@ start_stack() {
   compose up -d --remove-orphans
 }
 
+# The legal and SEO settings are read by the web server on each request: only it needs recreating.
+restart_web() {
+  say "Restarting the website with the new settings"
+  compose up -d --force-recreate --no-deps web
+  wait_healthy
+}
+
 restart_apps() {
   say "Restarting SLOT1 with the new settings"
   # Recreate (not just restart) so the containers read the updated .env.
@@ -463,7 +470,7 @@ cmd_legal() {
   ask_keep SLOT1_LEGAL_ADDRESS "Registered address (one line)"
   ask_keep SLOT1_CONTACT_EMAIL "Public contact email"
   ask_keep SLOT1_GOVERNING_LAW "Country whose law governs the Terms (for example Norway)"
-  restart_apps
+  restart_web
   note "Done. Check $(env_get SLOT1_PUBLIC_ORIGIN)/privacy and /terms"
 }
 
@@ -488,7 +495,7 @@ cmd_seo() {
         ;;
     esac
   done
-  restart_apps
+  restart_web
   note "Now click Verify in Search Console / Bing, then submit $(env_get SLOT1_PUBLIC_ORIGIN)/sitemap.xml"
 }
 

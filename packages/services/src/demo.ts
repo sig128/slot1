@@ -53,7 +53,8 @@ export const DEMO_LIMITS = {
 } as const;
 
 export function demoConfigured(config: Pick<AppConfig, "env">): { enabled: boolean; reason: string | null } {
-  if (!config.env.SLOT1_DEMO) return { enabled: false, reason: "The demo broadcast is off on this server." };
+  // Simply switched off: nothing to explain beyond `enabled: false`.
+  if (!config.env.SLOT1_DEMO) return { enabled: false, reason: null };
   if (!config.env.SLOT1_DEMO_STREAM_KEY || config.env.SLOT1_DEMO_STREAM_KEY.length < 16) {
     return { enabled: false, reason: "The demo broadcast is switched on but has no stream key (SLOT1_DEMO_STREAM_KEY, 16+ characters)." };
   }

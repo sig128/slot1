@@ -384,3 +384,553 @@
     animation: none !important;
   }
 }
+
+/* -------------------------------------------------------------------------------------------- */
+/* Skyline artwork and the home intro (components/brand/SkylineArt.tsx, components/onair/).      */
+/* The artwork is a 5:2 stage that covers its box anchored at the bottom; effects are HTML layers */
+/* positioned in % of the stage and animated with transform/opacity only (compositor work).     */
+/* -------------------------------------------------------------------------------------------- */
+.sk-scene {
+  position: relative;
+  overflow: hidden;
+  container-type: size;
+  background: #101014;
+  --sk-focus: 0.5;
+}
+.sk-stage {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: max(100cqw, calc(100cqh * 2.5));
+  aspect-ratio: 5 / 2;
+  transform: translateX(calc(var(--sk-focus) * -100%));
+}
+.sk-stage > .sk-layer,
+.sk-stage > .sk-fx {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.sk-fx {
+  pointer-events: none;
+}
+.sk-fx > * {
+  position: absolute;
+  display: block;
+}
+
+/* --- effects: base (static) look; this is also the reduced-motion frame --- */
+.sk-beam {
+  transform-origin: 50% 100%;
+  clip-path: polygon(46% 100%, 54% 100%, 100% 0, 0 0);
+  background: linear-gradient(to top, rgb(255 226 190 / 0.17), rgb(255 226 190 / 0.05) 55%, rgb(255 226 190 / 0));
+}
+.sk-beam-a {
+  transform: rotate(-4deg);
+}
+.sk-beam-b {
+  transform: rotate(3deg);
+}
+.sk-halo {
+  background: radial-gradient(closest-side, rgb(255 79 135 / 0.42), rgb(255 79 135 / 0.12) 55%, rgb(255 79 135 / 0));
+}
+.sk-ring {
+  aspect-ratio: 1;
+  border-radius: 999px;
+  border: 1.5px solid rgb(255 173 114 / 0.55);
+  transform: translate(-50%, -50%) scale(0.12);
+  opacity: 0;
+}
+.sk-beacon {
+  width: 3px;
+  height: 3px;
+  margin: -1.5px 0 0 -1.5px;
+  border-radius: 999px;
+  background: #ff4f87;
+  box-shadow: 0 0 6px 2px rgb(255 79 135 / 0.55);
+  opacity: 0.9;
+}
+.sk-star {
+  width: 2px;
+  height: 2px;
+  border-radius: 999px;
+  background: #f4ede2;
+  opacity: 0.45;
+}
+.sk-heli {
+  left: 0;
+  width: 100%;
+  height: 0;
+  transform: translateX(58%);
+}
+.sk-heli-craft {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.sk-heli-light {
+  position: absolute;
+  left: 52%;
+  top: 92%;
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: #ff4f87;
+  box-shadow: 0 0 5px 2px rgb(255 79 135 / 0.6);
+}
+.sk-heli-cone {
+  position: absolute;
+  left: 30%;
+  top: 80%;
+  width: 260%;
+  aspect-ratio: 1 / 2.4;
+  transform-origin: 50% 0;
+  transform: translateX(-50%) rotate(14deg);
+  clip-path: polygon(48% 0, 52% 0, 100% 100%, 0 100%);
+  background: linear-gradient(to bottom, rgb(255 236 210 / 0.12), rgb(255 236 210 / 0));
+}
+.sk-wheel {
+  transform: rotate(8deg);
+}
+.sk-palm {
+  transform-origin: 50% 100%;
+  rotate: var(--tilt, 0deg);
+}
+.sk-shimmer {
+  background:
+    repeating-linear-gradient(to bottom, rgb(255 201 77 / 0.12) 0 1.5px, transparent 1.5px 7px);
+  mask-image: radial-gradient(closest-side, #000 30%, transparent);
+  opacity: 0.55;
+}
+.sk-car {
+  left: 0;
+  width: 100%;
+  height: 3px;
+  transform: translateX(var(--x, 50%));
+}
+.sk-car::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
+}
+.sk-car-l::before {
+  background: linear-gradient(to right, #fff4dc, rgb(255 230 190 / 0));
+  box-shadow: -2px 0 6px 1px rgb(255 236 200 / 0.5);
+}
+.sk-car-r::before {
+  background: linear-gradient(to left, #ff4f87, rgb(255 79 135 / 0));
+  box-shadow: 2px 0 6px 1px rgb(255 79 135 / 0.45);
+}
+.sk-window {
+  background: #ffc94d;
+  opacity: 0;
+}
+
+/* SLOT1's evidence bracket: the analysis colour, four corners and a label. */
+.sk-bracket {
+  --c: var(--color-signal);
+  background:
+    linear-gradient(var(--c), var(--c)) 0 0 / 10px 1.5px no-repeat,
+    linear-gradient(var(--c), var(--c)) 0 0 / 1.5px 10px no-repeat,
+    linear-gradient(var(--c), var(--c)) 100% 0 / 10px 1.5px no-repeat,
+    linear-gradient(var(--c), var(--c)) 100% 0 / 1.5px 10px no-repeat,
+    linear-gradient(var(--c), var(--c)) 0 100% / 10px 1.5px no-repeat,
+    linear-gradient(var(--c), var(--c)) 0 100% / 1.5px 10px no-repeat,
+    linear-gradient(var(--c), var(--c)) 100% 100% / 10px 1.5px no-repeat,
+    linear-gradient(var(--c), var(--c)) 100% 100% / 1.5px 10px no-repeat;
+}
+.sk-bracket-heli {
+  position: absolute;
+  inset: -9px -9px -11px -9px;
+  opacity: 1;
+}
+.sk-bracket-label {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 5px);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--color-signal);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.9);
+}
+.sk-glyph {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+}
+.sk-glyph-text {
+  background: currentColor;
+}
+.sk-glyph-visible {
+  border: 1.4px solid currentColor;
+}
+
+/* --- ambient life (only when animated, never under reduced motion) --- */
+@media (prefers-reduced-motion: no-preference) {
+  .sk-animated .sk-beam-a {
+    animation:
+      sk-appear 1.6s var(--ease-broadcast) 1.1s both,
+      sk-beam-a 19s ease-in-out infinite alternate;
+  }
+  .sk-animated .sk-beam-b {
+    animation:
+      sk-appear 1.6s var(--ease-broadcast) 1.4s both,
+      sk-beam-b 23s ease-in-out infinite alternate;
+  }
+  .sk-animated .sk-halo {
+    animation: sk-halo 5.5s ease-in-out infinite;
+  }
+  .sk-animated .sk-ring {
+    animation: sk-ring 6s cubic-bezier(0.2, 0.6, 0.3, 1) 0.15s infinite;
+  }
+  .sk-animated .sk-ring-2 {
+    animation-delay: 3.15s;
+  }
+  .sk-animated .sk-beacon {
+    animation: sk-blink 2.6s steps(1, end) infinite;
+  }
+  .sk-animated .sk-beacon-slow {
+    animation-duration: 3.4s;
+    animation-delay: -1.2s;
+  }
+  .sk-animated .sk-beacon-tower {
+    animation-duration: 3s;
+  }
+  .sk-animated .sk-star {
+    animation: sk-twinkle 7s ease-in-out infinite alternate;
+  }
+  .sk-animated .sk-heli {
+    animation: sk-heli 72s linear -36s infinite;
+  }
+  .sk-animated .sk-heli-light {
+    animation: sk-blink 1.4s steps(1, end) infinite;
+  }
+  .sk-animated .sk-heli-cone {
+    animation: sk-cone 9s ease-in-out infinite alternate;
+  }
+  .sk-animated .sk-bracket-heli {
+    animation: sk-heli-seen 72s linear -36s infinite;
+  }
+  .sk-animated .sk-wheel {
+    animation: sk-spin 110s linear infinite;
+  }
+  .sk-animated .sk-palm {
+    animation: sk-sway 8s ease-in-out infinite alternate;
+  }
+  .sk-animated .sk-shimmer {
+    animation: sk-shimmer 6.5s ease-in-out infinite alternate;
+  }
+  .sk-animated .sk-shimmer-2 {
+    animation-duration: 4.8s;
+  }
+  .sk-animated .sk-car-l {
+    animation: sk-drive-l 30s linear infinite;
+  }
+  .sk-animated .sk-car-r {
+    animation: sk-drive-r 30s linear infinite;
+  }
+  .sk-animated .sk-window {
+    animation: sk-window 27s steps(1, end) infinite;
+  }
+
+  /* the one load sequence: the station transmits, the city lights up outward from the mast,
+     the ON AIR sign flickers on and SLOT1 locks onto it */
+  .sk-intro .sk-lit {
+    animation: sk-lights-on 0.9s ease-out both;
+    animation-delay: var(--d, 0ms);
+  }
+  .sk-intro .sk-neon {
+    animation: sk-neon-on 1.2s linear 0.95s both;
+  }
+  .sk-intro .sk-bracket-sign {
+    animation: sk-lock 0.5s var(--ease-broadcast) 2.05s both;
+  }
+  .sk-rise {
+    animation: sk-rise 0.8s var(--ease-broadcast) both;
+  }
+  .sk-reveal {
+    animation: sk-appear 0.7s ease-out both;
+  }
+}
+
+/* Off screen or in a background tab: everything holds still. */
+[data-scene][data-paused="true"] *,
+[data-scene][data-paused="true"] *::before,
+[data-scene][data-paused="true"] *::after {
+  animation-play-state: paused !important;
+}
+
+@keyframes sk-appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes sk-beam-a {
+  from {
+    transform: rotate(-10deg);
+  }
+  to {
+    transform: rotate(5deg);
+  }
+}
+@keyframes sk-beam-b {
+  from {
+    transform: rotate(9deg);
+  }
+  to {
+    transform: rotate(-5deg);
+  }
+}
+@keyframes sk-halo {
+  0%,
+  100% {
+    opacity: 0.75;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes sk-ring {
+  0% {
+    transform: translate(-50%, -50%) scale(0.12);
+    opacity: 0.85;
+  }
+  70% {
+    opacity: 0.12;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0;
+  }
+}
+@keyframes sk-blink {
+  0% {
+    opacity: 1;
+  }
+  12% {
+    opacity: 0.18;
+  }
+  100% {
+    opacity: 0.18;
+  }
+}
+@keyframes sk-twinkle {
+  from {
+    opacity: 0.15;
+  }
+  to {
+    opacity: 0.85;
+  }
+}
+@keyframes sk-heli {
+  from {
+    transform: translateX(-8%);
+  }
+  to {
+    transform: translateX(108%);
+  }
+}
+/* Visible to SLOT1 while the helicopter crosses the middle of the bay. */
+@keyframes sk-heli-seen {
+  0%,
+  48% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  66% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  69%,
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+@keyframes sk-cone {
+  from {
+    transform: translateX(-50%) rotate(20deg);
+  }
+  to {
+    transform: translateX(-50%) rotate(6deg);
+  }
+}
+@keyframes sk-spin {
+  from {
+    transform: rotate(8deg);
+  }
+  to {
+    transform: rotate(368deg);
+  }
+}
+@keyframes sk-sway {
+  from {
+    transform: rotate(-0.9deg);
+  }
+  to {
+    transform: rotate(0.9deg);
+  }
+}
+@keyframes sk-shimmer {
+  from {
+    opacity: 0.35;
+    transform: scaleX(0.92);
+  }
+  to {
+    opacity: 0.8;
+    transform: scaleX(1.06);
+  }
+}
+@keyframes sk-drive-l {
+  from {
+    transform: translateX(104%);
+  }
+  to {
+    transform: translateX(-6%);
+  }
+}
+@keyframes sk-drive-r {
+  from {
+    transform: translateX(-6%);
+  }
+  to {
+    transform: translateX(104%);
+  }
+}
+@keyframes sk-window {
+  0% {
+    opacity: 0;
+  }
+  58% {
+    opacity: 0.9;
+  }
+  86% {
+    opacity: 0;
+  }
+}
+@keyframes sk-lights-on {
+  0% {
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 0.2;
+  }
+  100% {
+    opacity: 0.88;
+  }
+}
+@keyframes sk-neon-on {
+  0% {
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  12% {
+    opacity: 0.1;
+  }
+  20% {
+    opacity: 0.9;
+  }
+  24% {
+    opacity: 0.2;
+  }
+  34%,
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes sk-lock {
+  from {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes sk-rise {
+  from {
+    transform: translateY(108%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* --- the home intro --- */
+.sk-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: #101014;
+}
+.sk-hero .sk-scene {
+  --sk-focus: 0.6;
+}
+.sk-hero-art {
+  position: relative;
+  height: clamp(260px, 72vw, 340px);
+}
+.sk-hero-art .sk-scene {
+  position: absolute;
+  inset: 0;
+}
+@media (min-width: 1024px) {
+  .sk-hero {
+    min-height: max(clamp(640px, calc(88svh - 4rem), 940px), 44vw);
+  }
+  .sk-hero[data-mode="live"] {
+    min-height: max(clamp(600px, calc(84svh - 4rem), 880px), 42vw);
+  }
+  .sk-hero .sk-scene {
+    --sk-focus: 0.5;
+  }
+  .sk-hero-art {
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 76%;
+    z-index: -1;
+  }
+  /* keeps the copy readable where it meets the skyline */
+  .sk-hero-art::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse 48% 62% at 18% 34%, rgb(16 16 20 / 0.72), rgb(16 16 20 / 0) 72%);
+  }
+}
+.sk-line {
+  display: block;
+  overflow: hidden;
+  padding: 0 0.06em 0.16em 0;
+  margin-bottom: -0.16em;
+}
+.sk-line > span {
+  display: inline-block;
+}

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { formatAge, formatMediaTime, OBSERVATION_TYPE_LABEL, type AiViewResponse, type AiViewSnapshot, type ObservationType } from "@slot1/contracts";
 import { api } from "@/lib/api";
+import { useNow } from "./useSessionStream";
 
 /* ------------------------------------------------------------------------------------------ */
 /* One poller per session, shared by every component that shows the AI view.                   */
@@ -156,12 +157,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
  */
 export function AiViewPanel({ sessionId, onSelect }: { sessionId: string; onSelect?: (observationId: string) => void }) {
   const { response, shown, error } = useAiView(sessionId);
-  const [now, setNow] = useState(0);
-  useEffect(() => {
-    setNow(Date.now());
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
+  const now = useNow(1000);
 
   if (!response && !error) return <div className="border hairline bg-graphite-900 p-4 text-sm text-ivory-2">Loading what the AI sees</div>;
   if (!shown) {

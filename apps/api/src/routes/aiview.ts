@@ -2,7 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import type { AiViewResponse } from "@slot1/contracts";
 import { listSources, type StreamSessionRow } from "@slot1/db";
-import { AI_VIEW_REFRESH_MS, analysisStatus, readAiView, readAiViewFrame, type ServerContext } from "@slot1/services";
+import { AI_VIEW_REFRESH_MS, analysisStatus, markAiViewWatched, readAiView, readAiViewFrame, type ServerContext } from "@slot1/services";
 import { notFound } from "../lib/errors";
 import { authorizeSession } from "./sessions";
 
@@ -38,6 +38,7 @@ export const aiViewRoutes =
       reply.header("cache-control", "no-store");
       if (session.kind === "replay") return unavailable("This is an uploaded replay. Its evidence frames are in the log; the live AI view is for live streams");
       if (session.ended_at) return unavailable("This session has ended");
+      await markAiViewWatched(ctx, session.id);
       const snapshot = await readAiView(ctx, session.id);
       if (!snapshot) return unavailable(await noSnapshotReason(ctx, session));
       return { available: true, reason: null, snapshot, refreshMs: AI_VIEW_REFRESH_MS };
