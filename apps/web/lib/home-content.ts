@@ -21,8 +21,8 @@ export const FEATURES: Feature[] = [
   {
     name: "Instant replay",
     body: "Missed it? Jump back a few seconds while the stream is still live. Every timestamp in the log jumps the video to that second.",
-    href: "/demo",
-    cta: "Try it on the demo",
+    href: "/los-santos",
+    cta: "Watch a live stream",
   },
   {
     name: "The live log",
@@ -39,8 +39,8 @@ export const FEATURES: Feature[] = [
   {
     name: "Live video",
     body: "Watch SLOT1’s own copy of a stream, usually under a second behind the creator. The player shows its own estimate.",
-    href: "/demo",
-    cta: "Watch the demo",
+    href: "/los-santos",
+    cta: "See who’s live",
   },
   {
     name: "Stream everywhere",

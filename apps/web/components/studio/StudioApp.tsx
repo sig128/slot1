@@ -8,6 +8,8 @@ import { SkylineArt } from "@/components/brand/SkylineArt";
 import { api, ApiError, getMe } from "@/lib/api";
 import { requirementText } from "@/lib/requirements";
 import { SetupFix } from "@/components/ui/SetupFix";
+import { signInNotice, twitchSignInHref, type SignInNotice } from "@/lib/signin-notice";
+import { SignInNoticeBox } from "./SignInNoticeBox";
 import { AdvancedSection, BotSection, JobsSection, OverviewSection, PrivacySection, SourcesSection } from "./StudioSections";
 import { GtaModelSection } from "./GtaModelSection";
 import { LibrarySection } from "./LibrarySection";
@@ -44,7 +46,7 @@ export function StudioApp() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [section, setSection] = useState<string>("overview");
-  const [banner, setBanner] = useState<string | null>(null);
+  const [notice, setNotice] = useState<SignInNotice | null>(null);
 
   const reload = useCallback(async () => {
     try {
@@ -62,18 +64,8 @@ export function StudioApp() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void reload();
     const q = new URLSearchParams(window.location.search);
-    const msg: Record<string, string> = {
-      "twitch=connected": "Twitch connected.",
-      "twitch=denied": "Twitch connection was cancelled.",
-      "twitch=error": "Twitch connection failed. Try again.",
-      "bot=linked": "SLOT1 bot account linked.",
-      "bot=wrong_account": "That Twitch account isn't the configured SLOT1 bot account.",
-      "bot=missing_scopes": "The bot authorization was missing required permissions.",
-    };
-    for (const [k, v] of Object.entries(msg)) {
-      const [key, val] = k.split("=");
-      if (q.get(key!) === val) setBanner(v);
-    }
+    // What happened on Twitch, shown on whichever screen the person lands on (signed in or not).
+    setNotice(signInNotice(q, window.location.origin));
     if (window.location.hash === "#sources") setSection("sources");
     if (window.location.hash === "#library") setSection("library");
     if (window.location.hash === "#stream" || q.get("tab") === "stream") setSection("stream");
@@ -118,17 +110,17 @@ export function StudioApp() {
 
   if (error) return <p className="mx-auto max-w-[1600px] px-4 py-20 text-coral sm:px-6 lg:px-10">{error}</p>;
   if (!me || !caps) return <p className="mx-auto max-w-[1600px] px-4 py-20 text-ivory-3 sm:px-6 lg:px-10">Loading Studio</p>;
-  if (!me.user || !me.broadcaster) return <SignIn caps={caps} onSignedIn={reload} />;
+  if (!me.user || !me.broadcaster) return <SignIn caps={caps} notice={notice} onSignedIn={reload} />;
   if (!overview) return <p className="mx-auto max-w-[1600px] px-4 py-20 text-ivory-3 sm:px-6 lg:px-10">Loading your channel</p>;
 
   const ctx: StudioCtx = { overview, caps, me, reload, save, saving, saveError, runAction };
 
   return (
     <div className="mx-auto max-w-[1600px] px-4 pb-20 pt-8 sm:px-6 lg:px-10">
-      {banner && (
-        <p role="status" className="mb-6 border-l-2 border-apricot pl-3 text-sm text-ivory">
-          {banner}
-        </p>
+      {notice && (
+        <div className="mb-6">
+          <SignInNoticeBox notice={notice} showRetry={false} />
+        </div>
       )}
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div>
@@ -285,7 +277,7 @@ function Readiness({ steps, onAction }: { steps: ReadinessStep[]; onAction: (id:
   );
 }
 
-function SignIn({ caps, onSignedIn }: { caps: Capabilities; onSignedIn: () => Promise<void> }) {
+function SignIn({ caps, notice, onSignedIn }: { caps: Capabilities; notice: SignInNotice | null; onSignedIn: () => Promise<void> }) {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -308,24 +300,25 @@ function SignIn({ caps, onSignedIn }: { caps: Capabilities; onSignedIn: () => Pr
       <SkylineArt className="h-[30vh] min-h-[240px] w-full" />
       <div className="relative z-10 mx-auto grid max-w-[1600px] gap-12 px-4 pb-20 pt-10 sm:px-6 lg:grid-cols-12 lg:px-10">
         <div className="lg:col-span-6">
+          {notice && !(notice.code === "not_configured" && !caps.twitch.available) && (
+            <div className="mb-8">
+              <SignInNoticeBox notice={notice} showRetry={false} />
+            </div>
+          )}
           <h1 className="poster-title text-[length:var(--text-display-lg)] font-black leading-[0.88]">Bring your channel on air.</h1>
           <p className="mt-5 max-w-[56ch] text-ivory-2">
             Connect the Twitch account you broadcast from. SLOT1 only ever analyzes video you authorize, and nothing is public until you switch it on.
           </p>
           <div className="mt-8">
             {caps.twitch.available ? (
-              <a href="/api/auth/twitch/start?returnTo=/studio" className="btn btn-coral">
-                Connect my Twitch
+              <a href={twitchSignInHref()} className="btn btn-coral h-12 px-5 text-[1.12rem]">
+                {notice?.retry ? "Sign in with Twitch again" : "Sign in with Twitch"}
               </a>
             ) : (
               <div className="max-w-[60ch] border-l-2 border-apricot pl-3 text-sm text-ivory-2" data-testid="twitch-signin-closed">
                 <p className="font-display text-lg font-bold text-ivory">{caps.twitch.setup ? requirementText(caps.twitch.reason) : "Twitch sign-in isn’t open yet."}</p>
                 <p className="mt-1 text-ivory-3">
-                  Creators can’t connect a channel until it is. Meanwhile, watch the{" "}
-                  <Link href="/demo" className="underline hover:text-ivory">
-                    live demo
-                  </Link>{" "}
-                  or see{" "}
+                  Creators can’t connect a channel until it is. Meanwhile, see{" "}
                   <Link href="/setup" className="underline hover:text-ivory">
                     how SLOT1 works
                   </Link>

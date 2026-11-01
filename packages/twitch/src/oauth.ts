@@ -59,6 +59,8 @@ export class TwitchAuthError extends Error {
     message: string,
     readonly status: number,
     readonly code: "invalid_grant" | "invalid_token" | "bad_request" | "server" | "network",
+    /** Twitch's own error text, when it sent one (e.g. "invalid client secret"). */
+    readonly twitchMessage?: string,
   ) {
     super(message);
   }
@@ -117,7 +119,7 @@ export async function exchangeCode(c: OAuthClient, code: string, redirectUri: st
   });
   if (!res.ok) {
     const msg = await readError(res);
-    throw new TwitchAuthError(`Code exchange failed: ${msg}`, res.status, res.status === 400 ? "invalid_grant" : "server");
+    throw new TwitchAuthError(`Code exchange failed: ${msg}`, res.status, res.status === 400 ? "invalid_grant" : "server", msg);
   }
   return TokenResponse.parse(await res.json());
 }

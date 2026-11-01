@@ -175,10 +175,11 @@ describe("server settings stay with operators", () => {
     expect(caps.relay.reason).toBe("Forwarding isn't switched on yet");
     expect(caps.vision.reason).toBe("The AI that describes gameplay isn't switched on yet, so SLOT1 reports on-screen text and video measurements only");
 
-    // A refusal says what's wrong, plainly, once.
+    // Every "Sign in with Twitch" button links straight to the start route: without Twitch set up,
+    // it goes back to Studio, which says so (never an error document).
     const start = await new Browser(h).get("/api/auth/twitch/start");
-    expect(start.status).toBe(503);
-    expect(start.json().error).toEqual({ code: "unavailable", message: "Twitch sign-in isn't open on SLOT1 yet", requirement: null });
+    expect(start.status).toBe(302);
+    expect(String(start.headers.location)).toBe(`${ORIGIN}/studio?twitch=error&why=not_configured`);
 
     // A creator's Studio: readiness, usage and refusals in plain words.
     const creator = new Browser(h);
@@ -211,9 +212,9 @@ describe("server settings stay with operators", () => {
       "Not set up on the server yet. Missing TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET, TWITCH_REDIRECT_URI. Fix it on the server: slot1 twitch.",
     );
     expect(o.usage.costBasis).toMatch(/VISION_PRICE_INPUT_PER_MTOK/);
-    const start = await op.get("/api/auth/twitch/start");
-    expect(start.status).toBe(503);
-    expect(start.json().error.requirement).toBe("Twitch not configured: missing TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET, TWITCH_REDIRECT_URI");
+    const start = await op.get("/api/auth/twitch/start?returnTo=%2Fstudio%3Ftab%3Dstream");
+    expect(start.status).toBe(302);
+    expect(String(start.headers.location)).toBe(`${ORIGIN}/studio?tab=stream&twitch=error&why=not_configured`);
   });
 
   it("gives an /admin session the operator view, including how to switch the demo on", async () => {

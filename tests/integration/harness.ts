@@ -175,6 +175,8 @@ export class MockTwitch {
   /** When true, Get Stream Key answers 503 like a Twitch outage. */
   streamKeyOutage = false;
   requests: string[] = [];
+  /** Answers the next token requests with these errors, the way Twitch words them. */
+  tokenFailures: { status: number; message: string }[] = [];
   private n = 0;
 
   constructor() {
@@ -238,6 +240,8 @@ export class MockTwitch {
 
     if (url.pathname === "/oauth2/token" && req.method === "POST") {
       const f = new URLSearchParams(raw);
+      const forced = this.tokenFailures.shift();
+      if (forced) return send(forced.status, { status: forced.status, message: forced.message });
       if (f.get("client_id") !== "mock-client-id" || f.get("client_secret") !== "mock-client-secret") return send(403, { status: 403, message: "invalid client" });
       if (f.get("grant_type") === "authorization_code") {
         const uid = this.codes.get(f.get("code") ?? "");

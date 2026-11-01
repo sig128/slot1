@@ -51,8 +51,8 @@ export default function SetupPage() {
             <Link href="/studio" className="btn btn-coral">
               Open Studio
             </Link>
-            <Link href="/demo" className="btn btn-ghost">
-              Watch the live demo
+            <Link href="/los-santos" className="btn btn-ghost">
+              See who’s live
             </Link>
           </div>
         </div>
@@ -74,7 +74,7 @@ export default function SetupPage() {
                 <li className="su-objective">
                   <b>Connect Twitch</b>
                   <span>
-                    <Link href="/studio">Studio</Link> → Connect my Twitch, with the account you broadcast from. One approval covers everything.
+                    <a href="/api/auth/twitch/start?returnTo=%2Fstudio">Sign in with Twitch</a> with the account you broadcast from. One approval covers everything.
                   </span>
                 </li>
                 <li className="su-objective">
@@ -167,7 +167,7 @@ export default function SetupPage() {
             Connecting Twitch
           </h2>
           <p className="su-intro">
-            In Studio, choose Connect my Twitch and sign in with the account you broadcast from. Twitch asks you once for everything below, then Studio takes you
+            Choose Sign in with Twitch and use the account you broadcast from. Twitch asks you once for everything below, then Studio takes you
             straight to a one-minute OBS setup.
           </p>
           <div className="su-grid su-twitch">
@@ -358,8 +358,8 @@ export default function SetupPage() {
             <Link href="/studio" className="btn btn-coral">
               Open Studio
             </Link>
-            <Link href="/demo" className="btn btn-ghost">
-              Watch the live demo
+            <Link href="/los-santos" className="btn btn-ghost">
+              See who’s live
             </Link>
           </div>
         </div>

@@ -9,6 +9,7 @@ import { IntroTips } from "@/components/home/IntroTips";
 import { compactNumber } from "@/lib/format";
 import { SetupFix } from "@/components/ui/SetupFix";
 import { CreatorRewardsSoon } from "@/components/home/CreatorRewardsSoon";
+import { HeroActions } from "./HeroActions";
 import { LinkOpener } from "./LinkOpener";
 import { ChannelAvatar, LiveDirectory } from "./LiveDirectory";
 
@@ -48,18 +49,7 @@ export function OnAirView({ directory, capabilities }: { directory: DirectoryRes
             SLOT1 watches your stream live, clips your big moments for you, and learns the game from every stream you choose to share.
           </p>
           <div className="gx-reveal mt-5 flex flex-wrap gap-3" style={{ animationDelay: "2.85s" }}>
-            <Link href="/demo" className="btn btn-coral h-12 px-5 text-[1.12rem]">
-              Watch the live demo
-            </Link>
-            {twitchReady ? (
-              <Link href="/studio" className="btn btn-ghost h-12 bg-[rgb(10_5_14/0.78)] px-5 text-[1.12rem]">
-                Connect my Twitch
-              </Link>
-            ) : (
-              <Link href="/setup" className="btn btn-ghost h-12 bg-[rgb(10_5_14/0.78)] px-5 text-[1.12rem]">
-                How creators connect
-              </Link>
-            )}
+            <HeroActions twitchReady={twitchReady} />
           </div>
           <p className="gx-train gx-reveal mt-5" style={{ animationDelay: "2.95s" }}>
             Building the GTA AI, one stream at a time. Next stop: <span className="gx-vi">GTA VI</span>.{" "}

@@ -26,14 +26,14 @@ export const MODES: Mode[] = [
     level: 0,
     sees: "No gameplay. Asked what’s happening, it says vision isn’t connected.",
     what: "SLOT1 answers !slot1 commands and creates clips on request.",
-    needs: "Connect my Twitch, then turn the bot on in Studio → Bot and chat.",
+    needs: "Sign in with Twitch, then turn the bot on in Studio → Bot and chat.",
   },
   {
     name: "Clip analysis",
     level: 2,
     sees: "Only the clipped seconds, after Twitch has made the clip available.",
     what: "Clips come through Twitch’s official clip download and are analyzed frame by frame.",
-    needs: "Connect my Twitch. Its one approval includes downloading clips (channel:manage:clips).",
+    needs: "Sign in with Twitch. Its one approval includes downloading clips (channel:manage:clips).",
   },
   {
     name: "Continuous analysis",
