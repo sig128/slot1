@@ -112,6 +112,9 @@ describe("page metadata", () => {
     });
     const live = watchMetadata({ authorized: true, channel: channel("someone") });
     expect(live.robots).toBeUndefined();
+    // Each channel shares its own card; watch-only pages too (it shows only public facts).
+    expect(live.openGraph.images[0]).toMatchObject({ url: "/watch/someone/opengraph-image", width: 1200, height: 630 });
+    expect(watchMetadata({ authorized: false, channel: channel("someone_else") }).twitter.images[0]!.url).toBe("/watch/someone_else/opengraph-image");
     expect(live.title).toBe("someone is live");
     expect(String(live.description)).toContain("Heist night");
     expect(watchMetadata({ authorized: true, channel: channel("someone", "offline") }).title).toBe("Watch someone");
