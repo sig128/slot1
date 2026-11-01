@@ -57,7 +57,7 @@ export function CameraMaskSection({ ctx, mainSourceId }: { ctx: StudioCtx; mainS
   const source: MediaSourceView | null = sources.find((s) => s.id === (chosen ?? mainSourceId)) ?? sources[0] ?? null;
 
   return (
-    <section className="border-t hairline py-6" aria-labelledby="hide-camera-title" id="hide-camera">
+    <section className="st-block border-t hairline py-6" aria-labelledby="hide-camera-title" id="hide-camera">
       <h3 id="hide-camera-title" className="mb-2 font-display text-xl font-bold">
         Hide your camera from the AI
       </h3>

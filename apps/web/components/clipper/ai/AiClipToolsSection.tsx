@@ -177,7 +177,7 @@ export function AiClipToolsSection({ ctx }: { ctx: StudioCtx }) {
 
       {!data && !error && <p className="text-ivory-3">Loading your sessions…</p>}
       {data && data.sessions.length === 0 && (
-        <div className="border-t hairline py-6">
+        <div className="st-block border-t hairline py-6">
           <h3 className="font-display text-xl font-bold">No sessions yet</h3>
           <p className="mt-1 max-w-[60ch] text-ivory-2">Upload a replay under Video sources, or stream to SLOT1 with Recording on. Your sessions show up here to rank.</p>
           <button type="button" className="btn btn-primary btn-sm mt-4" onClick={() => void ctx.runAction("add_source")}>

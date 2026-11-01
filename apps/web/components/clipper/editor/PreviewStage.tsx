@@ -43,9 +43,11 @@ interface Props {
   onTime: (mode: "program" | "source", ms: number) => void;
   onPlayingChange: (playing: boolean) => void;
   onDims: (sessionId: string, d: { width: number; height: number; durationMs: number }) => void;
+  /** Preview resolution: full (960 px on the long side) or half, for slower machines. */
+  quality?: "full" | "half";
 }
 
-const PREVIEW_LONG_SIDE = 960;
+const PREVIEW_LONG_SIDE = { full: 960, half: 480 } as const;
 
 function frameOf(el: HTMLVideoElement | HTMLImageElement | null | undefined): FrameSource | null {
   if (!el) return null;
@@ -58,7 +60,7 @@ function frameOf(el: HTMLVideoElement | HTMLImageElement | null | undefined): Fr
  * finished edit (segments in order, speed ramps, overlays, captions, effects, audio clips); in
  * source mode it plays the raw recording for picking in and out points.
  */
-export function PreviewStage({ ref, edl, total, mode, sources, sourceSession, media, title, onTime, onPlayingChange, onDims }: Props) {
+export function PreviewStage({ ref, edl, total, mode, sources, sourceSession, media, title, onTime, onPlayingChange, onDims, quality = "full" }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const videos = useRef(new Map<string, HTMLVideoElement>());
   const pipEls = useRef(new Map<string, HTMLVideoElement>());
@@ -73,7 +75,7 @@ export function PreviewStage({ ref, edl, total, mode, sources, sourceSession, me
   });
 
   const size = ASPECT_SIZE[edl.aspect];
-  const scale = PREVIEW_LONG_SIDE / Math.max(size.width, size.height);
+  const scale = PREVIEW_LONG_SIDE[quality] / Math.max(size.width, size.height);
   const W = Math.round(size.width * scale);
   const H = Math.round(size.height * scale);
   const sessionIds = useMemo(() => {
@@ -347,7 +349,7 @@ export function PreviewStage({ ref, edl, total, mode, sources, sourceSession, me
   useEffect(() => {
     if (mode === "program") syncSide(st.current.out, st.current.playing);
     requestDraw();
-  }, [edl, mode, sourceSession, requestDraw, syncSide]);
+  }, [edl, mode, sourceSession, quality, requestDraw, syncSide]);
 
   // The preview uses the poster face for titles; draw again once it has loaded.
   useEffect(() => {

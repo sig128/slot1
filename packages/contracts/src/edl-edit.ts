@@ -142,6 +142,10 @@ export function remapTimeline(edl: Edl, map: (t: number) => number, minMs = 100)
     },
     sourceAudio: { ...edl.sourceAudio, envelope: keys(edl.sourceAudio.envelope) },
     coverMs: edl.coverMs === null ? null : Math.max(0, Math.round(map(edl.coverMs))),
+    markers: (edl.markers ?? []).map((m) => {
+      const atMs = Math.max(0, Math.round(map(m.atMs)));
+      return { ...m, atMs, durationMs: m.durationMs ? Math.max(0, Math.round(map(m.atMs + m.durationMs)) - atMs) : 0 };
+    }),
   };
 }
 
@@ -182,7 +186,7 @@ export function sourceAtOutput(edl: Edl, index: number, t: number): number {
  * footage: a time is mapped through the source time it shows. Items over removed footage are
  * trimmed, or dropped when nothing is left.
  */
-function withSegments(edl: Edl, segments: EdlSegment[]): Edl {
+export function withSegments(edl: Edl, segments: EdlSegment[]): Edl {
   const oldStarts = segmentStartsMs(edl);
   const draft = fixTransitions({ ...edl, segments });
   const newIndex = new Map(draft.segments.map((s, i) => [s.id, i]));
@@ -427,7 +431,7 @@ export function splitAt(edl: Edl, atMs: number, ref?: TimelineRef): { edl: Edl; 
   if (ref.kind === "overlay") {
     const tr = edl.overlays.find((t) => t.id === ref.trackId);
     const it = tr?.items.find((x) => x.id === ref.id);
-    const parts = it && tr && tr.items.length < 40 ? cut(it) : null;
+    const parts = it && tr && tr.items.length < EDL_LIMITS.overlayItems ? cut(it) : null;
     if (!parts) return null;
     return { edl: { ...edl, overlays: edl.overlays.map((t) => (t.id === tr!.id ? { ...t, items: t.items.flatMap((x) => (x.id === it!.id ? (parts as OverlayItem[]) : [x])) } : t)) }, note: "Split the overlay" };
   }
@@ -442,7 +446,7 @@ export function splitAt(edl: Edl, atMs: number, ref?: TimelineRef): { edl: Edl; 
   }
   if (ref.kind === "effect") {
     const f = edl.effects.find((x) => x.id === ref.id);
-    const parts = f && edl.effects.length < 30 ? cut(f) : null;
+    const parts = f && edl.effects.length < EDL_LIMITS.effects ? cut(f) : null;
     return parts ? { edl: { ...edl, effects: edl.effects.flatMap((x) => (x.id === f!.id ? parts : [x])) }, note: "Split the effect" } : null;
   }
   if (ref.kind === "caption") {

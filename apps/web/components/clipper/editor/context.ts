@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { Edl, MediaRef, ProjectMediaView, ProjectSourceView, StudioAsset, TimelineRef } from "@slot1/contracts";
+import type { Edl, MediaRef, ProjectMediaView, ProjectSourceView, SequenceInfo, StudioAsset, TimelineRef } from "@slot1/contracts";
 import type { MediaInfo } from "./PreviewStage";
 
 /** What every inspector panel needs from the editor. */
@@ -28,6 +28,9 @@ export interface EditorCtx {
   announce: (msg: string) => void;
   /** Save the edit now (before renders and server jobs that read it). */
   saveNow: () => Promise<boolean>;
+  /** The timeline being edited ("main" is the project's own edit) and every timeline in the project. */
+  sequenceId: string;
+  sequences: SequenceInfo[];
 }
 
 export const EditorContext = createContext<EditorCtx | null>(null);

@@ -5,6 +5,7 @@ import { useState } from "react";
 import {
   ASPECT_SIZE,
   EXPORT_PRESETS,
+  edlDurationMs,
   edlLocate,
   outputSize,
   presetProblem,
@@ -24,7 +25,10 @@ const fileName = (title: string, ext: string) => `${(title || "slot1").replace(/
 
 /** Export: platform presets (several at once), GIF, audio only, resolution, frame rate and size. */
 export function ExportPanel({ renders, onRenders }: { renders: LibraryItemView[]; onRenders: (fn: (r: LibraryItemView[]) => LibraryItemView[]) => void }) {
-  const { edl, total, projectId, saveNow, announce, title, playheadMs, sources } = useEditor();
+  const { edl, total, projectId, saveNow, announce, title, playheadMs, sources, sequenceId, sequences } = useEditor();
+  const [seqIds, setSeqIds] = useState<string[]>([sequenceId]);
+  const targets = sequences.filter((s) => seqIds.includes(s.id));
+  const exportSeqs = targets.length ? targets : sequences.filter((s) => s.id === sequenceId);
   const [presets, setPresets] = useState<ExportPresetId[]>(["original"]);
   const [format, setFormat] = useState<ExportFormat>("mp4");
   const [height, setHeight] = useState<720 | 1080>(1080);
@@ -35,7 +39,13 @@ export function ExportPanel({ renders, onRenders }: { renders: LibraryItemView[]
   const [thumb, setThumb] = useState({ text: title.slice(0, 60).toUpperCase(), subtext: "", style: "poster" as "poster" | "mission" | "wasted" | "title-card" | "banner", position: "bottom" as "top" | "center" | "bottom" });
   const [thumbBusy, setThumbBusy] = useState(false);
 
-  const problems = Object.fromEntries(PRESET_IDS.map((p) => [p, presetProblem(p, format, total)])) as Record<ExportPresetId, string | null>;
+  // A preset is out when any timeline being exported can't take it.
+  const problems = Object.fromEntries(
+    PRESET_IDS.map((p) => {
+      const bad = exportSeqs.map((s) => ({ s, why: presetProblem(p, format, s.id === sequenceId ? total : edlDurationMs(s.edl)) })).find((x) => x.why);
+      return [p, bad ? (exportSeqs.length > 1 ? `${bad.s.name}: ${bad.why}` : bad.why) : null];
+    }),
+  ) as Record<ExportPresetId, string | null>;
   const chosen = presets.filter((p) => !problems[p]);
   const fail = (e: unknown, fallback: string) => setError(e instanceof ApiError ? `${e.message}${e.requirement ? `. ${e.requirement}.` : ""}` : fallback);
 
@@ -45,7 +55,7 @@ export function ExportPanel({ renders, onRenders }: { renders: LibraryItemView[]
     setError(null);
     try {
       if (!(await saveNow())) return setError("Fix the edit before exporting");
-      const res = await api<{ items: LibraryItemView[] }>(`/api/projects/${projectId}/exports`, { method: "POST", json: { presets: chosen, format, height, fps, quality } });
+      const res = await api<{ items: LibraryItemView[] }>(`/api/projects/${projectId}/exports`, { method: "POST", json: { presets: chosen, format, height, fps, quality, sequences: exportSeqs.map((s) => s.id) } });
       onRenders((r) => [...res.items, ...r.filter((x) => !res.items.some((y) => y.id === x.id))]);
       announce(`${res.items.length} export${res.items.length === 1 ? "" : "s"} started`);
     } catch (e) {
@@ -60,7 +70,7 @@ export function ExportPanel({ renders, onRenders }: { renders: LibraryItemView[]
     setError(null);
     try {
       if (!(await saveNow())) return setError("Fix the edit before making a thumbnail");
-      const item = await api<LibraryItemView>(`/api/projects/${projectId}/thumbnail`, { method: "POST", json: { ...thumb, atMs: Math.round(Math.min(playheadMs, total - 1)) } });
+      const item = await api<LibraryItemView>(`/api/projects/${projectId}/thumbnail`, { method: "POST", json: { ...thumb, atMs: Math.round(Math.min(playheadMs, total - 1)), sequenceId } });
       onRenders((r) => [item, ...r]);
       announce("Thumbnail started");
     } catch (e) {
@@ -91,6 +101,25 @@ export function ExportPanel({ renders, onRenders }: { renders: LibraryItemView[]
   return (
     <div className="space-y-8">
       <Panel title="Export">
+        {sequences.length > 1 && (
+          <fieldset className="mb-4">
+            <legend className="label">Timelines</legend>
+            <ul className="grid gap-1.5 sm:grid-cols-2">
+              {sequences.map((s) => (
+                <li key={s.id}>
+                  <label className="flex min-h-9 cursor-pointer items-center gap-2 border hairline px-2.5 py-1.5 text-sm">
+                    <input type="checkbox" checked={seqIds.includes(s.id)} onChange={(e) => setSeqIds((ids) => (e.target.checked ? [...ids, s.id] : ids.filter((x) => x !== s.id)))} />
+                    <span className="min-w-0 flex-1 truncate">{s.name}</span>
+                    <span className="tnum text-[0.75rem] text-ivory-3">
+                      {s.edl.aspect} · {editTime(s.id === sequenceId ? total : edlDurationMs(s.edl))}
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-1 text-[0.75rem] text-ivory-3">One render per timeline and preset ({exportSeqs.length} × {chosen.length}).</p>
+          </fieldset>
+        )}
         <fieldset>
           <legend className="label">Where it&apos;s going</legend>
           <ul className="grid gap-1.5 sm:grid-cols-2">

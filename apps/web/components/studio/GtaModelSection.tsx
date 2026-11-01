@@ -61,7 +61,7 @@ export function GtaModelSection({ ctx }: { ctx: StudioCtx }) {
         </p>
       </div>
 
-      <section className="border-t hairline py-6">
+      <section className="st-block border-t hairline py-6">
         <h3 className="mb-2 font-display text-xl font-bold">Your consent</h3>
         <Toggle
           label="Use frames from my streams to train SLOT1's GTA model"
@@ -105,12 +105,12 @@ export function GtaModelSection({ ctx }: { ctx: StudioCtx }) {
         {error && <p className="mt-3 text-sm text-coral">{error}</p>}
       </section>
 
-      <section className="border-t hairline py-6">
+      <section className="st-block border-t hairline py-6">
         <h3 className="mb-2 font-display text-xl font-bold">Label frames</h3>
         <Labeler onChange={reload} />
       </section>
 
-      <section className="border-t hairline py-6">
+      <section className="st-block border-t hairline py-6">
         <h3 className="mb-2 font-display text-xl font-bold">Model in use</h3>
         {overview && overview.activeModels.length === 0 ? (
           <p className="text-sm text-ivory-3">No trained GTA model is active yet. Until one is, analysis uses on-screen text, measurements and (if configured) AI vision.</p>
@@ -411,7 +411,7 @@ function OperatorPanel({ overview, reload }: { overview: TrainingOverview; reloa
   };
 
   return (
-    <section className="border-t hairline py-6">
+    <section className="st-block border-t hairline py-6">
       <h3 className="mb-1 font-display text-xl font-bold">Datasets and models (operators)</h3>
       <p className="mb-4 max-w-[68ch] text-sm text-ivory-2">
         {op.consentingChannels} channels consent, {op.acceptedFrames} labeled frames available. A dataset version freezes those frames with a fixed

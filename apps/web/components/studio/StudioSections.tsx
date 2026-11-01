@@ -22,7 +22,7 @@ function SectionTitle({ children, lede }: { children: React.ReactNode; lede?: Re
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="border-t hairline py-6">
+    <section className="st-block border-t hairline py-6">
       <h3 className="mb-2 font-display text-xl font-bold">{title}</h3>
       {children}
     </section>
@@ -44,17 +44,23 @@ export function OverviewSection({ ctx }: { ctx: StudioCtx }) {
           <p className="label">Last received frame</p>
           {lf ? (
             <figure>
-              {/* The actual most recent frame from your source, unmodified. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={lf.url} alt="Most recent frame received from your video source" className="block aspect-video w-full bg-black object-contain" />
+              <div className="st-monitor">
+                {/* The actual most recent frame from your source, unmodified. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={lf.url} alt="Most recent frame received from your video source" className="block aspect-video w-full bg-black object-contain" />
+                <span className="st-monitor-tag" data-live={s && !s.endedAt ? "" : undefined}>
+                  {s && !s.endedAt ? "Receiving" : "Last frame"}
+                </span>
+              </div>
               <figcaption className="tnum mt-2 text-[0.8rem] text-ivory-3">
                 Received {clockTimeSeconds(lf.receivedAt)} ({relativeAge(lf.receivedAt, now)}), source time {formatMediaTime(lf.mediaPtsMs)}
               </figcaption>
             </figure>
           ) : (
-            <p className="border border-dashed border-line-strong px-4 py-6 text-sm text-ivory-3">
-              No frame received from a continuous source yet. Uploaded replays don’t appear here.
-            </p>
+            <div className="st-monitor">
+              <p className="st-monitor-empty">No frame received from a continuous source yet. Uploaded replays don’t appear here.</p>
+              <span className="st-monitor-tag">No signal</span>
+            </div>
           )}
         </div>
         <div>
@@ -98,7 +104,7 @@ function SessionList({ ctx }: { ctx: StudioCtx }) {
   const sessions = ctx.overview.sessions;
   if (sessions.length === 0) return <p className="text-sm text-ivory-3">No sessions yet. Upload a recording under Video sources to create a replay.</p>;
   return (
-    <ul className="divide-y divide-line">
+    <ul className="st-ledger divide-y divide-line">
       {sessions.map((s) => (
         <li key={s.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
           <div className="w-full min-w-0 sm:w-auto sm:flex-1">

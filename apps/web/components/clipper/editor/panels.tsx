@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  EDL_LIMITS,
   addAudioClip,
   addOverlayItem,
   applyEdlTemplate,
@@ -433,7 +434,7 @@ export function AudioPanel() {
         <button
           type="button"
           className="btn btn-ghost btn-sm mt-3"
-          disabled={edl.audioTracks.length >= 4}
+          disabled={edl.audioTracks.length >= EDL_LIMITS.audioTracks}
           onClick={() => apply((e) => ({ ...e, audioTracks: [...e.audioTracks, { id: edlId("au"), name: `Audio ${e.audioTracks.length + 1}`, kind: "sfx", muted: false, solo: false, locked: false, volume: 1, duck: false, clips: [] }] }), "Add track")}
         >
           Add audio track
@@ -546,7 +547,7 @@ function UploadList({ uploads }: { uploads: ProjectMediaView[] }) {
 
 export function CaptionsPanel() {
   const ctx = useEditor();
-  const { edl, apply, playheadMs, total, select, projectId, saveNow, announce, sources } = ctx;
+  const { edl, apply, playheadMs, total, select, projectId, saveNow, announce, sources, sequenceId } = ctx;
   const ct = edl.captionTrack;
   const [gen, setGen] = useState<GeneratedCaptionsView | null>(null);
   const [err, setErr] = useState<{ message: string; requirement: string | null } | null>(null);
@@ -566,7 +567,7 @@ export function CaptionsPanel() {
     setErr(null);
     if (!(await saveNow())) return setErr({ message: "Save the edit first: it has a problem", requirement: null });
     try {
-      setGen(await api<GeneratedCaptionsView>(`/api/projects/${projectId}/captions`, { method: "POST" }));
+      setGen(await api<GeneratedCaptionsView>(`/api/projects/${projectId}/captions`, { method: "POST", json: { sequenceId } }));
     } catch (e) {
       setErr(e instanceof ApiError ? { message: e.message, requirement: e.requirement } : { message: "Couldn't start captions", requirement: null });
     }
@@ -606,7 +607,8 @@ export function CaptionsPanel() {
             </p>
           )}
           {gen?.status === "failed" && <p className="text-[0.82rem] text-coral">{gen.error ?? "Transcription failed"}</p>}
-          {gen?.status === "ready" && (
+          {gen?.status === "ready" && gen.sequenceId !== sequenceId && <p className="text-[0.82rem] text-ivory-2">The last captions were made for another timeline. Generate them again for this one.</p>}
+          {gen?.status === "ready" && gen.sequenceId === sequenceId && (
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span>{gen.cues.length ? `${gen.cues.length} captions ready.` : "No speech was found."}</span>
               {gen.cues.length > 0 && (

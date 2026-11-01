@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Tabs } from "radix-ui";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import type { Capabilities, ChannelSettings, ChannelSettingsPatch, MeResponse, ReadinessStep, StudioOverview } from "@slot1/contracts";
 import { SkylineArt } from "@/components/brand/SkylineArt";
 import { api, ApiError, getMe } from "@/lib/api";
@@ -13,6 +13,7 @@ import { LibrarySection } from "./LibrarySection";
 import { AiClipToolsSection } from "@/components/clipper/ai/AiClipToolsSection";
 import { SoundsSection } from "@/components/clipper/library/SoundsSection";
 import { StreamSetupSection } from "./StreamSetup";
+import "./studio.css";
 
 export interface StudioCtx {
   overview: StudioOverview;
@@ -38,6 +39,20 @@ const SECTIONS = [
   ["gta", "GTA model"],
   ["advanced", "Advanced setup"],
 ] as const;
+
+/** Visual grouping of the pause-menu list (wide screens only; not part of the tab order). */
+const NAV_GROUPS: { title: string; first: (typeof SECTIONS)[number][0] }[] = [
+  { title: "Broadcast", first: "overview" },
+  { title: "Create", first: "library" },
+  { title: "Channel", first: "bot" },
+];
+
+/** The Studio section that holds the next readiness step, flagged in the menu. */
+const STEP_SECTION: Record<string, (typeof SECTIONS)[number][0]> = {
+  video_source_ready: "sources",
+  bot_ready: "bot",
+  agent_enabled: "overview",
+};
 
 export function StudioApp() {
   const [me, setMe] = useState<MeResponse | null>(null);
@@ -127,44 +142,70 @@ export function StudioApp() {
 
   const ctx: StudioCtx = { overview, caps, me, reload, save, saving, saveError, runAction };
 
+  const where = overview.broadcaster.kind === "local" ? "Local workspace" : overview.twitch.login ? `twitch.tv/${overview.twitch.login}` : null;
+  const nextStep = overview.readiness.find((st) => st.status === "todo");
+  const flagged = nextStep ? STEP_SECTION[nextStep.id] : undefined;
+
   return (
-    <div className="mx-auto max-w-[1600px] px-4 pb-20 pt-8 sm:px-6 lg:px-10">
-      {banner && (
-        <p role="status" className="mb-6 border-l-2 border-apricot pl-3 text-sm text-ivory">
-          {banner}
-        </p>
-      )}
-      <div className="flex flex-wrap items-end justify-between gap-6">
-        <div>
-          <h1 className="poster-title text-[length:var(--text-display-lg)] font-black leading-[0.88]">Studio</h1>
-          <p className="mt-2 text-ivory-2">
-            {overview.broadcaster.displayName}
-            {overview.broadcaster.kind === "local" ? ", local workspace" : overview.twitch.login ? `, twitch.tv/${overview.twitch.login}` : ""}
-          </p>
+    <div className="st">
+      <div className="st-top">
+        <div className="st-art">
+          <SkylineArt idPrefix="st" className="h-full w-full" />
         </div>
-        <QuickControls ctx={ctx} />
+        <div className="st-head">
+          <div className="min-w-0">
+            <h1 className="st-title">Studio</h1>
+            <p className="st-who">
+              <span className="st-who-mark" aria-hidden>
+                {overview.broadcaster.displayName.trim().charAt(0).toUpperCase() || "S"}
+              </span>
+              <span className="st-who-name">{overview.broadcaster.displayName}</span>
+              {where && <span className="st-who-where">{where}</span>}
+            </p>
+          </div>
+          <QuickControls ctx={ctx} />
+        </div>
       </div>
 
-      <Readiness steps={overview.readiness} onAction={runAction} />
-      {saveError && (
-        <p role="alert" className="mt-4 text-sm text-coral">
-          {saveError}
-        </p>
-      )}
+      <div className="st-body">
+        {banner && (
+          <p role="status" className="st-banner">
+            {banner}
+          </p>
+        )}
 
-      <Tabs.Root value={section} onValueChange={setSection} orientation="vertical" className="mt-12 grid gap-10 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <Tabs.List aria-label="Studio sections" className="-mx-1 flex gap-1 overflow-x-auto lg:sticky lg:top-24 lg:mx-0 lg:flex-col lg:self-start">
-          {SECTIONS.map(([v, label]) => (
-            <Tabs.Trigger
-              key={v}
-              value={v}
-              className="h-10 shrink-0 px-3 text-left font-display text-[1.05rem] font-semibold tracking-[0.02em] text-ivory-2 hover:text-ivory data-[state=active]:select-bar"
-            >
-              {label}
-            </Tabs.Trigger>
-          ))}
-        </Tabs.List>
-        <div className="min-w-0">
+        <Readiness steps={overview.readiness} onAction={runAction} />
+        {saveError && (
+          <p role="alert" className="st-alert">
+            {saveError}
+          </p>
+        )}
+
+        <Tabs.Root value={section} onValueChange={setSection} orientation="vertical" className="st-layout">
+          <Tabs.List aria-label="Studio sections" className="st-nav">
+            {SECTIONS.map(([v, label]) => {
+              const group = NAV_GROUPS.find((g) => g.first === v);
+              return (
+                <Fragment key={v}>
+                  {group && (
+                    <span className="st-nav-group" aria-hidden>
+                      {group.title}
+                    </span>
+                  )}
+                  <Tabs.Trigger value={v} className="st-tab">
+                    {label}
+                    {flagged === v && section !== v && (
+                      <>
+                        <span className="st-tab-flag" aria-hidden />
+                        <span className="sr-only">, next step</span>
+                      </>
+                    )}
+                  </Tabs.Trigger>
+                </Fragment>
+              );
+            })}
+          </Tabs.List>
+          <div className="st-sheet">
           <Tabs.Content value="overview">
             <OverviewSection ctx={ctx} />
           </Tabs.Content>
@@ -198,11 +239,12 @@ export function StudioApp() {
           <Tabs.Content value="advanced">
             <AdvancedSection ctx={ctx} />
           </Tabs.Content>
-        </div>
-      </Tabs.Root>
-      <p className="sr-only" aria-live="polite">
-        {ctx.saving ? "Saving" : ""}
-      </p>
+          </div>
+        </Tabs.Root>
+        <p className="sr-only" aria-live="polite">
+          {ctx.saving ? "Saving" : ""}
+        </p>
+      </div>
     </div>
   );
 }
@@ -219,8 +261,13 @@ function QuickControls({ ctx }: { ctx: StudioCtx }) {
       setBusy(false);
     }
   };
+  const live = s.agentEnabled && !s.analysisPaused;
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="st-controls" role="group" aria-label="Live controls">
+      <span className="st-controls-label" data-state={live ? "live" : "idle"}>
+        <span className="st-controls-dot" aria-hidden />
+        {live ? "Analysis on" : s.agentEnabled ? "Analysis paused" : "Analysis off"}
+      </span>
       <button
         type="button"
         disabled={busy || !s.agentEnabled}
@@ -261,30 +308,29 @@ const STATUS_TEXT: Record<ReadinessStep["status"], string> = { done: "Done", tod
 function Readiness({ steps, onAction }: { steps: ReadinessStep[]; onAction: (id: string) => void }) {
   const firstTodo = steps.findIndex((s) => s.status === "todo");
   return (
-    <ol className="mt-10 grid border-y hairline md:grid-cols-5" aria-label="Readiness">
+    <ol className="st-route" aria-label="Readiness">
       {steps.map((s, i) => {
         const current = i === firstTodo;
         return (
-          <li key={s.id} className={`border-b hairline p-4 md:border-b-0 md:border-r md:last:border-r-0 ${current ? "bg-graphite-800" : ""}`}>
-            <div className="flex items-center justify-between gap-2">
-              <span className="tnum font-display text-sm font-semibold text-ivory-3">{i + 1}</span>
-              <span
-                className={`text-[0.75rem] ${
-                  s.status === "done" ? "text-signal" : s.status === "todo" ? "text-apricot" : s.status === "unavailable" ? "text-ivory-3" : "text-ivory-2"
-                }`}
-              >
-                {STATUS_TEXT[s.status]}
-              </span>
+          <li key={s.id} className="st-step" data-status={s.status} data-current={current ? "" : undefined} aria-current={current ? "step" : undefined}>
+            <span className="st-step-num tnum" aria-hidden>
+              {s.status === "done" ? "✓" : i + 1}
+            </span>
+            <div className="st-step-top">
+              <p className="st-step-label">
+                <span className="sr-only">Step {i + 1}: </span>
+                {s.label}
+              </p>
+              <span className="st-step-state">{STATUS_TEXT[s.status]}</span>
             </div>
-            <p className={`mt-2 font-display text-[1.3rem] font-bold leading-tight ${s.status === "done" ? "text-ivory" : "text-ivory-2"}`}>{s.label}</p>
-            <p className="mt-1 text-[0.82rem] text-ivory-3">{s.detail}</p>
+            <p className="st-step-detail">{s.detail}</p>
             {s.action &&
               (s.action.kind === "link" && s.action.href ? (
-                <a href={s.action.href} className={`btn btn-sm mt-3 ${current ? "btn-primary" : "btn-ghost"}`}>
+                <a href={s.action.href} className={`btn btn-sm st-step-action ${current ? "btn-primary" : "btn-ghost"}`}>
                   {s.action.label}
                 </a>
               ) : s.action.actionId ? (
-                <button type="button" className={`btn btn-sm mt-3 ${current ? "btn-primary" : "btn-ghost"}`} onClick={() => onAction(s.action!.actionId!)}>
+                <button type="button" className={`btn btn-sm st-step-action ${current ? "btn-primary" : "btn-ghost"}`} onClick={() => onAction(s.action!.actionId!)}>
                   {s.action.label}
                 </button>
               ) : null)}
@@ -314,7 +360,7 @@ function SignIn({ caps, onSignedIn }: { caps: Capabilities; onSignedIn: () => Pr
     }
   };
   return (
-    <section>
+    <section className="st-signin">
       <SkylineArt className="h-[30vh] min-h-[240px] w-full" />
       <div className="relative z-10 mx-auto grid max-w-[1600px] gap-12 px-4 pb-20 pt-10 sm:px-6 lg:grid-cols-12 lg:px-10">
         <div className="lg:col-span-6">

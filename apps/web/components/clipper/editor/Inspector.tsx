@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  EDL_LIMITS,
   EDL_SPEEDS,
   edlLocate,
   edlOutputTime,
@@ -276,7 +277,7 @@ function SegmentInspector({ id }: { id: string }) {
         <button
           type="button"
           className="btn btn-quiet btn-sm px-1.5"
-          disabled={edl.segments.length >= 20}
+          disabled={edl.segments.length >= EDL_LIMITS.segments}
           onClick={() => apply((e) => fixTransitions({ ...e, segments: [...e.segments.slice(0, i + 1), { ...s, id: edlId("s"), transitionIn: { kind: "cut", durationMs: 0 } }, ...e.segments.slice(i + 1)] }), "Duplicate segment")}
         >
           Duplicate

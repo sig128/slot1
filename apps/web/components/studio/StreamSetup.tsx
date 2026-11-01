@@ -45,7 +45,7 @@ function SectionTitle({ children, lede }: { children: React.ReactNode; lede: Rea
 
 function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (
-    <section className="border-t hairline py-6" aria-labelledby={`stream-step-${n}`}>
+    <section className="st-block border-t hairline py-6" aria-labelledby={`stream-step-${n}`}>
       <h3 id={`stream-step-${n}`} className="mb-3 flex items-center gap-3 font-display text-xl font-bold">
         <span aria-hidden className="select-bar inline-grid h-7 w-7 shrink-0 place-items-center font-black">
           {n}
@@ -128,7 +128,7 @@ export function StreamSetupSection({ ctx }: { ctx: StudioCtx }) {
             </p>
           </Step>
           <CameraMaskSection ctx={ctx} mainSourceId={data.ingest.sourceId} />
-          <section className="border-t hairline py-6">
+          <section className="st-block border-t hairline py-6">
             <h3 className="mb-2 font-display text-xl font-bold">Good to know</h3>
             <ul className="max-w-[70ch] list-disc space-y-2 pl-5 text-sm text-ivory-2">
               <li>Your upload stays at one stream however many places SLOT1 forwards to. SLOT1’s servers send the copies, unchanged, at the quality OBS sends.</li>

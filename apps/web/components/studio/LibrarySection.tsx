@@ -114,7 +114,7 @@ export function LibrarySection({ ctx }: { ctx: StudioCtx }) {
         )}
       </div>
 
-      <section className="border-t hairline py-6" aria-labelledby="lib-rec">
+      <section className="st-block border-t hairline py-6" aria-labelledby="lib-rec">
         <h3 id="lib-rec" className="mb-2 font-display text-xl font-bold">
           Recording
         </h3>
@@ -153,7 +153,7 @@ export function LibrarySection({ ctx }: { ctx: StudioCtx }) {
         {usage && <StorageBar usage={usage} />}
       </section>
 
-      <section className="border-t hairline py-6" aria-labelledby="lib-auto">
+      <section className="st-block border-t hairline py-6" aria-labelledby="lib-auto">
         <h3 id="lib-auto" className="mb-2 font-display text-xl font-bold">
           Auto clips
         </h3>
@@ -169,7 +169,7 @@ export function LibrarySection({ ctx }: { ctx: StudioCtx }) {
         </div>
       </section>
 
-      <section className="border-t hairline py-6" aria-labelledby="lib-items">
+      <section className="st-block border-t hairline py-6" aria-labelledby="lib-items">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <h3 id="lib-items" className="font-display text-xl font-bold">
             Your library
@@ -222,7 +222,7 @@ export function LibrarySection({ ctx }: { ctx: StudioCtx }) {
         )}
       </section>
 
-      <section className="border-t hairline py-6" aria-labelledby="lib-edits">
+      <section className="st-block border-t hairline py-6" aria-labelledby="lib-edits">
         <h3 id="lib-edits" className="mb-2 font-display text-xl font-bold">
           Edits
         </h3>
@@ -371,12 +371,12 @@ function StorageBar({ usage }: { usage: LibraryResponse["usage"] }) {
       <div className="mt-2 flex h-2 w-full max-w-xl overflow-hidden bg-graphite-700" aria-hidden>
         {USAGE_PARTS.map(([k, , cls]) => (usage[k] > 0 ? <span key={k} className={cls} style={{ width: `${(usage[k] / total) * 100}%` }} /> : null))}
       </div>
-      <dl className="tnum mt-2 grid max-w-xl grid-cols-2 gap-x-6 gap-y-1 text-[0.82rem] sm:grid-cols-4">
+      <dl className="tnum mt-2 grid max-w-3xl grid-cols-1 gap-x-6 gap-y-1 text-[0.82rem] min-[420px]:grid-cols-2 lg:grid-cols-4">
         {USAGE_PARTS.map(([k, label, cls]) => (
           <div key={k} className="flex items-center gap-2">
             <span aria-hidden className={`h-2 w-2 shrink-0 ${cls}`} />
             <dt className="text-ivory-3">{label}</dt>
-            <dd className="ml-auto">{usage[k] ? bytes(usage[k]) : "0 B"}</dd>
+            <dd className="ml-auto whitespace-nowrap">{usage[k] ? bytes(usage[k]) : "0 B"}</dd>
           </div>
         ))}
       </dl>

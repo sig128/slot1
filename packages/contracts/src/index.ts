@@ -17,3 +17,4 @@ export * from "./camera-mask";
 export * from "./studio-assets";
 export * from "./clip-ai";
 export * from "./edl-edit";
+export * from "./edl-tracks";
