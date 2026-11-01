@@ -51,7 +51,7 @@ const ratio = (a: Edl["aspect"]) => ASPECT_SIZE[a].width / ASPECT_SIZE[a].height
 const GUIDE_RATIO: Record<Exclude<Guides["aspect"], "none">, number> = { "9:16": 9 / 16, "16:9": 16 / 9, "1:1": 1 };
 
 /** The viewer: plays the source video or the finished edit, with transport, guides and fullscreen. */
-export function Monitor(p: Props) {
+export function Monitor({ preview, ...p }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const root = useRef<HTMLElement>(null);
   const [frame, setFrame] = useState({ w: 320, h: 180 });
@@ -107,7 +107,7 @@ export function Monitor(p: Props) {
       <div ref={box} className="nle-mon-box">
         <div className="nle-mon-frame" style={{ width: frame.w, height: frame.h }}>
           <PreviewStage
-            ref={p.preview}
+            ref={preview}
             edl={p.edl}
             total={p.total}
             mode={p.mode}

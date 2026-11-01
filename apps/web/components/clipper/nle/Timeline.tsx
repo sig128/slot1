@@ -10,7 +10,6 @@ import {
   moveSegment,
   razorAll,
   refKeyOf,
-  refSpan,
   refsInRange,
   refTrackKey,
   rippleTrimRef,

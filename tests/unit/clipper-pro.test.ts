@@ -81,7 +81,7 @@ describe("EDL back-compat and validation", () => {
     expect(msg({ audioTracks: [{ id: "m", clips: [{ id: "c", source: { kind: "upload", assetId: "not-a-uuid" }, startMs: 0, durationMs: 1000 }] }] })).toBeTruthy();
     expect(msg({ effects: [{ id: "e", kind: "wasted", startMs: 7000, endMs: 6000 }] })).toBe("An effect must end after it starts");
     expect(msg({ captionTrack: { cues: [{ id: "c", startMs: 99_000, endMs: 99_500, text: "late" }] } })).toBe("A caption starts after the edit ends");
-    expect(msg({ overlays: Array.from({ length: 5 }, (_, i) => ({ id: `o${i}` })) })).toBeTruthy();
+    expect(msg({ overlays: Array.from({ length: 9 }, (_, i) => ({ id: `o${i}` })) })).toBeTruthy();
     expect(bad({}).success).toBe(true);
   });
 

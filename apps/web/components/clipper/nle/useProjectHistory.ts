@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { docEdl, docSequences, MAIN_SEQUENCE_ID, setDocEdl, type Edl, type ProjectDoc, type SequenceInfo } from "@slot1/contracts";
 
 const LIMIT = 150;
@@ -62,8 +62,6 @@ export function useProjectHistory(initial: ProjectDoc, initialActive = MAIN_SEQU
       const past = merge && s.past.length > 0 ? s.past : [...s.past, { doc: s.doc, active: s.active, label }].slice(-LIMIT);
       return { past, doc: r.doc, active: r.active, future: [], rev: s.rev + 1 };
     });
-    // `st` is only used for its type.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const apply = useCallback(
@@ -108,11 +106,12 @@ export function useProjectHistory(initial: ProjectDoc, initialActive = MAIN_SEQU
     });
   }, []);
 
+  const sequences = useMemo(() => docSequences(st.doc), [st.doc]);
   return {
     doc: st.doc,
     active: st.active,
     edl: docEdl(st.doc, st.active),
-    sequences: docSequences(st.doc),
+    sequences,
     apply,
     replace,
     applyDoc,

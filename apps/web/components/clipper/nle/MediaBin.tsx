@@ -25,6 +25,8 @@ interface Props {
   dragRange: (s: ProjectSourceView) => { inMs: number; outMs: number };
   onPickAsset: (a: StudioAsset) => void;
   libraryAvailable: boolean;
+  /** A video is being dragged out of the bin (so the editor can load it before the drop). */
+  onDragSource: (s: ProjectSourceView) => void;
 }
 
 /** Everything the edit can use: its own videos, the creator's other recordings, the Studio library and uploads. */
@@ -55,6 +57,7 @@ export function MediaBin(p: Props) {
           role="button"
           aria-label={`${s.title}, ${editTime(s.durationMs)}. Enter opens it in the Source monitor`}
           onDragStart={(e) => {
+            p.onDragSource(s);
             e.dataTransfer.setData(SOURCE_DRAG_TYPE, JSON.stringify({ sessionId: s.sessionId, ...range }));
             e.dataTransfer.setData("text/plain", s.title);
             e.dataTransfer.effectAllowed = "copy";
