@@ -41,7 +41,7 @@ Without a domain, the site is at `https://<ip-with-dashes>.sslip.io`, for exampl
 
 To use your own domain:
 
-1. Point the domain's A record at the server's IPv4 address.
+1. In your registrar's DNS settings, add an A record for `@` and one for `www`, both pointing at the server's IPv4 address. Remove any parking or redirect records the registrar added. `www` redirects to the bare domain.
 2. On the server, run `slot1 domain slot1.example.com`.
 3. Update the Redirect URL on your Twitch app to match the new domain.
 

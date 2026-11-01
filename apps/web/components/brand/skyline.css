@@ -1,0 +1,313 @@
+/*
+ * SLOT1's loading-screen artwork (SkylineArt.tsx). The artwork is a 2:1 stage that covers its
+ * box, anchored at the bottom; effects are HTML layers positioned in % of the stage and animated
+ * with transform/opacity only, so the compositor does the work. Static by default; `.sk-animated`
+ * adds ambient life, `.sk-intro` the loading-screen push-in. Reduced motion gets the still frame.
+ */
+.sk-scene {
+  position: relative;
+  overflow: hidden;
+  container-type: size;
+  background: #2a0d37;
+  --sk-focus: 0.5;
+}
+.sk-stage {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: max(100cqw, calc(100cqh * 2));
+  aspect-ratio: 2 / 1;
+  transform: translateX(calc(var(--sk-focus) * -100%));
+}
+.sk-zoom {
+  position: absolute;
+  inset: 0;
+  transform-origin: 66% 58%;
+}
+.sk-zoom > .sk-layer,
+.sk-zoom > .sk-fx {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.sk-fx {
+  pointer-events: none;
+}
+.sk-fx > * {
+  position: absolute;
+  display: block;
+}
+
+/* Halftone: dark dots over the top of the sky, warm dots in the sun's corona. */
+.sk-dots-sky {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 58%;
+  background-image: radial-gradient(circle, rgb(16 4 22 / 0.55) 1.3px, transparent 1.9px);
+  background-size: 8px 8px;
+  mask-image: linear-gradient(to bottom, #000, rgb(0 0 0 / 0.35) 45%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000, rgb(0 0 0 / 0.35) 45%, transparent);
+}
+.sk-dots-sun {
+  border-radius: 50%;
+  background-image: radial-gradient(circle, rgb(255 236 170 / 0.85) 1.5px, transparent 2.2px);
+  background-size: 9px 9px;
+  mask-image: radial-gradient(closest-side, transparent 47%, #000 49%, rgb(0 0 0 / 0.5) 66%, transparent);
+  -webkit-mask-image: radial-gradient(closest-side, transparent 47%, #000 49%, rgb(0 0 0 / 0.5) 66%, transparent);
+  opacity: 0.75;
+}
+
+.sk-cloud {
+  will-change: transform;
+}
+
+.sk-car {
+  height: 3px;
+  transform-origin: 0 0;
+  transform: translateX(var(--x, 50%));
+}
+.sk-car::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 26px;
+  height: 3px;
+  border-radius: 3px;
+}
+.sk-car-l::before {
+  background: linear-gradient(to right, #fff6de, rgb(255 236 200 / 0));
+  box-shadow: -2px 0 8px 2px rgb(255 240 210 / 0.55);
+}
+.sk-car-r::before {
+  background: linear-gradient(to left, #ff4f87, rgb(255 79 135 / 0));
+  box-shadow: 2px 0 8px 2px rgb(255 79 135 / 0.5);
+}
+
+.sk-heli {
+  left: 0;
+  width: 100%;
+  height: 0;
+  transform: translateX(34%);
+}
+.sk-heli-craft {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.sk-heli-light {
+  position: absolute;
+  left: 46%;
+  top: 94%;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: #ff4f87;
+  box-shadow: 0 0 6px 2px rgb(255 79 135 / 0.7);
+}
+.sk-heli-cone {
+  position: absolute;
+  left: 44%;
+  top: 70%;
+  width: 230%;
+  aspect-ratio: 1 / 2.2;
+  transform-origin: 50% 0;
+  transform: translateX(-50%) rotate(-16deg);
+  clip-path: polygon(47% 0, 53% 0, 100% 100%, 0 100%);
+  background: linear-gradient(to bottom, rgb(255 240 200 / 0.3), rgb(255 240 200 / 0));
+}
+
+.sk-palm {
+  transform-origin: 50% 100%;
+}
+
+/* SLOT1's evidence bracket: the analysis colour, four corners and a label. */
+.sk-bracket {
+  --c: #7fb2ff;
+  background:
+    linear-gradient(var(--c), var(--c)) 0 0 / 12px 2px no-repeat,
+    linear-gradient(var(--c), var(--c)) 0 0 / 2px 12px no-repeat,
+    linear-gradient(var(--c), var(--c)) 100% 0 / 12px 2px no-repeat,
+    linear-gradient(var(--c), var(--c)) 100% 0 / 2px 12px no-repeat,
+    linear-gradient(var(--c), var(--c)) 0 100% / 12px 2px no-repeat,
+    linear-gradient(var(--c), var(--c)) 0 100% / 2px 12px no-repeat,
+    linear-gradient(var(--c), var(--c)) 100% 100% / 12px 2px no-repeat,
+    linear-gradient(var(--c), var(--c)) 100% 100% / 2px 12px no-repeat;
+}
+.sk-bracket-heli {
+  position: absolute;
+  inset: -10px -10px -12px -10px;
+  opacity: 0;
+}
+.sk-bracket-label {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 5px);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  font-family: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: #7fb2ff;
+  text-shadow:
+    0 1px 0 #140715,
+    0 0 3px #140715;
+}
+.sk-glyph {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border: 1.6px solid currentColor;
+}
+
+/* --- ambient life (only when animated, never under reduced motion) --- */
+@media (prefers-reduced-motion: no-preference) {
+  .sk-animated .sk-cloud-a {
+    animation: sk-drift 70s ease-in-out -20s infinite alternate;
+  }
+  .sk-animated .sk-cloud-b {
+    animation: sk-drift 90s ease-in-out -50s infinite alternate-reverse;
+  }
+  .sk-animated .sk-cloud-c {
+    animation: sk-drift 80s ease-in-out -10s infinite alternate;
+  }
+  .sk-animated .sk-dots-sun {
+    animation: sk-breathe 6s ease-in-out infinite alternate;
+  }
+  .sk-animated .sk-car-l {
+    animation: sk-drive-l 15s linear infinite;
+  }
+  .sk-animated .sk-car-r {
+    animation: sk-drive-r 15s linear infinite;
+  }
+  .sk-animated .sk-heli {
+    animation: sk-heli 64s linear -14s infinite;
+  }
+  .sk-animated .sk-heli-light {
+    animation: sk-blink 1.4s steps(1, end) infinite;
+  }
+  .sk-animated .sk-heli-cone {
+    animation: sk-cone 7s ease-in-out infinite alternate;
+  }
+  .sk-animated .sk-bracket-heli {
+    animation: sk-heli-seen 64s linear -14s infinite;
+  }
+  .sk-animated .sk-palm {
+    animation: sk-sway 8s ease-in-out infinite alternate;
+  }
+  /* the loading-screen push-in */
+  .sk-intro .sk-zoom {
+    animation: sk-push 3.4s cubic-bezier(0.2, 0.6, 0.15, 1) both;
+  }
+}
+
+/* Off screen or in a background tab: everything holds still. */
+[data-scene][data-paused="true"] *,
+[data-scene][data-paused="true"] *::before,
+[data-scene][data-paused="true"] *::after {
+  animation-play-state: paused !important;
+}
+
+@keyframes sk-push {
+  from {
+    transform: scale(1.09) translate(-1.2%, 0.6%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes sk-drift {
+  from {
+    transform: translateX(-5%);
+  }
+  to {
+    transform: translateX(6%);
+  }
+}
+@keyframes sk-breathe {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 0.9;
+  }
+}
+@keyframes sk-drive-l {
+  from {
+    transform: translateX(104%);
+  }
+  to {
+    transform: translateX(-6%);
+  }
+}
+@keyframes sk-drive-r {
+  from {
+    transform: translateX(-6%);
+  }
+  to {
+    transform: translateX(104%);
+  }
+}
+/* The helicopter crosses right to left. */
+@keyframes sk-heli {
+  from {
+    transform: translateX(108%);
+  }
+  to {
+    transform: translateX(-8%);
+  }
+}
+/* SLOT1 notices it while it crosses the open sky in the middle (about 10 s after load, then once
+   per pass). */
+@keyframes sk-heli-seen {
+  0%,
+  37% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+  38.5% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  49% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  51%,
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+@keyframes sk-blink {
+  0% {
+    opacity: 1;
+  }
+  12%,
+  100% {
+    opacity: 0.2;
+  }
+}
+@keyframes sk-cone {
+  from {
+    transform: translateX(-50%) rotate(-22deg);
+  }
+  to {
+    transform: translateX(-50%) rotate(-8deg);
+  }
+}
+@keyframes sk-sway {
+  from {
+    transform: rotate(-1deg);
+  }
+  to {
+    transform: rotate(1deg);
+  }
+}

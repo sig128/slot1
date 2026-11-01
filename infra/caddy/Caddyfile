@@ -1,4 +1,10 @@
 # Public edge for SLOT1: one origin, automatic HTTPS. Set SLOT1_DOMAIN (e.g. slot1.example.com).
+
+# www.<domain> sends visitors to the one canonical address (needs a www DNS record too).
+www.{$SLOT1_DOMAIN:localhost} {
+	redir https://{$SLOT1_DOMAIN:localhost}{uri} permanent
+}
+
 {$SLOT1_DOMAIN:localhost} {
 	# Compress documents and JSON, never the live event stream (text/event-stream).
 	encode {

@@ -413,9 +413,15 @@ cmd_domain() {
   domain="$(lower "$domain")"
   ip="$(public_ipv4)"
   resolved="$(getent ahostsv4 "$domain" 2>/dev/null | awk 'NR == 1 { print $1 }' || true)"
-  if [ "$resolved" != "$ip" ]; then
-    note "Warning: $domain points to ${resolved:-nothing} instead of this server ($ip)."
-    note "Set its A record to $ip; HTTPS starts working once that change has spread."
+  if [ "$resolved" != "$ip" ] && [ "${SLOT1_FORCE:-}" != 1 ]; then
+    # Switching early makes the certificate requests fail, and Let's Encrypt then pauses new
+    # attempts for that name for up to an hour.
+    die "$domain points to ${resolved:-nothing}, not this server ($ip). Set its A record (host @) to $ip, wait until it shows up (a few minutes to half an hour), then run this again. To switch anyway: SLOT1_FORCE=1 slot1 domain $domain"
+  fi
+  local www
+  www="$(getent ahostsv4 "www.$domain" 2>/dev/null | awk 'NR == 1 { print $1 }' || true)"
+  if [ "$www" != "$ip" ]; then
+    note "Note: www.$domain doesn't point here yet. Add an A record for host www to $ip so www.$domain redirects to $domain."
   fi
   apply_domain "$domain" "$ip"
   apply_gateway "$(env_get INGEST_GATEWAY)"
