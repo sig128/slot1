@@ -93,7 +93,11 @@ export function RadioWheel({
             e.preventDefault();
             returnFocus.current?.focus({ preventScroll: true });
           }}
-          onOpenAutoFocus={(e) => e.preventDefault()}
+          onOpenAutoFocus={(e) => {
+            // Start on the stream that's playing (the content is in the page by now).
+            e.preventDefault();
+            items.current[at]?.focus({ preventScroll: variant === "wheel" });
+          }}
           className={
             variant === "wheel"
               ? "fixed inset-0 z-50 flex flex-col items-center justify-center gap-2 p-4"

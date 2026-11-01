@@ -164,7 +164,7 @@ export function EventRail({ mode, items, sources, status, showHeader, connection
               const selected = o.id === selectedId;
               const replayable = Boolean(onReplay) && o.mediaStartMs !== null && o.origin !== "twitch" && o.reviewStatus !== "rejected";
               return (
-                <li key={o.id} className={`relative ${freshIds.has(o.id) ? "rail-enter" : ""}`}>
+                <li key={o.id} data-observation-id={o.id} className={`relative ${freshIds.has(o.id) ? "rail-enter" : ""}`}>
                   <button
                     type="button"
                     data-rail-item

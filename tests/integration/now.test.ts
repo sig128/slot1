@@ -53,7 +53,8 @@ describe("Los Santos right now", () => {
     const browser = new Browser(h);
     const me = (await browser.signInLocal(name)) as { broadcaster: { id: string; login: string; displayName: string } };
     const b = me.broadcaster;
-    await updateSettings(h.ctx.db, b.id, { visibility: o.channel ?? "public", publicAnalysis: o.publicAnalysis ?? true });
+    // A private channel can never have public analysis (the database refuses it).
+    await updateSettings(h.ctx.db, b.id, { visibility: o.channel ?? "public", publicAnalysis: o.channel === "private" ? false : (o.publicAnalysis ?? true) });
     const label = o.label ?? "live";
     const source = await createIngestSource(h.ctx.db, { broadcasterId: b.id, name: "OBS", label, publishPath: `live/${randomBytes(6).toString("hex")}`, keyHash: randomBytes(32), keyHint: "abcd" });
     const session = await createIngestSession(h.ctx.db, b.id, label, `${name} in Los Santos`, o.session ?? "public", 5000);

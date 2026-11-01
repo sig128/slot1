@@ -236,7 +236,7 @@ export function SessionWorkspace(p: Props) {
           theater ? "lg:grid-cols-[minmax(0,1fr)_340px]" : "lg:grid-cols-[minmax(0,7fr)_minmax(320px,3fr)]"
         }`}
       >
-        <div className="relative min-w-0 lg:col-start-1 lg:row-start-1">
+        <div className="relative min-w-0 lg:col-start-1 lg:row-start-1" data-main-player>
           {p.mode === "replay" && (
             // Over SLOT1's own replay video only; never over Twitch's player.
             <MomentBanner className="absolute inset-x-0 top-[7%] z-10" items={items} mode="replay" positionMs={position} freshIds={stream.freshIds} now={now} />
