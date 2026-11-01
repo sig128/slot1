@@ -113,12 +113,44 @@ test.describe("creator clipper", () => {
     await page.keyboard.press("Shift+ArrowRight");
     await expect(page.getByRole("slider", { name: "Out point of the selected segment" })).toHaveAttribute("aria-valuenow", String(outMs + 1000));
 
+    // The multi-track timeline: split at the playhead, then undo and redo it.
+    await page.getByRole("radio", { name: "Edit" }).click();
+    const timeline = page.getByRole("group", { name: "Edit timeline" });
+    await expect(timeline.getByRole("button", { name: /^Segment 1,/ })).toBeVisible();
+    await page.getByRole("slider", { name: "Playhead in the edit" }).focus();
+    await page.keyboard.press("Shift+ArrowRight");
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.keyboard.press("s");
+    await expect(timeline.getByRole("button", { name: /^Segment 2,/ })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Segments" }).getByRole("button", { name: /Segment 2/ })).toBeVisible();
+    await page.getByRole("button", { name: "Undo", exact: true }).click();
+    await expect(timeline.getByRole("button", { name: /^Segment 2,/ })).toHaveCount(0);
+    await page.getByRole("button", { name: "Redo", exact: true }).click();
+    await expect(timeline.getByRole("button", { name: /^Segment 2,/ })).toBeVisible();
+    await page.keyboard.press("Control+z");
+    await expect(timeline.getByRole("button", { name: /^Segment 2,/ })).toHaveCount(0);
+    // The shortcuts sheet.
+    await page.keyboard.press("?");
+    await expect(page.getByRole("dialog", { name: "Shortcuts" })).toBeVisible();
+    await page.getByRole("dialog", { name: "Shortcuts" }).getByRole("button", { name: "Close" }).click();
+    await expect(page.getByRole("dialog", { name: "Shortcuts" })).toHaveCount(0);
+
     // Presets and text.
+    await page.getByRole("tab", { name: "Format" }).click();
     await page.getByRole("radio", { name: /Widescreen/ }).click();
     await expect(page.getByText(/Widescreen 1920×1080, /)).toBeVisible();
     await page.getByRole("radio", { name: /Vertical/ }).click();
+    await page.getByRole("radio", { name: "Facecam + gameplay" }).click();
+    await expect(page.getByRole("slider", { name: /Camera panel height/ })).toBeVisible();
+    await page.getByRole("radio", { name: "Fill and reframe" }).click();
+    await page.getByRole("tab", { name: "Look" }).click();
+    await page.getByRole("radio", { name: "Vice City night" }).click();
+    await expect(page.getByText(/The preview approximates the final render/)).toBeVisible();
+    await page.getByRole("radio", { name: "None" }).click();
+    await page.getByRole("tab", { name: "Text" }).click();
     await page.getByRole("button", { name: "Add text at playhead" }).click();
     await page.getByRole("region", { name: "Text" }).getByLabel("Text", { exact: true }).fill("DOCKS DONE");
+    await expect(timeline.getByRole("button", { name: /Text “DOCKS DONE”/ })).toBeVisible();
     await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 15_000 });
     await noHorizontalOverflow(page);
     await shot(page, "clipper-editor");
