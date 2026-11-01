@@ -114,10 +114,21 @@ function typeLabel(t: string): string {
  */
 export function AnalyzedFrame({ snapshot, annotate = true, className = "" }: { snapshot: AiViewSnapshot; annotate?: boolean; className?: string }) {
   const read = annotate ? snapshot.ocr.regions.flatMap((r) => r.readings) : [];
+  const hidden = snapshot.hidden ?? [];
   return (
     <figure className={`relative m-0 overflow-hidden bg-black ${className}`} style={{ aspectRatio: `${snapshot.frame.width} / ${snapshot.frame.height}` }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={snapshot.frame.url} alt="The video frame SLOT1 analyzed" className="absolute inset-0 h-full w-full object-contain" />
+      <img
+        src={snapshot.frame.url}
+        alt={hidden.length ? "The video frame SLOT1 analyzed, with the areas the creator hid blacked out" : "The video frame SLOT1 analyzed"}
+        className="absolute inset-0 h-full w-full object-contain"
+      />
+      {/* The frame is already black there: these only label it. */}
+      {hidden.map((b, i) => (
+        <div key={`hidden-${i}`} className="absolute grid place-items-center border border-dashed border-ivory/50 bg-black p-1 text-center" style={pctBox(b)} aria-hidden data-testid="ai-view-hidden">
+          <span className="font-display text-[clamp(0.6rem,1.2vw,0.8rem)] font-semibold leading-tight text-ivory-2">Hidden by the creator</span>
+        </div>
+      ))}
       {annotate &&
         snapshot.ocr.regions.map((r, i) => (
           <div
@@ -182,6 +193,14 @@ export function AiViewPanel({ sessionId, onSelect }: { sessionId: string; onSele
           {error && <p className="mt-1 text-[0.78rem] text-coral">{error}</p>}
         </div>
         <div className="min-w-0 space-y-3">
+          {(s.hidden?.length ?? 0) > 0 && (
+            <Section title="Hidden by the creator">
+              <p>
+                The creator hid {s.hidden.length === 1 ? "one area" : `${s.hidden.length} areas`} of their picture from the AI, usually their webcam. SLOT1 blacks it out
+                before anything looks at the frame, so OCR, AI vision and the GTA model never see it. Viewers still see the full stream.
+              </p>
+            </Section>
+          )}
           <Section title="Read on screen (OCR)">
             {s.ocr.status !== "read" ? (
               <p>{s.ocr.note}</p>

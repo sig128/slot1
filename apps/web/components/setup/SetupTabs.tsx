@@ -18,7 +18,9 @@ export function SetupTabs() {
     const seen = new Map<string, boolean>();
     const io = new IntersectionObserver(
       (entries) => {
-        for (const e of entries) seen.set(e.target.id, e.isIntersecting);
+        // Edge-adjacent counts as intersecting with a ratio of 0: the section above the one a link
+        // jumped to touches the line exactly, and must not win.
+        for (const e of entries) seen.set(e.target.id, e.isIntersecting && e.intersectionRatio > 0);
         const first = SECTIONS.find((s) => seen.get(s.id));
         if (first) setActive(first.id);
       },

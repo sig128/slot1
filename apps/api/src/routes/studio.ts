@@ -4,6 +4,8 @@ import { staleAfterMs } from "@slot1/analysis";
 import {
   ChannelSettingsPatch,
   CreateIngestSourceInput,
+  normalizeCameraMask,
+  SetCameraMaskInput,
   type ChannelSettings,
   type CreateIngestSourceResponse,
   type ReadinessStep,
@@ -30,6 +32,7 @@ import {
   requestSessionDeletion,
   revokeSource,
   setAnalysisState,
+  setSourceCameraMask,
   toBroadcasterRef,
   updateSettings,
   usageSummary,
@@ -358,6 +361,21 @@ export const studioRoutes =
       await ctx.db.query(`UPDATE media_sources SET publish_key_hash = $2, publish_key_hint = $3, updated_at = now() WHERE id = $1`, [id, sha256(secret), secret.slice(-4)]);
       await markPublishEnded(ctx.db, id);
       return publishCredentials(ctx, src.publish_path!, secret);
+    });
+
+    /**
+     * "Hide your camera from the AI": the boxes blacked out of every frame SLOT1 analyzes from
+     * this live source. Owner only; an empty list removes the mask. The worker applies a change
+     * within a few seconds (it restarts its reader for the new mask).
+     */
+    app.put("/api/studio/sources/:id/camera-mask", async (req) => {
+      const b = requireBroadcaster(req);
+      const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+      const parsed = SetCameraMaskInput.safeParse(req.body);
+      if (!parsed.success) throw badRequest(parsed.error.issues[0]?.message ?? "Invalid boxes");
+      const updated = await setSourceCameraMask(ctx.db, b.id, id, normalizeCameraMask(parsed.data.boxes));
+      if (!updated) throw notFound("Source not found");
+      return { source: sourceView(updated, await getSourceHealth(ctx.db, updated.id), ctx.config) };
     });
 
     app.delete("/api/studio/sources/:id", async (req) => {

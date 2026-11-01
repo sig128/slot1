@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
-import { DEMO_STREAM_NAME } from "@slot1/contracts";
+import { DEMO_CAMERA_TILE, DEMO_STREAM_NAME } from "@slot1/contracts";
 
 /**
  * SLOT1's demo broadcast: a synthetic "Vice City after dark" scene generated live by ffmpeg.
@@ -60,6 +60,12 @@ export const DEMO_LAYOUT = {
   bigResult: { y: 0.39, size: 0.15 },
   line: { y: 0.775, size: 0.042, box: 0.014 },
   place: { right: 0.97, y: 0.944, size: 0.032 },
+  /**
+   * A placeholder webcam tile (silhouette and "CAM", no face) above every OCR region. The demo
+   * source hides it from the AI by default (DEMO_CAMERA_MASK), so "What the AI sees" shows the
+   * camera mask at work.
+   */
+  camera: DEMO_CAMERA_TILE,
 } as const;
 
 export const DEMO_WATERMARK = "SLOT1 DEMO - SYNTHETIC TEST VIDEO, NOT GAMEPLAY";
@@ -172,7 +178,26 @@ ${palm(w * 0.12, 0.22, false)}${palm(w * 0.2, 0.16, true)}${palm(w * 0.86, 0.24,
 <g fill="#ffc94d" opacity="0.7">${dashes.join("")}</g>
 <rect y="${f(roadBottom)}" width="${w}" height="${f(h - roadBottom)}" fill="#09060f"/>
 <g transform="translate(${f(w * 0.018)},${f(h * 0.79)})"><rect width="${f(w * 0.15)}" height="${f(h * 0.17)}" rx="6" fill="#1b2a1f" opacity="0.85"/><path d="M${f(w * 0.02)},${f(h * 0.14)} L${f(w * 0.07)},${f(h * 0.06)} L${f(w * 0.13)},${f(h * 0.1)}" stroke="#7ee08f" stroke-width="3" fill="none" opacity="0.8"/><path d="M${f(w * 0.075)},${f(h * 0.075)} l-7,16 l7,-5 l7,5z" fill="#fff"/></g>
+${cameraTileSvg(w, h)}
 </svg>`;
+}
+
+/**
+ * The demo's stand-in for a streamer's webcam: a framed tile with a head-and-shoulders silhouette
+ * and a red recording dot (the "CAM" label is drawn as text by the filter graph). No face.
+ */
+export function cameraTileSvg(w: number, h: number): string {
+  const t = DEMO_LAYOUT.camera;
+  const x = w * t.x;
+  const y = h * t.y;
+  const tw = w * t.w;
+  const th = h * t.h;
+  const cx = x + tw * 0.5;
+  const head = th * 0.17;
+  const shoulders = `M${f(cx - tw * 0.26)},${f(y + th)} C${f(cx - tw * 0.25)},${f(y + th * 0.66)} ${f(cx - tw * 0.12)},${f(y + th * 0.6)} ${f(cx)},${f(y + th * 0.6)} C${f(cx + tw * 0.12)},${f(y + th * 0.6)} ${f(cx + tw * 0.25)},${f(y + th * 0.66)} ${f(cx + tw * 0.26)},${f(y + th)}Z`;
+  return `<g><rect x="${f(x)}" y="${f(y)}" width="${f(tw)}" height="${f(th)}" rx="8" fill="#241536" stroke="#ff4fa3" stroke-width="3"/>
+<circle cx="${f(cx)}" cy="${f(y + th * 0.4)}" r="${f(head)}" fill="#5b4775"/><path d="${shoulders}" fill="#5b4775"/>
+<circle cx="${f(x + tw - th * 0.12)}" cy="${f(y + th * 0.13)}" r="${f(th * 0.045)}" fill="#ff2d55"/></g>`;
 }
 
 /** A low sports car seen from the side, `facing` right or left, transparent background. */
@@ -240,6 +265,9 @@ export async function buildDemoScene(dir: string, o: DemoSceneOptions): Promise<
   const v = `(1248500+25000*gte(mod(t,${DEMO_CYCLE_SEC}),49)-5000*gte(mod(t,${DEMO_CYCLE_SEC}),81)-2500*gte(mod(t,${DEMO_CYCLE_SEC}),113))`;
   const cashText = `$%{eif:trunc(${v}/1000000):d},${cash(`mod(trunc(${v}/1000),1000)`)},${cash(`mod(${v},1000)`)}`;
   dt({ fontfile: fq(caption), textfile: fq(await textFile("cash", cashText)), fontsize: px(L.cash.size), fontcolor: "0x8ef0a0", borderw: 2, bordercolor: "black", box: 1, boxcolor: "black@0.35", boxborderw: px(0.011), x: `w*${L.cash.right}-text_w`, y: px(L.cash.y) });
+
+  // The placeholder webcam's label (hidden from the AI by the demo's default camera mask).
+  dt({ fontfile: fq(caption), textfile: fq(await textFile("cam", "CAM")), fontsize: px(L.camera.h * 0.14), fontcolor: "white@0.85", x: Math.round(w * (L.camera.x + 0.008)), y: px(L.camera.y + L.camera.h * 0.05) });
 
   // Title cards and result screens sit on a dark band across the centre, as the game does; the
   // band also keeps the lit skyline from confusing OCR.
