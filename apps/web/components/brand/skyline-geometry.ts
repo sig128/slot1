@@ -9,13 +9,14 @@ export const VB = { w: 1600, h: 800, ground: 600 } as const;
 
 export const INK = "#140715";
 
-export const SUN = { cx: 1046, cy: 528, r: 158 } as const;
+export const SUN = { cx: 912, cy: 522, r: 150 } as const;
 
 /** The hill with the SLOT1 letters, and where the letters stand. */
 export const SIGN_LETTERS = ["S", "L", "O", "T", "1"] as const;
-export const SIGN_X0 = 1112;
-export const SIGN_STEP = 50;
-export const signBase = (x: number) => 494 - (x - 1060) * 0.53;
+export const SIGN_X0 = 1086;
+export const SIGN_STEP = 54;
+/** The letters stand along a contour of the hill face, below the ridge. */
+export const signBase = (x: number) => 432 - (x - 1086) * 0.09;
 
 /** The elevated freeway's deck top, sloping slightly up to the right. */
 export const FREEWAY = { x0: -20, y0: 664, x1: 1620, y1: 632 } as const;
@@ -79,9 +80,9 @@ export const CITY: Building[] = [
   { x: 482, w: 74, top: 410, kind: "step", mast: 26, tone: 0 },
   { x: 552, w: 112, top: 446, kind: "dome", mast: 14, tone: 1 },
   { x: 660, w: 56, top: 362, kind: "spire", mast: 44, tone: 0 },
-  { x: 712, w: 88, top: 418, kind: "step", tone: 2 },
-  { x: 796, w: 70, top: 470, kind: "flat", tone: 1 },
-  { x: 862, w: 94, top: 498, kind: "moderne", tone: 2 },
+  { x: 712, w: 82, top: 452, kind: "step", tone: 2 },
+  { x: 790, w: 66, top: 506, kind: "flat", tone: 1 },
+  { x: 852, w: 84, top: 534, kind: "moderne", tone: 2 },
 ];
 
 export const TONES = [

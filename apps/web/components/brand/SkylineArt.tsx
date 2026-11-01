@@ -89,8 +89,8 @@ function SkyLayer({ id }: { id: string }) {
 /** Clouds drift and the sun's halftone corona breathes (HTML layers between sky and city). */
 function SkyFx() {
   const clouds: { x: number; y: number; w: number; chords: number[]; cls: string }[] = [
-    { x: 860, y: 246, w: 380, chords: [1, 1.5, 1.2, 1.9, 1.1, 0.8], cls: "sk-cloud sk-cloud-a" },
-    { x: 1300, y: 150, w: 250, chords: [1, 1.6, 1.3, 0.9], cls: "sk-cloud sk-cloud-b" },
+    { x: 1170, y: 238, w: 360, chords: [1, 1.5, 1.2, 1.9, 1.1, 0.8], cls: "sk-cloud sk-cloud-a" },
+    { x: 1010, y: 132, w: 230, chords: [1, 1.6, 1.3, 0.9], cls: "sk-cloud sk-cloud-b" },
     { x: 40, y: 396, w: 330, chords: [0.8, 1.3, 1.7, 1.1, 0.9], cls: "sk-cloud sk-cloud-c" },
   ];
   return (
@@ -115,7 +115,7 @@ function SkyFx() {
 }
 
 function MidLayer({ id }: { id: string }) {
-  const hillRidge = "M830 600C900 566 980 530 1060 494C1150 452 1240 360 1330 336C1410 316 1480 344 1540 384C1570 402 1600 412 1610 414";
+  const hillRidge = "M900 600C946 520 1000 414 1096 352C1166 310 1236 292 1306 302C1396 316 1474 362 1610 404";
   return (
     <svg viewBox={`0 0 ${VB.w} ${VB.h}`} preserveAspectRatio="none" className="sk-layer">
       <defs>
@@ -136,13 +136,13 @@ function MidLayer({ id }: { id: string }) {
 
       {/* the hill with the letters */}
       <path d={`${hillRidge}V600Z`} fill="#43174d" />
-      <path d="M1330 336C1410 316 1480 344 1540 384C1570 402 1600 412 1610 414V600H1238C1290 520 1318 420 1330 336Z" fill="#2c0f36" />
-      <path d="M1330 336C1410 316 1480 344 1540 384C1570 402 1600 412 1610 414V600H1238C1290 520 1318 420 1330 336Z" fill={`url(#${id}-dots)`} />
-      <path d="M830 600C900 566 980 530 1060 494C1150 452 1240 360 1330 336" fill="none" stroke="#ffb067" strokeWidth="5" />
+      <path d="M1306 302C1396 316 1474 362 1610 404V600H1330C1356 500 1342 384 1306 302Z" fill="#2c0f36" />
+      <path d="M1306 302C1396 316 1474 362 1610 404V600H1330C1356 500 1342 384 1306 302Z" fill={`url(#${id}-dots)`} />
+      <path d="M900 600C946 520 1000 414 1096 352C1166 310 1236 292 1306 302" fill="none" stroke="#ffb067" strokeWidth="5" />
       <path d={`${hillRidge}V600Z`} fill="none" stroke={INK} strokeWidth="4" strokeLinejoin="round" />
       {/* scrub on the slope */}
       <path
-        d="M960 560q8-10 16 0M1004 540q9-11 18 0M1092 512q7-9 14 0M1180 470q8-10 16 0M1262 424q7-9 14 0M1376 392q8-10 16 0M1450 410q9-11 18 0M1520 440q7-9 14 0"
+        d="M972 520q8-10 16 0M1040 470q9-11 18 0M1130 486q7-9 14 0M1236 478q8-10 16 0M1330 440q7-9 14 0M1420 424q8-10 16 0M1480 466q9-11 18 0M1546 476q7-9 14 0M1190 546q8-10 16 0M1080 560q9-11 18 0"
         stroke={INK}
         strokeWidth="2.6"
         fill="none"

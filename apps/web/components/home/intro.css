@@ -209,14 +209,17 @@
   margin: 0;
 }
 .gx-money-num {
-  font-family: "SLOT1 Intro", "Passion One", Impact, sans-serif;
-  font-weight: 900;
+  font-family: "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
+  font-weight: 800;
+  font-style: italic;
   font-size: 2.6rem;
   line-height: 0.95;
   color: #9fe38f;
-  -webkit-text-stroke: 0.07em #140715;
+  -webkit-text-stroke: 0.035em #140715;
   paint-order: stroke fill;
-  text-shadow: 0.03em 0.06em 0 rgb(20 7 21 / 0.85);
+  text-shadow:
+    0.02em 0.05em 0 #140715,
+    0 0 0.08em rgb(20 7 21 / 0.6);
 }
 .gx-money-cap {
   margin-top: 2px;
