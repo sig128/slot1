@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Tabs } from "radix-ui";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import type { Capabilities, ChannelSettings, ChannelSettingsPatch, MeResponse, ReadinessStep, StudioOverview } from "@slot1/contracts";
 import { SkylineArt } from "@/components/brand/SkylineArt";
 import { api, ApiError, getMe } from "@/lib/api";
@@ -63,6 +63,8 @@ export function StudioApp() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [section, setSection] = useState<string>("overview");
   const [banner, setBanner] = useState<string | null>(null);
+  const nav = useRef<HTMLDivElement>(null);
+  const hasOverview = overview !== null;
 
   const reload = useCallback(async () => {
     try {
@@ -104,6 +106,15 @@ export function StudioApp() {
     const t = setInterval(() => void api<StudioOverview>("/api/studio").then(setOverview).catch(() => undefined), 5000);
     return () => clearInterval(t);
   }, [overview]);
+
+  // Keep the selected section in view when the menu scrolls sideways (phones), as on /setup.
+  useEffect(() => {
+    const list = nav.current;
+    const tab = list?.querySelector<HTMLElement>('[role="tab"][data-state="active"]');
+    if (!list || !tab || list.scrollWidth <= list.clientWidth) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    list.scrollTo({ left: tab.offsetLeft - list.clientWidth / 2 + tab.clientWidth / 2, behavior: reduce ? "auto" : "smooth" });
+  }, [section, hasOverview]);
 
   const save = useCallback(async (patch: ChannelSettingsPatch) => {
     setSaving(true);
@@ -182,7 +193,7 @@ export function StudioApp() {
         )}
 
         <Tabs.Root value={section} onValueChange={setSection} orientation="vertical" className="st-layout">
-          <Tabs.List aria-label="Studio sections" className="st-nav">
+          <Tabs.List ref={nav} aria-label="Studio sections" className="st-nav">
             {SECTIONS.map(([v, label]) => {
               const group = NAV_GROUPS.find((g) => g.first === v);
               return (
@@ -206,39 +217,39 @@ export function StudioApp() {
             })}
           </Tabs.List>
           <div className="st-sheet">
-          <Tabs.Content value="overview">
-            <OverviewSection ctx={ctx} />
-          </Tabs.Content>
-          <Tabs.Content value="stream" id="stream">
-            <StreamSetupSection ctx={ctx} />
-          </Tabs.Content>
-          <Tabs.Content value="sources" id="sources">
-            <SourcesSection ctx={ctx} />
-          </Tabs.Content>
-          <Tabs.Content value="bot">
-            <BotSection ctx={ctx} />
-          </Tabs.Content>
-          <Tabs.Content value="privacy">
-            <PrivacySection ctx={ctx} />
-          </Tabs.Content>
-          <Tabs.Content value="jobs">
-            <JobsSection ctx={ctx} />
-          </Tabs.Content>
-          <Tabs.Content value="gta">
-            <GtaModelSection ctx={ctx} />
-          </Tabs.Content>
-          <Tabs.Content value="library" id="library">
-            <LibrarySection ctx={ctx} />
-          </Tabs.Content>
-          <Tabs.Content value="ai-clips" id="ai-clips">
-            <AiClipToolsSection ctx={ctx} />
-          </Tabs.Content>
-          <Tabs.Content value="sounds" id="sounds">
-            <SoundsSection />
-          </Tabs.Content>
-          <Tabs.Content value="advanced">
-            <AdvancedSection ctx={ctx} />
-          </Tabs.Content>
+            <Tabs.Content value="overview">
+              <OverviewSection ctx={ctx} />
+            </Tabs.Content>
+            <Tabs.Content value="stream" id="stream">
+              <StreamSetupSection ctx={ctx} />
+            </Tabs.Content>
+            <Tabs.Content value="sources" id="sources">
+              <SourcesSection ctx={ctx} />
+            </Tabs.Content>
+            <Tabs.Content value="bot">
+              <BotSection ctx={ctx} />
+            </Tabs.Content>
+            <Tabs.Content value="privacy">
+              <PrivacySection ctx={ctx} />
+            </Tabs.Content>
+            <Tabs.Content value="jobs">
+              <JobsSection ctx={ctx} />
+            </Tabs.Content>
+            <Tabs.Content value="gta">
+              <GtaModelSection ctx={ctx} />
+            </Tabs.Content>
+            <Tabs.Content value="library" id="library">
+              <LibrarySection ctx={ctx} />
+            </Tabs.Content>
+            <Tabs.Content value="ai-clips" id="ai-clips">
+              <AiClipToolsSection ctx={ctx} />
+            </Tabs.Content>
+            <Tabs.Content value="sounds" id="sounds">
+              <SoundsSection />
+            </Tabs.Content>
+            <Tabs.Content value="advanced">
+              <AdvancedSection ctx={ctx} />
+            </Tabs.Content>
           </div>
         </Tabs.Root>
         <p className="sr-only" aria-live="polite">

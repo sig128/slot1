@@ -143,6 +143,19 @@
 .st-controls .btn {
   min-height: 2.25rem;
 }
+/* Phones: the status on its own line, the switches sharing the row under it. */
+@media (max-width: 639px) {
+  .st-controls {
+    width: 100%;
+  }
+  .st-controls-label {
+    flex-basis: 100%;
+    padding: 2px 6px 0;
+  }
+  .st-controls .btn {
+    flex: 1 1 auto;
+  }
+}
 
 /* --- body --- */
 .st-body {
@@ -556,6 +569,21 @@
 /* --- sign-in --- */
 .st-signin {
   background: linear-gradient(180deg, #1a0822 0, #150b1d 420px, #101014 980px);
+}
+
+/* A disabled action reads as unavailable, not as a faded colour. */
+.st .btn-primary:disabled,
+.st .btn-coral:disabled {
+  opacity: 1;
+  background: rgb(244 237 226 / 0.08);
+  color: #8f887e;
+}
+
+/* Touch: every Studio button is at least 44 px tall. */
+@media (max-width: 639px), (pointer: coarse) {
+  .st .btn {
+    min-height: 44px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
