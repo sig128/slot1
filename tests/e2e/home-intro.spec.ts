@@ -37,7 +37,7 @@ test.describe("home intro (reduced motion)", () => {
 
     await expect(page.getByRole("heading", { level: 1, name: "SLOT1: Your AI sidekick for GTA." })).toBeVisible();
     await expect(page.getByText(/turns them into clips, instant replays and highlights/)).toBeVisible();
-    await expect(page.getByText("Everything it tells you comes with proof: the exact frames.")).toBeVisible();
+    await expect(page.getByText("Stream GTA. Get clips. Train the AI.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Watch the live demo" })).toHaveAttribute("href", "/demo");
     await expect(page.getByRole("link", { name: /^(Connect my Twitch|How creators connect)$/ }).first()).toBeVisible();
 
@@ -47,7 +47,7 @@ test.describe("home intro (reduced motion)", () => {
     await expect(page.locator(".gx-star-on")).toHaveCount(Math.min(5, live));
 
     // The training line points to the honest explanation further down.
-    await expect(page.getByText(/your streams help train SLOT1’s own GTA AI, getting ready for/)).toBeVisible();
+    await expect(page.getByText(/Building the GTA AI, one stream at a time\. Next stop:/)).toBeVisible();
     await page.getByRole("link", { name: "How it learns" }).click();
     await expect(page).toHaveURL(/#gta-ai$/);
     const gtaAi = page.getByRole("region", { name: "The GTA AI we’re building together" });
