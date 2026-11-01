@@ -7,7 +7,9 @@ import { IntroHudCounter, IntroRadar } from "@/components/home/IntroHud";
 import { IntroSteps } from "@/components/home/IntroSteps";
 import { IntroTips } from "@/components/home/IntroTips";
 import { compactNumber } from "@/lib/format";
-import { requirementText } from "@/lib/requirements";
+import { SetupFix } from "@/components/ui/SetupFix";
+import { CreatorRewardsSoon } from "@/components/home/CreatorRewardsSoon";
+import { HeroActions } from "./HeroActions";
 import { LinkOpener } from "./LinkOpener";
 import { ChannelAvatar, LiveDirectory } from "./LiveDirectory";
 
@@ -41,22 +43,13 @@ export function OnAirView({ directory, capabilities }: { directory: DirectoryRes
             </span>
           </h1>
           <p className="gx-help gx-reveal mt-5" style={{ animationDelay: "2.7s" }}>
-            <strong className="block font-display text-[1.3rem] font-bold tracking-[0.01em] text-ivory">Stream GTA. Get clips. Train the AI.</strong>
+            <strong className="block font-display text-[1.3rem] font-bold tracking-[0.01em] text-ivory">
+              <span>Stream GTA. Get clips. Train the AI.</span> <CreatorRewardsSoon />
+            </strong>
             SLOT1 watches your stream live, clips your big moments for you, and learns the game from every stream you choose to share.
           </p>
           <div className="gx-reveal mt-5 flex flex-wrap gap-3" style={{ animationDelay: "2.85s" }}>
-            <Link href="/demo" className="btn btn-coral h-12 px-5 text-[1.12rem]">
-              Watch the live demo
-            </Link>
-            {twitchReady ? (
-              <Link href="/studio" className="btn btn-ghost h-12 bg-[rgb(10_5_14/0.78)] px-5 text-[1.12rem]">
-                Connect my Twitch
-              </Link>
-            ) : (
-              <Link href="/setup" className="btn btn-ghost h-12 bg-[rgb(10_5_14/0.78)] px-5 text-[1.12rem]">
-                How creators connect
-              </Link>
-            )}
+            <HeroActions twitchReady={twitchReady} />
           </div>
           <p className="gx-train gx-reveal mt-5" style={{ animationDelay: "2.95s" }}>
             Building the GTA AI, one stream at a time. Next stop: <span className="gx-vi">GTA VI</span>.{" "}
@@ -162,11 +155,12 @@ function EmptyBand({ twitchReady, capabilities }: { twitchReady: boolean; capabi
             </Link>
           </div>
           {capabilities && !twitchReady && (
-            <p className="mt-6 max-w-[60ch] border-l-2 border-apricot pl-3 text-sm text-ivory-2">
-              Channels can’t connect until Twitch is configured on this deployment. {requirementText(capabilities.twitch.reason)}{" "}
+            <p className="mt-6 max-w-[60ch] border-l-2 border-apricot pl-3 text-sm text-ivory-2" data-testid="twitch-closed-note">
+              Twitch sign-in isn’t open yet, so creators can’t connect their channels.{" "}
               <Link href="/setup#twitch" className="underline hover:text-ivory">
-                Setup guide
+                How connecting works
               </Link>
+              <SetupFix cap={capabilities.twitch} />
             </p>
           )}
         </div>

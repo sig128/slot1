@@ -4,6 +4,7 @@ import type { LiveVideoResponse } from "@slot1/contracts";
 import { listSources } from "@slot1/db";
 import { signPayload, verifyPayload } from "@slot1/platform";
 import type { ServerContext } from "@slot1/services";
+import { reasonForRequest } from "../lib/setup-details";
 import { authorizeSession } from "./sessions";
 
 /** Viewer tokens are short-lived; the player fetches a fresh one for every (re)connect. */
@@ -42,7 +43,7 @@ export const liveRoutes =
       const { session } = await authorizeSession(ctx, req, id);
       reply.header("cache-control", "no-store");
       const cap = ctx.config.capabilities.liveVideo;
-      if (!cap.available) return unavailable(cap.reason ?? "Live video isn't configured on this deployment");
+      if (!cap.available) return unavailable((await reasonForRequest(ctx, req, "liveVideo")) ?? "SLOT1's own live video isn't switched on yet");
       if (session.ended_at) return unavailable("This session has ended");
       const sources = await listSources(ctx.db, session.broadcaster_id);
       const live = sources.find(

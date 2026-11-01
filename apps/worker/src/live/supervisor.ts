@@ -66,7 +66,7 @@ const SALIENT = new Set(["highlight_candidate", "possible_collision", "result_sc
 export function buildReadUrl(ctx: ServerContext, publishPath: string): string {
   const env = ctx.config.env;
   const template = env.INGEST_READ_URL_TEMPLATE;
-  if (!template) throw new Error("INGEST_READ_URL_TEMPLATE is not set");
+  if (!template) throw new Error("Streaming to SLOT1 isn't fully set up yet (INGEST_READ_URL_TEMPLATE is missing)");
   const name = publishPath.replace(/^live\//, "");
   return template
     .replaceAll("{path}", publishPath)

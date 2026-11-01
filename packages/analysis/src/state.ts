@@ -53,14 +53,14 @@ export function deriveLiveState(i: LiveStateInput): { state: AnalysisState; reas
   const age = i.now - i.lastFrameAt;
   const stale = staleAfterMs(i);
   if (age > stale) return { state: "stale", reason: `No frames for ${Math.round(age / 1000)}s (threshold ${Math.round(stale / 1000)}s)` };
-  if (!i.visionConfigured && !i.ocrAvailable) return { state: "delayed", reason: "Frames arriving but no analyzer is configured" };
+  if (!i.visionConfigured && !i.ocrAvailable) return { state: "delayed", reason: "Frames arriving, but nothing is switched on to analyze them yet" };
   const lag = i.lastAnalyzedAt === null ? age : i.lastFrameAt - i.lastAnalyzedAt;
   if (i.lastAnalyzedAt === null || lag > delayedAfterMs(i)) {
     return { state: "delayed", reason: `Analysis is behind the newest frame by ${Math.round(Math.max(lag, 0) / 1000)}s` };
   }
   return {
     state: "live_vision",
-    reason: i.visionConfigured ? "Frames arriving and being analyzed" : "Frames arriving — reading on-screen text only (AI vision not configured)",
+    reason: i.visionConfigured ? "Frames arriving and being analyzed" : "Frames arriving — reading on-screen text only (the AI that describes gameplay isn't switched on yet)",
   };
 }
 

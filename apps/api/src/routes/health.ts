@@ -3,6 +3,7 @@ import type { MeResponse } from "@slot1/contracts";
 import { toBroadcasterRef } from "@slot1/db";
 import type { ServerContext } from "@slot1/services";
 import { ensureSession } from "../lib/session";
+import { capabilitiesForRequest } from "../lib/setup-details";
 
 export const healthRoutes =
   (ctx: ServerContext): FastifyPluginAsync =>
@@ -24,8 +25,14 @@ export const healthRoutes =
       return { ok: Object.values(checks).every((v) => v === "ok"), checks };
     });
 
-    /** What is genuinely configured on this deployment, with exact missing requirements. */
-    app.get("/api/capabilities", async () => ctx.config.capabilities);
+    /**
+     * What works on this deployment. Operators (and /admin sessions) also get the exact missing
+     * server settings and the command that fixes them; everyone else gets friendly reasons only.
+     */
+    app.get("/api/capabilities", async (req, reply) => {
+      reply.header("cache-control", "private, no-store").header("vary", "cookie");
+      return capabilitiesForRequest(ctx, req);
+    });
 
     app.get("/api/me", async (req, reply): Promise<MeResponse> => {
       const { csrf } = await ensureSession(ctx, req, reply);

@@ -73,7 +73,12 @@ services:
     profiles: [app]
     env_file: [.env]
     environment: *app-env
-    volumes: [media:/data]
+    volumes:
+      - media:/data
+      # Shared with the server's slot1 command (scripts/server-setup.sh): the API reads the deploy
+      # status from outbox/ and leaves settings saved in /admin in inbox/ for the server to apply.
+      - ./state/outbox:/srv/slot1-state/outbox:ro
+      - ./state/inbox:/srv/slot1-state/inbox
     ports: ["127.0.0.1:4000:4000"]
     depends_on:
       postgres: { condition: service_healthy }
@@ -170,16 +175,6 @@ services:
       - "127.0.0.1:8889:8889"
       - "8189:8189/udp"      # WebRTC media (ICE)
       - "8890:8890/udp"      # SRT publish
-    restart: unless-stopped
-
-  # Demo broadcast (docs/DEMO.md): SLOT1's own synthetic test video, published to this server's
-  # ingest gateway like OBS would. Runs with the `demo` profile and SLOT1_DEMO=true (`slot1 demo on`).
-  demo:
-    logging: *logging
-    build: { context: ., dockerfile: infra/docker/app.Dockerfile, target: worker }
-    profiles: [demo]
-    command: ["node", "dist/demo-broadcast.js"]
-    env_file: [.env]
     restart: unless-stopped
 
   caddy:

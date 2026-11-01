@@ -6,34 +6,41 @@ import {
   createLocalBroadcaster,
   createLocalUser,
   createOAuthState,
-  getBroadcaster,
-  getGrant,
+  listSources,
   upsertConnection,
   upsertGrant,
   upsertTwitchBroadcaster,
   upsertTwitchUser,
 } from "@slot1/db";
 import { QUEUES, randomToken, sanitizeErrorMessage, sha256 } from "@slot1/platform";
+import type { TwitchSignInWhy } from "@slot1/contracts";
 import type { ServerContext } from "@slot1/services";
 import {
   BOT_SCOPES,
-  BROADCASTER_BASE_SCOPES,
-  BROADCASTER_CLIP_ANALYSIS_SCOPES,
+  BROADCASTER_CONNECT_SCOPES,
   BROADCASTER_RELAY_SCOPES,
   buildAuthorizeUrl,
   exchangeCode,
   missingScopes,
+  TwitchAuthError,
   validateToken,
 } from "@slot1/twitch";
-import { badRequest, forbidden, unavailable } from "../lib/errors";
+import { forbidden } from "../lib/errors";
 import { ensureSession, signIn, signOut } from "../lib/session";
+import { classifyExchangeError, recordSignInEvent } from "../lib/signin-events";
 
-async function currentBroadcasterScopes(ctx: ServerContext, broadcasterId: string | null): Promise<string[]> {
-  if (!broadcasterId) return [];
-  const b = await getBroadcaster(ctx.db, broadcasterId);
-  if (!b?.twitch_user_id) return [];
-  const g = await getGrant(ctx.db, "broadcaster", b.twitch_user_id);
-  return g && g.status !== "revoked" ? g.scopes : [];
+/** Where new streamers land after connecting: Studio → Stream setup's guided OBS setup. */
+export const ONBOARDING_PATH = "/studio?tab=stream&onboarding=1";
+
+/**
+ * After "Connect my Twitch": a creator who hasn't set up streaming yet goes straight into the
+ * guided OBS setup. Everyone else, and every flow that asked for a specific page, returns there.
+ */
+async function connectLanding(ctx: ServerContext, broadcasterId: string, returnTo: string | null): Promise<string> {
+  const dest = returnTo ?? "/studio";
+  if (dest !== "/studio" || !ctx.config.capabilities.ingest.available) return dest;
+  const sources = await listSources(ctx.db, broadcasterId);
+  return sources.some((s) => s.kind === "live_ingest" && s.status !== "revoked" && !s.revoked_at) ? dest : ONBOARDING_PATH;
 }
 
 /** Only same-site relative paths are allowed as post-login destinations (no open redirects). */
@@ -67,27 +74,22 @@ export const authRoutes =
   async (app) => {
     /** Begin server-side authorization-code OAuth. State is bound to this browser session. */
     app.get("/api/auth/twitch/start", { config: { csrf: false, rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (req, reply) => {
-      const q = StartQuery.parse(req.query);
+      const parsed = StartQuery.safeParse(req.query);
+      const q = parsed.success ? parsed.data : StartQuery.parse({});
+      reply.header("cache-control", "no-store");
+      // Every "Sign in with Twitch" button links here, so when sign-in isn't set up the person goes
+      // back to a page that says so, not to an error document.
       if (!ctx.oauth || !ctx.config.env.TWITCH_REDIRECT_URI) {
-        throw unavailable("Twitch sign-in isn't configured on this deployment", ctx.config.capabilities.twitch.reason);
+        return back(ctx, reply, safeReturnTo(q.returnTo), { twitch: "error", why: "not_configured" });
       }
       if (q.role === "bot" && !req.auth.user?.is_operator) throw forbidden("Only a SLOT1 operator can link the bot account");
       const { idHash } = await ensureSession(ctx, req, reply);
       const state = randomToken(32);
-      // Re-authorizing replaces the granted scopes, so keep every optional permission the creator
-      // already gave (clip analysis, forwarding) and add the one being asked for now.
-      const current = q.role === "bot" ? [] : await currentBroadcasterScopes(ctx, req.auth.broadcaster?.id ?? null);
-      const scopes =
-        q.role === "bot"
-          ? BOT_SCOPES
-          : [
-              ...new Set([
-                ...BROADCASTER_BASE_SCOPES,
-                ...current.filter((s) => BROADCASTER_CLIP_ANALYSIS_SCOPES.includes(s) || BROADCASTER_RELAY_SCOPES.includes(s)),
-                ...(q.clipAnalysis === "1" ? BROADCASTER_CLIP_ANALYSIS_SCOPES : []),
-                ...(q.relay === "1" ? BROADCASTER_RELAY_SCOPES : []),
-              ]),
-            ];
+      // One approval for everything a creator uses: chat bot, live clips, clip analysis and
+      // forwarding. Re-authorizing replaces the granted scopes, so asking for the full set every
+      // time also means a reconnect never drops one. (Older links still send clipAnalysis=1 or
+      // relay=1; those scopes are included anyway.)
+      const scopes = q.role === "bot" ? BOT_SCOPES : BROADCASTER_CONNECT_SCOPES;
       await createOAuthState(ctx.db, {
         stateHash: sha256(state),
         sessionIdHash: idHash,
@@ -96,7 +98,6 @@ export const authRoutes =
         scopes,
         returnTo: safeReturnTo(q.returnTo),
       });
-      reply.header("cache-control", "no-store");
       return reply.redirect(
         buildAuthorizeUrl({
           idBase: ctx.config.env.TWITCH_ID_BASE,
@@ -112,39 +113,87 @@ export const authRoutes =
     });
 
     app.get("/api/auth/twitch/callback", { config: { csrf: false, rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (req, reply) => {
-      const q = CallbackQuery.parse(req.query);
+      const parsed = CallbackQuery.safeParse(req.query);
+      const q = parsed.success ? parsed.data : {};
       reply.header("cache-control", "no-store");
-      if (!ctx.oauth) throw unavailable("Twitch sign-in isn't configured on this deployment", ctx.config.capabilities.twitch.reason);
-      if (!q.state || !req.auth.sessionIdHash) throw badRequest("OAuth state mismatch — start the connection again from Studio");
+      // Every way this can go wrong ends on a page that says what happened (Studio reads
+      // ?twitch=error&why=...), and is kept for /admin and /status.
+      const fail = async (path: string, why: TwitchSignInWhy, detail: string | null = null) => {
+        await recordSignInEvent(ctx.redis, { outcome: why === "denied" ? "denied" : "error", why, detail });
+        return back(ctx, reply, path, why === "denied" ? { twitch: "denied" } : { twitch: "error", why });
+      };
+      if (!ctx.oauth) return fail("/studio", "not_configured");
+      // No state, or one from another browser, tab or an old link: start again.
+      if (!q.state || !req.auth.sessionIdHash) return fail("/studio", "expired");
       const st = await consumeOAuthState(ctx.db, sha256(q.state), req.auth.sessionIdHash);
-      if (!st) throw badRequest("OAuth state mismatch or expired — start the connection again from Studio");
-      if (q.error) return back(ctx, reply, st.return_to ?? "/studio", { twitch: "denied" });
-      if (!q.code) throw badRequest("Missing authorization code");
+      if (!st) return fail("/studio", "expired");
+      const returnTo = st.return_to ?? "/studio";
+      if (q.error) return fail(st.role === "bot" ? "/studio" : returnTo, "denied", sanitizeErrorMessage(q.error_description ?? q.error));
+      if (!q.code) return fail(returnTo, "code");
 
       let tokens;
       try {
         // Exactly the redirect URI used when the flow started.
         tokens = await exchangeCode(ctx.oauth, q.code, st.redirect_uri);
       } catch (err) {
-        req.log.warn({ err: sanitizeErrorMessage((err as Error).message) }, "code exchange failed");
-        return back(ctx, reply, st.return_to ?? "/studio", { twitch: "error" });
+        const status = err instanceof TwitchAuthError ? err.status : 0;
+        const twitchSaid = sanitizeErrorMessage(err instanceof TwitchAuthError ? (err.twitchMessage ?? err.message) : (err as Error).message);
+        const why = classifyExchangeError(status, twitchSaid);
+        req.log.warn({ status, twitch: twitchSaid, why }, "Twitch sign-in: code exchange failed");
+        return fail(returnTo, why, `Twitch answered ${status || "nothing"}: ${twitchSaid}`);
       }
-      const info = await validateToken(ctx.oauth, tokens.access_token);
-      if (!info?.user_id || !info.login) return back(ctx, reply, st.return_to ?? "/studio", { twitch: "error" });
+      let info;
+      try {
+        info = await validateToken(ctx.oauth, tokens.access_token);
+      } catch (err) {
+        req.log.warn({ err: sanitizeErrorMessage((err as Error).message) }, "Twitch sign-in: token check failed");
+        return fail(returnTo, "twitch_down", sanitizeErrorMessage((err as Error).message));
+      }
+      if (!info?.user_id || !info.login) return fail(returnTo, "twitch_down", "Twitch's token check named no account");
       const scopes = info.scopes ?? tokens.scope;
-      const access = ctx.cipher.encrypt(tokens.access_token);
-      const refresh = tokens.refresh_token ? ctx.cipher.encrypt(tokens.refresh_token).value : null;
 
-      if (st.role === "bot") {
-        const expected = ctx.config.env.SLOT1_BOT_TWITCH_LOGIN?.toLowerCase();
-        if (!req.auth.user?.is_operator) throw forbidden("Only a SLOT1 operator can link the bot account");
-        if (!expected || info.login.toLowerCase() !== expected) {
-          return back(ctx, reply, "/studio", { bot: "wrong_account" });
+      try {
+        const access = ctx.cipher.encrypt(tokens.access_token);
+        const refresh = tokens.refresh_token ? ctx.cipher.encrypt(tokens.refresh_token).value : null;
+
+        if (st.role === "bot") {
+          const expected = ctx.config.env.SLOT1_BOT_TWITCH_LOGIN?.toLowerCase();
+          if (!req.auth.user?.is_operator) return back(ctx, reply, "/studio", { bot: "not_admin" });
+          if (!expected || info.login.toLowerCase() !== expected) {
+            return back(ctx, reply, "/studio", { bot: "wrong_account" });
+          }
+          const missing = missingScopes(scopes, BOT_SCOPES);
+          if (missing.length) return back(ctx, reply, "/studio", { bot: "missing_scopes" });
+          await upsertGrant(ctx.db, {
+            role: "bot",
+            twitchUserId: info.user_id,
+            twitchLogin: info.login,
+            scopes,
+            accessTokenEnc: access.value,
+            refreshTokenEnc: refresh,
+            keyId: access.keyId,
+            expiresInSec: tokens.expires_in ?? null,
+          });
+          const { rows } = await ctx.db.query<{ broadcaster_id: string }>(`SELECT broadcaster_id FROM broadcaster_connections WHERE status = 'active'`);
+          for (const r of rows) await ctx.enqueue(QUEUES.twitch, "eventsub-reconcile", { broadcasterId: r.broadcaster_id, reason: "bot linked" });
+          return back(ctx, reply, "/studio", { bot: "linked" });
         }
-        const missing = missingScopes(scopes, BOT_SCOPES);
-        if (missing.length) return back(ctx, reply, "/studio", { bot: "missing_scopes" });
-        await upsertGrant(ctx.db, {
-          role: "bot",
+
+        // Broadcaster identity. Pasting someone's URL never does this — only their own sign-in.
+        let displayName = info.login;
+        let avatar: string | null = null;
+        if (ctx.helix) {
+          const me = await ctx.helix.getTokenUser(tokens.access_token).catch(() => null);
+          if (me) {
+            displayName = me.display_name;
+            avatar = me.profile_image_url || null;
+          }
+        }
+        const isOperator = ctx.config.operatorLogins.has(info.login.toLowerCase());
+        const user = await upsertTwitchUser(ctx.db, info.user_id, displayName, isOperator);
+        const b = await upsertTwitchBroadcaster(ctx.db, { ownerUserId: user.id, twitchUserId: info.user_id, login: info.login, displayName, avatarUrl: avatar });
+        const grant = await upsertGrant(ctx.db, {
+          role: "broadcaster",
           twitchUserId: info.user_id,
           twitchLogin: info.login,
           scopes,
@@ -153,39 +202,16 @@ export const authRoutes =
           keyId: access.keyId,
           expiresInSec: tokens.expires_in ?? null,
         });
-        const { rows } = await ctx.db.query<{ broadcaster_id: string }>(`SELECT broadcaster_id FROM broadcaster_connections WHERE status = 'active'`);
-        for (const r of rows) await ctx.enqueue(QUEUES.twitch, "eventsub-reconcile", { broadcasterId: r.broadcaster_id, reason: "bot linked" });
-        return back(ctx, reply, "/studio", { bot: "linked" });
+        await upsertConnection(ctx.db, b.id, grant.id);
+        if (BROADCASTER_RELAY_SCOPES.every((s) => scopes.includes(s))) await clearRelayPermissionWait(ctx.db, b.id);
+        await signIn(ctx, req, reply, user.id);
+        await ctx.enqueue(QUEUES.twitch, "eventsub-reconcile", { broadcasterId: b.id, reason: "connected" });
+        await recordSignInEvent(ctx.redis, { outcome: "connected" });
+        return back(ctx, reply, await connectLanding(ctx, b.id, st.return_to), { twitch: "connected" });
+      } catch (err) {
+        req.log.error({ err }, "Twitch sign-in: saving the connection failed");
+        return fail(st.role === "bot" ? "/studio" : returnTo, "server", sanitizeErrorMessage((err as Error).message));
       }
-
-      // Broadcaster identity. Pasting someone's URL never does this — only their own sign-in.
-      let displayName = info.login;
-      let avatar: string | null = null;
-      if (ctx.helix) {
-        const me = await ctx.helix.getTokenUser(tokens.access_token).catch(() => null);
-        if (me) {
-          displayName = me.display_name;
-          avatar = me.profile_image_url || null;
-        }
-      }
-      const isOperator = ctx.config.operatorLogins.has(info.login.toLowerCase());
-      const user = await upsertTwitchUser(ctx.db, info.user_id, displayName, isOperator);
-      const b = await upsertTwitchBroadcaster(ctx.db, { ownerUserId: user.id, twitchUserId: info.user_id, login: info.login, displayName, avatarUrl: avatar });
-      const grant = await upsertGrant(ctx.db, {
-        role: "broadcaster",
-        twitchUserId: info.user_id,
-        twitchLogin: info.login,
-        scopes,
-        accessTokenEnc: access.value,
-        refreshTokenEnc: refresh,
-        keyId: access.keyId,
-        expiresInSec: tokens.expires_in ?? null,
-      });
-      await upsertConnection(ctx.db, b.id, grant.id);
-      if (BROADCASTER_RELAY_SCOPES.every((s) => scopes.includes(s))) await clearRelayPermissionWait(ctx.db, b.id);
-      await signIn(ctx, req, reply, user.id);
-      await ctx.enqueue(QUEUES.twitch, "eventsub-reconcile", { broadcasterId: b.id, reason: "connected" });
-      return back(ctx, reply, st.return_to ?? "/studio", { twitch: "connected" });
     });
 
     /** Development-only local creator account so uploads work without Twitch credentials. */

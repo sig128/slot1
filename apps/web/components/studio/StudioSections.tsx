@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { BotCommandName, formatAge, formatMediaTime, SOURCE_LABEL_TEXT, type CreateIngestSourceResponse } from "@slot1/contracts";
 import { AnalysisChip, BroadcastChip, SourceLabelChip } from "@/components/ui/StatusChips";
+import { SetupFix } from "@/components/ui/SetupFix";
 import { Toggle } from "@/components/ui/Toggle";
 import { api, ApiError, getMe } from "@/lib/api";
 import { bytes, clockTimeSeconds, pct, relativeAge } from "@/lib/format";
 import { requirementText } from "@/lib/requirements";
 import type { StudioCtx } from "./StudioApp";
+import { grantPermissionsUrl } from "./TwitchPermissions";
 
 function SectionTitle({ children, lede }: { children: React.ReactNode; lede?: React.ReactNode }) {
   return (
@@ -275,10 +277,10 @@ function IngestSources({ ctx }: { ctx: StudioCtx }) {
   if (!caps.ingest.available)
     return (
       <div className="max-w-[68ch] text-sm text-ivory-2">
-        <p>Continuous ingest isn’t configured on this deployment.</p>
-        <p className="mt-1 text-ivory-3">{requirementText(caps.ingest.reason)}</p>
+        <p>{requirementText(caps.ingest.reason)} Uploaded replays still work.</p>
+        <SetupFix cap={caps.ingest} />
         <Link href="/setup#sources" className="mt-2 inline-block underline hover:text-ivory">
-          How continuous ingest works
+          How video sources work
         </Link>
       </div>
     );
@@ -456,7 +458,8 @@ export function BotSection({ ctx }: { ctx: StudioCtx }) {
       </SectionTitle>
       {!ctx.caps.bot.available && (
         <p className="mb-4 max-w-[70ch] border-l-2 border-apricot pl-3 text-sm text-ivory-2">
-          The chat bot isn’t available on this deployment. {requirementText(ctx.caps.bot.reason)}
+          {requirementText(ctx.caps.bot.reason)} Your bot settings below still save, and apply once it is.
+          <SetupFix cap={ctx.caps.bot} />
         </p>
       )}
       <Group title="Bot">
@@ -808,16 +811,22 @@ export function AdvancedSection({ ctx }: { ctx: StudioCtx }) {
   ];
   return (
     <div>
-      <SectionTitle lede="Infrastructure status and analysis tuning. Everything here reflects what is genuinely configured on this deployment.">Advanced setup</SectionTitle>
+      <SectionTitle lede="What’s switched on for SLOT1 right now, and analysis tuning. Nothing here is guessed.">Advanced setup</SectionTitle>
       <Group title="Integrations">
         <ul className="divide-y divide-line">
           {rows.map(([name, c, detail]) => (
             <li key={name} className="grid gap-1 py-3 sm:grid-cols-[12rem_1fr]">
               <span className="text-ivory">{name}</span>
               <span className={`text-sm ${c.available ? "text-ivory-2" : "text-ivory-3"}`}>
-                {c.available ? <span className="text-signal">Configured</span> : "Unavailable"}
-                {detail ? `, ${detail}` : ""}
-                {!c.available && c.reason ? `. ${c.reason}` : ""}
+                {c.available ? (
+                  <>
+                    <span className="text-signal">On</span>
+                    {detail ? `, ${detail}` : ""}
+                  </>
+                ) : (
+                  requirementText(c.reason) || "Not switched on yet."
+                )}
+                <SetupFix cap={c} />
               </span>
             </li>
           ))}
@@ -844,9 +853,13 @@ export function AdvancedSection({ ctx }: { ctx: StudioCtx }) {
           <p className="mt-1 text-[0.8rem] text-ivory-3">
             Last validated {overview.twitch.lastValidatedAt ? relativeAge(overview.twitch.lastValidatedAt) : "never"}. Status {overview.twitch.grantStatus}.
           </p>
-          <a href="/api/auth/twitch/start?clipAnalysis=1&returnTo=/studio" className="btn btn-ghost btn-sm mt-3">
-            Grant clip analysis permission
-          </a>
+          {overview.twitch.missingScopes.length > 0 ? (
+            <a href={grantPermissionsUrl()} className="btn btn-ghost btn-sm mt-3">
+              Grant the missing permissions
+            </a>
+          ) : (
+            <p className="mt-1 text-[0.8rem] text-ivory-3">Everything SLOT1 uses is granted.</p>
+          )}
         </Group>
       )}
       <Group title="Analysis tuning">

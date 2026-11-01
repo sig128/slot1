@@ -156,10 +156,36 @@ export const AdminUsage = z.object({
 });
 export type AdminUsage = z.infer<typeof AdminUsage>;
 
+const AdminLoginCounts = z.object({
+  succeeded: Count,
+  failed: Count,
+  /** Attempts the limits refused before the password was checked. */
+  blocked: Count,
+});
+
+export const AdminLoginActivity = z.object({
+  passwordSet: z.boolean(),
+  /** UTC days. */
+  today: AdminLoginCounts,
+  last7d: AdminLoginCounts,
+  lastSucceededAt: z.string().nullable(),
+  lastFailedAt: z.string().nullable(),
+  /** Set while password sign-in is paused for everyone after many failed attempts. */
+  pausedUntil: z.string().nullable(),
+});
+export type AdminLoginActivity = z.infer<typeof AdminLoginActivity>;
+
+/** GET /api/admin/login: whether the password sign-in can be used, and whether this browser is in already. */
+export const AdminLoginStatus = z.object({ passwordSet: z.boolean(), signedIn: z.boolean() });
+export type AdminLoginStatus = z.infer<typeof AdminLoginStatus>;
+
+export const AdminLoginInput = z.object({ password: z.string().min(1).max(4096) });
+export type AdminLoginInput = z.infer<typeof AdminLoginInput>;
+
 export const AdminOverview = z.object({
   generatedAt: z.string(),
-  /** How this viewer got in: a Twitch operator account, or a one-time admin link. */
-  access: z.enum(["operator", "admin_link"]),
+  /** How this viewer got in: a Twitch operator account, a one-time admin link, or the admin password. */
+  access: z.enum(["operator", "admin_link", "admin_password"]),
   analyticsEnabled: z.boolean(),
   now: z.object({
     online: Count,
@@ -219,6 +245,8 @@ export const AdminOverview = z.object({
     gateway: AdminHealth,
     failedJobs24h: Count,
     recentFailures: z.array(z.object({ at: z.string(), where: z.string(), message: z.string() })),
+    /** Admin password sign-ins: counts only, never addresses or passwords. */
+    adminLogin: AdminLoginActivity,
   }),
   messages: z.object({ open: Count, total: Count }),
 });

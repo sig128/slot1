@@ -1,15 +1,15 @@
 # Twitch scopes, endpoints and EventSub
 
-SLOT1 asks each account only for what a feature needs. The source of truth is `packages/twitch/src/oauth.ts` (`SCOPES`) and `requiredSubscriptions()` in `packages/twitch/src/eventsub.ts`.
+Every scope is tied to one feature. **Connect my Twitch** asks a creator for all four creator scopes in one approval (`BROADCASTER_CONNECT_SCOPES`), so a new streamer goes from connecting to a working setup in one flow; the bot account has its own, separate grant. The source of truth is `packages/twitch/src/oauth.ts` (`SCOPES`) and `requiredSubscriptions()` in `packages/twitch/src/eventsub.ts`.
 
 ## Accounts and scopes
 
 | Account | Scope | Why | Requested |
 |---|---|---|---|
-| Creator (broadcaster) | `channel:bot` | Lets the SLOT1 bot account read and post in this channel's chat, using EventSub chat and the app access token | Always, on Connect my Twitch |
-| Creator | `clips:edit` | Create a live clip when the creator, or chat users they permit, ask for one | Always, on Connect my Twitch |
-| Creator | `channel:manage:clips` | Download the creator's clips for analysis (Get Clips Download) and clip a past moment of a broadcast (Create Clip From VOD) | Only when the creator chooses **Grant clip analysis permission** |
-| Creator | `channel:read:stream_key` | Read the creator's Twitch stream key (Get Stream Key) so SLOT1 can forward the stream it receives from OBS to their Twitch channel. Stored encrypted, never shown or logged. See [RELAY.md](RELAY.md). | Only when the creator chooses **Let SLOT1 forward to Twitch** in Studio → Stream setup |
+| Creator (broadcaster) | `channel:bot` | Lets the SLOT1 bot account read and post in this channel's chat, using EventSub chat and the app access token. The bot stays off until the creator turns it on. | On Connect my Twitch (one approval) |
+| Creator | `clips:edit` | Create a live clip when the creator, or chat users they permit, ask for one | On Connect my Twitch (one approval) |
+| Creator | `channel:manage:clips` | Download the creator's clips for analysis (Get Clips Download) and clip a past moment of a broadcast (Create Clip From VOD) | On Connect my Twitch (one approval) |
+| Creator | `channel:read:stream_key` | Read the creator's Twitch stream key (Get Stream Key) so SLOT1 can forward the stream it receives from OBS to their Twitch channel. Read only while a Twitch destination is forwarding; stored encrypted, never shown or logged. See [RELAY.md](RELAY.md). | On Connect my Twitch (one approval) |
 | SLOT1 bot account | `user:read:chat` | Receive chat messages as the bot | When the operator links the bot |
 | SLOT1 bot account | `user:write:chat` | Send chat messages as the bot | When the operator links the bot |
 | SLOT1 bot account | `user:bot` | Appear as a chat bot (required to chat with an app access token) | When the operator links the bot |
@@ -23,7 +23,11 @@ The bot account is a single dedicated Twitch account per deployment, named by `S
 
 Pasting someone else's channel URL never requests anything. It opens a watch-only page.
 
-Twitch replaces a user's granted scopes with whatever the latest authorization asked for. So every creator reconnect asks again for the optional scopes the creator already granted (`channel:manage:clips`, `channel:read:stream_key`) on top of the base ones; a plain reconnect never silently drops forwarding or clip analysis.
+Twitch replaces a user's granted scopes with whatever the latest authorization asked for, so every creator authorization asks for the full set; a reconnect never silently drops forwarding or clip analysis.
+
+After connecting, a creator who hasn't set up streaming yet lands in Studio → Stream setup's guided OBS setup (`/studio?tab=stream&onboarding=1`). There, forwarding to Twitch is a switch that starts on; the Twitch destination is created only when the creator chooses **Finish setup**.
+
+Creators who connected before this (with fewer scopes) see what's missing in Studio (`missingScopes` in `GET /api/studio`, the Twitch connected readiness step, and a notice in Stream setup) and a one-click **Grant the missing permissions**: a normal re-authorization, which asks for the full set and returns to Stream setup.
 
 ## OAuth endpoints (id.twitch.tv)
 

@@ -24,7 +24,6 @@ export const PRIMARY_NAV: NavItem[] = [
 
 /** The smaller links at the foot of the phone menu (the page footer carries them too). */
 export const MORE_NAV: { href: string; label: string }[] = [
-  { href: "/demo", label: "Live demo" },
   { href: "/privacy", label: "Privacy" },
   { href: "/terms", label: "Terms" },
   { href: "/contact", label: "Contact" },

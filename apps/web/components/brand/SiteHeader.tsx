@@ -9,6 +9,7 @@ import { getMe, onMeChange } from "@/lib/api";
 import { HeaderAvatar } from "./HeaderAvatar";
 import { MobileMenu } from "./MobileMenu";
 import { PRIMARY_NAV } from "./site-nav";
+import { twitchSignInHref } from "@/lib/signin-notice";
 import { Wordmark } from "./Wordmark";
 
 /**
@@ -56,9 +57,9 @@ export function SiteHeader() {
               <span className="max-w-[10rem] truncate">{me.broadcaster.displayName}</span>
             </Link>
           ) : (
-            <Link href="/studio" className="btn btn-ghost btn-sm">
-              Connect my Twitch
-            </Link>
+            <a href={twitchSignInHref()} className="btn btn-coral btn-sm">
+              Sign in with Twitch
+            </a>
           )}
         </div>
         <MobileMenu pathname={pathname} me={me} />

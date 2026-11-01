@@ -230,7 +230,7 @@ describe("Los Santos right now", () => {
     const { body } = await now();
     expect(body.streams).toEqual([]);
     expect(body.emptyReason).toBe(
-      `${h.ctx.config.capabilities.ingest.available ? "No creator is sending a public stream to SLOT1 right now." : "This SLOT1 server can't receive streams yet (no ingest gateway is configured)."} None of the channels in the directory are live on Twitch.`,
+      `${h.ctx.config.capabilities.ingest.available ? "No creator is sending a public stream to SLOT1 right now." : "Streaming to SLOT1 isn't open yet."} None of the channels in the directory are live on Twitch.`,
     );
   });
 });

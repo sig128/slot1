@@ -6,7 +6,8 @@ import { processEventSub } from "../../apps/worker/src/jobs/eventsub";
 import { validateGrants } from "../../apps/worker/src/jobs/maintenance";
 import { getBotGrant, getGrant } from "@slot1/db";
 import { computeEventSubSignature } from "@slot1/twitch";
-import { Browser, EVENTSUB_SECRET, MockTwitch, startHarness, type Harness } from "./harness";
+import { listSignInEvents } from "../../apps/api/src/lib/signin-events";
+import { Browser, EVENTSUB_SECRET, MockTwitch, ORIGIN, startHarness, type Harness } from "./harness";
 
 /**
  * SLOT1's real OAuth, Helix, EventSub, bot and clip code against a local mock of Twitch's
@@ -61,26 +62,69 @@ describe("Twitch integration against a mock Twitch", () => {
     expect(start.status).toBe(302);
     const loc = new URL(String(start.headers.location));
     expect(`${loc.origin}${loc.pathname}`).toBe(`${mock.base}/oauth2/authorize`);
-    expect(loc.searchParams.get("scope")!.split(" ").sort()).toEqual(["channel:bot", "clips:edit"]);
+    // One approval asks for everything a creator uses (docs/TWITCH_SCOPES.md).
+    expect(loc.searchParams.get("scope")!.split(" ").sort()).toEqual(["channel:bot", "channel:manage:clips", "channel:read:stream_key", "clips:edit"]);
     const state = loc.searchParams.get("state")!;
 
     const attacker = new Browser(h);
     await attacker.refreshCsrf();
+    // Someone else's browser, or a made-up state: back to Studio with "start again", and the code is
+    // never exchanged.
     const stolen = await attacker.get(`/api/auth/twitch/callback?code=${mock.issueCode(CREATOR.id)}&state=${encodeURIComponent(state)}`);
-    expect(stolen.status).toBe(400);
-    expect((await creator.get(`/api/auth/twitch/callback?code=${mock.issueCode(CREATOR.id)}&state=forged-state`)).status).toBe(400);
+    expect(stolen.status).toBe(302);
+    expect(String(stolen.headers.location)).toMatch(/\/studio\?twitch=error&why=expired$/);
+    const forged = await creator.get(`/api/auth/twitch/callback?code=${mock.issueCode(CREATOR.id)}&state=forged-state`);
+    expect(String(forged.headers.location)).toMatch(/twitch=error&why=expired$/);
     expect(mock.requests.filter((r) => r === "POST /oauth2/token")).toHaveLength(0);
+    expect((await attacker.refreshCsrf()).user).toBeFalsy();
 
     const ok = await creator.get(`/api/auth/twitch/callback?code=${mock.issueCode(CREATOR.id)}&state=${encodeURIComponent(state)}`);
     expect(ok.status).toBe(302);
     expect(String(ok.headers.location)).toMatch(/twitch=connected/);
     // A state is single-use.
-    expect((await creator.get(`/api/auth/twitch/callback?code=${mock.issueCode(CREATOR.id)}&state=${encodeURIComponent(state)}`)).status).toBe(400);
+    const reused = await creator.get(`/api/auth/twitch/callback?code=${mock.issueCode(CREATOR.id)}&state=${encodeURIComponent(state)}`);
+    expect(String(reused.headers.location)).toMatch(/twitch=error&why=expired$/);
 
     // Signing in rotates the session and its CSRF token.
     const me = await creator.refreshCsrf();
     expect(me.broadcaster).toMatchObject({ login: CREATOR.login, displayName: CREATOR.displayName });
     expect(h.jobs.some((j) => j.name === "eventsub-reconcile")).toBe(true);
+  });
+
+  it("says why a sign-in didn't finish, instead of showing the same sign-in screen again", async () => {
+    const b = new Browser(h);
+    await b.refreshCsrf();
+    const startState = async (path = "/api/auth/twitch/start") => new URL(String((await b.get(path)).headers.location)).searchParams.get("state")!;
+    // Twitch's own wording for each problem (token endpoint), and what the page is told.
+    const cases: [number, string, string][] = [
+      [403, "invalid client secret", "app_secret"],
+      [400, "invalid client", "app_client"],
+      [400, "Parameter redirect_uri does not match registered URI", "redirect"],
+      [400, "Invalid authorization code", "code"],
+      [503, "service unavailable", "twitch_down"],
+    ];
+    for (const [status, message, why] of cases) {
+      const state = await startState();
+      mock.tokenFailures.push({ status, message });
+      const r = await b.get(`/api/auth/twitch/callback?code=${mock.issueCode(CREATOR.id)}&state=${encodeURIComponent(state)}`);
+      expect(r.status).toBe(302);
+      expect(String(r.headers.location)).toBe(`${ORIGIN}/studio?twitch=error&why=${why}`);
+    }
+    // Cancel on Twitch: back where the person started.
+    const state = await startState("/api/auth/twitch/start?returnTo=%2Fsetup");
+    const denied = await b.get(`/api/auth/twitch/callback?error=access_denied&error_description=The+user+denied+you+access&state=${encodeURIComponent(state)}`);
+    expect(String(denied.headers.location)).toBe(`${ORIGIN}/setup?twitch=denied`);
+    // A callback with no code at all.
+    const noCode = await b.get(`/api/auth/twitch/callback?state=${encodeURIComponent(await startState())}`);
+    expect(String(noCode.headers.location)).toBe(`${ORIGIN}/studio?twitch=error&why=code`);
+
+    // Still signed out; every attempt is kept, newest first, with Twitch's words for /admin.
+    expect((await b.refreshCsrf()).user).toBeFalsy();
+    const events = await listSignInEvents(h.ctx.redis, 10);
+    expect(events.slice(0, 7).map((e) => e.why)).toEqual(["code", "denied", "twitch_down", "code", "redirect", "app_client", "app_secret"]);
+    expect(events.slice(0, 7).map((e) => e.outcome)).toEqual(["error", "denied", "error", "error", "error", "error", "error"]);
+    expect(events[6]!.detail).toBe("Twitch answered 403: invalid client secret");
+    expect(JSON.stringify(events)).not.toMatch(/code-\d+|mock-client-secret/);
   });
 
   it("stores Twitch tokens only encrypted", async () => {

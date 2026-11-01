@@ -38,9 +38,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/setup" className="hover:text-ivory">
                 How SLOT1 works
               </Link>
-              <Link href="/demo" className="hover:text-ivory">
-                Live demo
-              </Link>
               <Link href="/privacy" className="hover:text-ivory">
                 Privacy
               </Link>

@@ -113,7 +113,7 @@ export function GtaModelSection({ ctx }: { ctx: StudioCtx }) {
       <section className="st-block border-t hairline py-6">
         <h3 className="mb-2 font-display text-xl font-bold">Model in use</h3>
         {overview && overview.activeModels.length === 0 ? (
-          <p className="text-sm text-ivory-3">No trained GTA model is active yet. Until one is, analysis uses on-screen text, measurements and (if configured) AI vision.</p>
+          <p className="text-sm text-ivory-3">No trained GTA model is active yet. Until one is, analysis uses on-screen text, measurements and, when it’s switched on, the AI that describes gameplay.</p>
         ) : (
           <ul className="space-y-2 text-sm">
             {overview?.activeModels.map((m) => (

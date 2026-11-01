@@ -49,6 +49,30 @@ function costText(rows: AdminUsage[]): string {
   return `$${sum.toFixed(sum < 10 ? 2 : 0)}${priced.length < rows.length ? " (part)" : ""}`;
 }
 
+/** Admin password sign-ins: counts only. Addresses and passwords are never stored. */
+function AdminSignIns({ login, now }: { login: AdminOverview["system"]["adminLogin"]; now: number }) {
+  const last = (iso: string | null) => (iso ? `last ${ago(iso, now)}` : "none yet");
+  return (
+    <div className="mt-10">
+      <h3 className="font-display text-[1.3rem] font-bold">
+        Admin sign-ins <span className="font-sans text-[0.95rem] font-normal text-ivory-3">· last 7 days</span>
+      </h3>
+      {login.pausedUntil ? (
+        <p className="mt-3 max-w-[60ch] border-l-2 border-apricot pl-3 text-[0.95rem]">
+          Password sign-in is paused for everyone until{" "}
+          {new Date(login.pausedUntil).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} after many wrong passwords. One-time links still work.
+        </p>
+      ) : null}
+      <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4">
+        <Stat label="Admin password" value={login.passwordSet ? "set" : "not set"} note={login.passwordSet ? "Changing it signs everyone out" : "slot1 admin-password on the server"} />
+        <Stat label="Signed in" value={num(login.last7d.succeeded)} note={`${num(login.today.succeeded)} today · ${last(login.lastSucceededAt)}`} />
+        <Stat label="Wrong passwords" value={num(login.last7d.failed)} note={`${num(login.today.failed)} today · ${last(login.lastFailedAt)}`} />
+        <Stat label="Refused by the limits" value={num(login.last7d.blocked)} note={`${num(login.today.blocked)} today`} />
+      </div>
+    </div>
+  );
+}
+
 export function AdminApp({ initial, initialMessages }: { initial: AdminOverview; initialMessages: AdminMessagesResponse | null }) {
   const [data, setData] = useState<AdminOverview>(initial);
   const [range, setRange] = useState<7 | 30>(initial.visitors.range.days);
@@ -107,7 +131,8 @@ export function AdminApp({ initial, initialMessages }: { initial: AdminOverview;
   async function signOut() {
     setSigningOut(true);
     await api("/api/admin/logout", { method: "POST" }).catch(() => undefined);
-    router.replace("/");
+    // Back to the door: rendered again without the session, /admin shows the password form.
+    router.refresh();
   }
 
   const v = data.visitors;
@@ -123,12 +148,12 @@ export function AdminApp({ initial, initialMessages }: { initial: AdminOverview;
           <h1 className="poster-title text-[length:var(--text-display-lg)] leading-[0.9]">Control room</h1>
           <p className="mt-3 text-[0.95rem] text-ivory-2">
             Everything on this page is counted, not estimated.{" "}
-            {data.access === "admin_link" ? "Signed in with a one-time admin link." : "Signed in as an operator."}
+            {data.access === "admin_password" ? "Signed in with the admin password." : data.access === "admin_link" ? "Signed in with a one-time admin link." : "Signed in as an operator."}
           </p>
         </div>
         <div className="flex items-center gap-4 text-[0.85rem] text-ivory-3">
           <p aria-live="polite">{stale ?? (updated < 3 ? "Updated just now" : `Updated ${updated} s ago`)}</p>
-          {data.access === "admin_link" && (
+          {data.access !== "operator" && (
             <button type="button" className="btn btn-ghost btn-sm" disabled={signingOut} onClick={() => void signOut()}>
               Sign out
             </button>
@@ -377,6 +402,7 @@ export function AdminApp({ initial, initialMessages }: { initial: AdminOverview;
               <p className="tnum mt-1 text-[0.82rem] text-ivory-3">{Math.round(100 - (s.disk.freeBytes / s.disk.totalBytes) * 100)}% used</p>
             </div>
           ) : null}
+          <AdminSignIns login={s.adminLogin} now={now} />
           <div className="mt-10 grid gap-12 lg:grid-cols-2">
             <div className="min-w-0 overflow-x-auto">
               <table className="w-full min-w-[19rem] border-collapse text-[0.9rem]">

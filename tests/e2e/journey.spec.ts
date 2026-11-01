@@ -139,15 +139,12 @@ test.describe("SLOT1 journey", () => {
     await expect(page).toHaveURL(/\/$/);
   });
 
-  test("the demo page says what it is, and says so when the demo is off", async ({ page }) => {
-    const info = (await (await page.request.get("/api/demo")).json()) as { enabled: boolean };
+  test("the demo is gone: old /demo links land on the home page, and nothing links to it", async ({ page }) => {
     await page.goto("/demo");
-    await expect(page.getByRole("heading", { level: 1, name: "Watch SLOT1 watch a stream" })).toBeVisible();
-    await expect(page.getByText("Synthetic test video", { exact: true })).toBeVisible();
-    await expect(page.getByRole("list", { name: "How a frame travels through SLOT1" }).getByRole("listitem")).toHaveCount(6);
-    // The full live demo is covered by tests/e2e/demo.spec.ts against a stack that runs it.
-    if (!info.enabled) await expect(page.getByText("The demo is off on this server")).toBeVisible();
-    await noHorizontalOverflow(page);
-    await shot(page, "demo");
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("heading", { level: 1, name: "SLOT1: Your AI sidekick for GTA." })).toBeVisible();
+    await expect(page.locator('a[href="/demo"]')).toHaveCount(0);
+    await page.goto("/setup");
+    await expect(page.locator('a[href="/demo"]')).toHaveCount(0);
   });
 });

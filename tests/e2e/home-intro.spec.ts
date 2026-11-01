@@ -37,10 +37,15 @@ test.describe("home intro (reduced motion)", () => {
     await page.goto("/");
 
     await expect(page.getByRole("heading", { level: 1, name: "SLOT1: Your AI sidekick for GTA." })).toBeVisible();
-    await expect(page.getByText(/turns them into clips, instant replays and highlights/)).toBeVisible();
+    await expect(page.getByText(/watches your stream live, clips your big moments for you/)).toBeVisible();
     await expect(page.getByText("Stream GTA. Get clips. Train the AI.")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Watch the live demo" })).toHaveAttribute("href", "/demo");
-    await expect(page.getByRole("link", { name: /^(Connect my Twitch|How creators connect)$/ }).first()).toBeVisible();
+    // Signed out, the hero's first button signs in with Twitch (straight to Twitch), or explains how
+    // creators connect when sign-in isn't set up on this site. There is no demo any more.
+    const hero = page.locator("[data-scene]");
+    const first = hero.getByRole("link", { name: /^(Sign in with Twitch|How creators connect)$/ }).first();
+    await expect(first).toBeVisible();
+    if ((await first.textContent())?.includes("Sign in")) expect(await first.getAttribute("href")).toMatch(/^\/api\/auth\/twitch\/start\?returnTo=/);
+    await expect(page.getByRole("link", { name: /demo/i })).toHaveCount(0);
 
     // The money-style counter shows channels live right now, from the same directory the page uses.
     await expect(page.getByText(live === 1 ? "channel live" : "channels live", { exact: true })).toBeVisible();
@@ -100,7 +105,7 @@ test.describe("home intro (with motion)", () => {
     const hero = page.locator("[data-scene]");
 
     // The loading screen resolves into the title card within about three seconds.
-    await expect(page.getByRole("link", { name: "Watch the live demo" })).toBeVisible();
+    await expect(hero.getByRole("link", { name: /^(Sign in with Twitch|How creators connect)$/ }).first()).toBeVisible();
     await expect.poll(() => page.locator(".gx-reveal").first().evaluate((el) => Number(getComputedStyle(el).opacity)), { timeout: 6_000 }).toBe(1);
     expect(await hero.evaluate((el) => el.getAnimations({ subtree: true }).length)).toBeGreaterThan(10);
     await shot(page, "home-intro-motion");

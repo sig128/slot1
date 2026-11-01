@@ -42,7 +42,7 @@ import {
   type MediaSourceRow,
   type SourceHealthRow,
 } from "@slot1/db";
-import { QUEUES, randomToken, sha256 } from "@slot1/platform";
+import { capabilityFor, publicText, QUEUES, randomToken, sha256, type CapabilityKey } from "@slot1/platform";
 import {
   analysisStatus,
   disconnectBroadcaster,
@@ -53,17 +53,30 @@ import {
   withAppToken,
   type ServerContext,
 } from "@slot1/services";
-import { BROADCASTER_CLIP_ANALYSIS_SCOPES, hasScopes } from "@slot1/twitch";
+import { BROADCASTER_CLIP_ANALYSIS_SCOPES, BROADCASTER_CONNECT_SCOPES, hasScopes, missingScopes } from "@slot1/twitch";
 import { badRequest, conflict, notFound, unavailable } from "../lib/errors";
 import { requireBroadcaster } from "../lib/session";
+import { seesSetupDetails } from "../lib/setup-details";
 import { deleteWholeLibrary } from "./library";
 
-/** "X not configured: missing A, B" -> "Not configured on this deployment. Missing A, B." */
-function setupText(reason: string | null | undefined, fallback: string): string {
-  if (!reason) return fallback;
-  const m = /missing (.+)$/i.exec(reason);
-  return m ? `Not configured on this deployment. Missing ${m[1]}.` : reason;
+const sentence = (s: string) => (/[.!?]$/.test(s.trim()) ? s.trim() : `${s.trim()}.`);
+
+/**
+ * Why a capability isn't available, for this viewer: operators get the missing server settings
+ * and the command that fixes them; creators get a friendly line with no internals.
+ */
+function setupText(ctx: ServerContext, key: CapabilityKey, setupDetails: boolean, fallback: string): string {
+  const c = capabilityFor(key, ctx.config.capabilities[key], setupDetails);
+  if (!c.reason) return fallback;
+  if (!setupDetails || !c.setup) return sentence(c.reason);
+  const missing = c.setup.missing.length ? ` Missing ${c.setup.missing.join(", ")}.` : "";
+  const fix = c.setup.command ? ` Fix it on the server: ${c.setup.command}.` : "";
+  return `Not set up on the server yet.${missing}${fix}`;
 }
+
+/** One Twitch approval grants everything a creator uses; it lands back in Stream setup. */
+export const GRANT_PERMISSIONS_URL = `/api/auth/twitch/start?returnTo=${encodeURIComponent("/studio?tab=stream")}`;
+const GRANT_LABEL = "Grant the missing permissions";
 
 interface SourceWithHealth {
   source: MediaSourceRow;
@@ -93,6 +106,8 @@ function readiness(
   settings: ChannelSettings,
   sources: SourceWithHealth[],
   isOperator: boolean,
+  /** Operators and /admin sessions see the missing server settings; creators never do. */
+  setupDetails: boolean = isOperator,
 ): ReadinessStep[] {
   const caps = ctx.config.capabilities;
   const steps: ReadinessStep[] = [];
@@ -100,15 +115,24 @@ function readiness(
   const link = (label: string, href: string) => ({ label, kind: "link" as const, href, actionId: null });
   const action = (label: string, actionId: string) => ({ label, kind: "action" as const, href: null, actionId });
 
-  if (twitchOk) steps.push({ id: "twitch_connected", label: "Twitch connected", status: "done", detail: `Signed in as ${grant!.twitch_login}`, action: null });
+  const missing = twitchOk ? missingScopes(grant!.scopes, BROADCASTER_CONNECT_SCOPES) : [];
+  if (twitchOk && missing.length)
+    steps.push({
+      id: "twitch_connected",
+      label: "Twitch connected",
+      status: "todo",
+      detail: `Signed in as ${grant!.twitch_login}. Twitch still has to allow ${missing.join(", ")}: one approval adds them all.`,
+      action: link(GRANT_LABEL, GRANT_PERMISSIONS_URL),
+    });
+  else if (twitchOk) steps.push({ id: "twitch_connected", label: "Twitch connected", status: "done", detail: `Signed in as ${grant!.twitch_login}`, action: null });
   else if (!caps.twitch.available)
-    steps.push({ id: "twitch_connected", label: "Twitch connected", status: "unavailable", detail: setupText(caps.twitch.reason, "Twitch not configured"), action: link("Setup guide", "/setup#twitch") });
+    steps.push({ id: "twitch_connected", label: "Twitch connected", status: "unavailable", detail: setupText(ctx, "twitch", setupDetails, "Twitch sign-in isn't open yet."), action: null });
   else if (b.kind === "local")
     steps.push({ id: "twitch_connected", label: "Twitch connected", status: "todo", detail: "Local workspace — uploads only.", action: link("Connect Twitch", "/api/auth/twitch/start?returnTo=/studio") });
   else
     steps.push({ id: "twitch_connected", label: "Twitch connected", status: "todo", detail: "Twitch authorization needs renewing.", action: link("Reconnect Twitch", "/api/auth/twitch/start?returnTo=/studio") });
 
-  if (!caps.bot.available) steps.push({ id: "bot_ready", label: "Bot ready", status: "unavailable", detail: setupText(caps.bot.reason, "Bot unavailable"), action: link("Setup guide", "/setup#bot") });
+  if (!caps.bot.available) steps.push({ id: "bot_ready", label: "Bot ready", status: "unavailable", detail: setupText(ctx, "bot", setupDetails, "The chat bot isn't switched on yet."), action: null });
   else if (!twitchOk) steps.push({ id: "bot_ready", label: "Bot ready", status: "blocked", detail: "Needs Twitch connected first.", action: null });
   else if (!botGrant || botGrant.status !== "active")
     steps.push(
@@ -123,21 +147,21 @@ function readiness(
         : { id: "bot_ready", label: "Bot ready", status: "blocked", detail: "The operator hasn't linked the SLOT1 bot account yet.", action: null },
     );
   else if (!grant!.scopes.includes("channel:bot"))
-    steps.push({ id: "bot_ready", label: "Bot ready", status: "todo", detail: "Allow the SLOT1 bot in your chat (channel:bot).", action: link("Reconnect Twitch", "/api/auth/twitch/start?returnTo=/studio") });
+    steps.push({ id: "bot_ready", label: "Bot ready", status: "todo", detail: "Allow the SLOT1 bot in your chat (channel:bot).", action: link(GRANT_LABEL, GRANT_PERMISSIONS_URL) });
   else if (!settings.botEnabled || settings.botKilled)
     steps.push({ id: "bot_ready", label: "Bot ready", status: "todo", detail: settings.botKilled ? "Kill switch is on." : "Bot is off for your channel.", action: action("Turn on bot", "enable_bot") });
   else steps.push({ id: "bot_ready", label: "Bot ready", status: "done", detail: `SLOT1 answers !slot1 commands as ${botGrant.twitch_login}.`, action: null });
 
   if (!twitchOk) steps.push({ id: "clip_permissions_ready", label: "Clip permissions ready", status: "blocked", detail: "Needs Twitch connected first.", action: null });
   else if (!grant!.scopes.includes("clips:edit"))
-    steps.push({ id: "clip_permissions_ready", label: "Clip permissions ready", status: "todo", detail: "Grant clips:edit to create clips.", action: link("Reconnect Twitch", "/api/auth/twitch/start?returnTo=/studio") });
+    steps.push({ id: "clip_permissions_ready", label: "Clip permissions ready", status: "todo", detail: "Allow SLOT1 to create clips (clips:edit).", action: link(GRANT_LABEL, GRANT_PERMISSIONS_URL) });
   else if (!hasScopes(grant!.scopes, BROADCASTER_CLIP_ANALYSIS_SCOPES))
     steps.push({
       id: "clip_permissions_ready",
       label: "Clip permissions ready",
       status: "todo",
       detail: "Live clips work. Downloading clips for analysis needs channel:manage:clips.",
-      action: link("Enable clip analysis", "/api/auth/twitch/start?clipAnalysis=1&returnTo=/studio"),
+      action: link(GRANT_LABEL, GRANT_PERMISSIONS_URL),
     });
   else steps.push({ id: "clip_permissions_ready", label: "Clip permissions ready", status: "done", detail: "Clips can be created, downloaded and analyzed.", action: null });
 
@@ -149,7 +173,7 @@ function readiness(
       id: "video_source_ready",
       label: "Video source ready",
       status: "unavailable",
-      detail: `${setupText(caps.ingest.reason, "Ingest not configured.")} Uploaded replays still work.`,
+      detail: `${setupText(ctx, "ingest", setupDetails, "Streaming to SLOT1 isn't open yet.")} Uploaded replays still work.`,
       action: link("How video sources work", "/setup#sources"),
     });
   else if (ingest.length === 0) steps.push({ id: "video_source_ready", label: "Video source ready", status: "todo", detail: "No continuous video source yet.", action: action("Add a video source", "add_source") });
@@ -194,6 +218,7 @@ export const studioRoutes =
       const b = requireBroadcaster(req);
       const { settings, grant, conn, botGrant, sources } = await load(b);
       const current = await getCurrentLiveSession(ctx.db, b.id);
+      const setupDetails = await seesSetupDetails(ctx, req);
       // Only continuous sources: an uploaded replay is not "what SLOT1 is receiving right now".
       const latestHealth = sources
         .filter((s) => s.source.kind === "live_ingest" && s.health?.last_frame_asset_id)
@@ -213,17 +238,21 @@ export const studioRoutes =
           linked: b.kind === "twitch",
           login: grant?.twitch_login ?? null,
           scopes: grant?.scopes ?? [],
+          missingScopes: b.kind === "twitch" && grant && grant.status !== "revoked" ? missingScopes(grant.scopes, BROADCASTER_CONNECT_SCOPES) : [],
           grantStatus: !grant ? "missing" : grant.status,
           lastValidatedAt: grant?.last_validated_at?.toISOString() ?? null,
         },
-        readiness: readiness(ctx, b, grant, conn?.status ?? null, botGrant, settings, sources, Boolean(req.auth.user?.is_operator)),
+        readiness: readiness(ctx, b, grant, conn?.status ?? null, botGrant, settings, sources, Boolean(req.auth.user?.is_operator), setupDetails),
         settings,
-        sources: sources.map((s) => sourceView(s.source, s.health, ctx.config)),
+        // A source's last error can name a server setting; only operators see those.
+        sources: sources
+          .map((s) => sourceView(s.source, s.health, ctx.config))
+          .map((v) => (setupDetails ? v : { ...v, error: publicText(ctx.config.capabilities, v.error) })),
         currentSession: current
           ? await sessionSummary(ctx.db, ctx.storage, ctx.config, current, b, { playbackSource: null, job: await latestJobRunForSession(ctx.db, current.id) })
           : null,
         lastFrame,
-        jobs: (await listJobRuns(ctx.db, b.id, 15)).map(jobRunView),
+        jobs: (await listJobRuns(ctx.db, b.id, 15)).map(jobRunView).map((j) => (setupDetails ? j : { ...j, error: publicText(ctx.config.capabilities, j.error) })),
         usage: {
           periodStart: usage.periodStart,
           visionCalls: usage.visionCalls,
@@ -234,11 +263,13 @@ export const studioRoutes =
           estimatedCostUsd: priced ? usage.estimatedCostUsd : null,
           costBasis: priced
             ? "Estimated from provider-reported token counts × your configured prices"
-            : "Provider-reported token counts. Set VISION_PRICE_INPUT_PER_MTOK and VISION_PRICE_OUTPUT_PER_MTOK to estimate spend.",
+            : setupDetails
+              ? "Provider-reported token counts. Set VISION_PRICE_INPUT_PER_MTOK and VISION_PRICE_OUTPUT_PER_MTOK on the server to estimate spend."
+              : "Provider-reported token counts. SLOT1 doesn't estimate spend yet.",
           maxVisionCallsPerHour: settings.maxVisionCallsPerHour,
           visionCallsLastHour: await visionCallsInLastHour(ctx.db, b.id),
         },
-        recentErrors: await listOpsErrors(ctx.db, b.id, 8),
+        recentErrors: (await listOpsErrors(ctx.db, b.id, 8)).map((e) => (setupDetails ? e : { ...e, message: publicText(ctx.config.capabilities, e.message) })),
         sessions: (await listSessions(ctx.db, b.id, { limit: 20 })).map((s) => ({
           id: s.id,
           kind: s.kind,
@@ -281,7 +312,7 @@ export const studioRoutes =
       const { enabled } = z.object({ enabled: z.boolean() }).parse(req.body);
       const { settings, sources } = await load(b);
       if (enabled) {
-        if (!ctx.config.capabilities.ingest.available) throw unavailable("Continuous ingest isn't configured", ctx.config.capabilities.ingest.reason);
+        if (!ctx.config.capabilities.ingest.available) throw unavailable("Streaming to SLOT1 isn't open yet", ctx.config.capabilities.ingest.reason);
         if (!liveSourceReady(sources, settings)) throw conflict("No real video frames are arriving yet", "Start publishing to your SLOT1 ingest URL, then try again");
       }
       const updated = await updateSettings(ctx.db, b.id, { agentEnabled: enabled, analysisPaused: false });
@@ -325,7 +356,7 @@ export const studioRoutes =
     app.get("/api/studio/lookup-user", async (req) => {
       requireBroadcaster(req);
       const { login } = z.object({ login: z.string().regex(/^[a-zA-Z0-9_]{3,25}$/) }).parse(req.query);
-      if (!ctx.helix) throw unavailable("Twitch isn't configured", ctx.config.capabilities.twitch.reason);
+      if (!ctx.helix) throw unavailable("Twitch isn't connected to SLOT1 yet", ctx.config.capabilities.twitch.reason);
       const helix = ctx.helix;
       const users = await withAppToken(ctx, (t) => helix.getUsers(t, { logins: [login] }));
       const u = users[0];
@@ -337,7 +368,7 @@ export const studioRoutes =
     app.post("/api/studio/sources", async (req): Promise<CreateIngestSourceResponse> => {
       const b = requireBroadcaster(req);
       const input = CreateIngestSourceInput.parse(req.body);
-      if (!ctx.config.capabilities.ingest.available) throw unavailable("Continuous ingest isn't configured", ctx.config.capabilities.ingest.reason);
+      if (!ctx.config.capabilities.ingest.available) throw unavailable("Streaming to SLOT1 isn't open yet", ctx.config.capabilities.ingest.reason);
       const name = `s${randomToken(9).toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 10)}${Date.now().toString(36).slice(-4)}`;
       const secret = randomToken(24).replace(/[^A-Za-z0-9]/g, "x");
       const source = await createIngestSource(ctx.db, {

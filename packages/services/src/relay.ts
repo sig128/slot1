@@ -146,9 +146,9 @@ export async function resolveRelayTarget(ctx: ServerContext, row: RelayDestinati
   if (row.platform === "twitch") {
     const b = await getBroadcaster(ctx.db, row.broadcaster_id);
     if (!b?.twitch_user_id) return { ok: false, status: "error", detail: "This channel isn't connected to Twitch" };
-    if (!ctx.helix) return { ok: false, status: "error", detail: "Twitch isn't configured on this deployment" };
+    if (!ctx.helix) return { ok: false, status: "error", detail: "Twitch isn't connected to SLOT1 yet" };
     if (!(await hasTwitchForwardingPermission(ctx, b.twitch_user_id))) {
-      return { ok: false, status: "needs_permission", detail: "Allow SLOT1 to forward to Twitch (reconnect Twitch in Studio)" };
+      return { ok: false, status: "needs_permission", detail: "Allow SLOT1 to forward to Twitch: choose Grant the missing permissions in Studio → Stream setup" };
     }
     let key: string | null = null;
     try {
@@ -159,7 +159,7 @@ export async function resolveRelayTarget(ctx: ServerContext, row: RelayDestinati
     } catch (err) {
       if (err instanceof GrantUnavailableError) return { ok: false, status: "needs_permission", detail: `${err.message}. ${err.requirement}` };
       if (err instanceof HelixError && (err.status === 401 || err.status === 403)) {
-        return { ok: false, status: "needs_permission", detail: "Twitch refused the stream key request. Reconnect Twitch with forwarding allowed" };
+        return { ok: false, status: "needs_permission", detail: "Twitch refused the stream key request: choose Grant the missing permissions in Studio → Stream setup" };
       }
       // Twitch is having trouble: fall back to the last key we fetched, if any.
       key = row.key_enc ? ctx.cipher.decrypt(row.key_enc) : null;

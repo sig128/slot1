@@ -55,14 +55,24 @@ The `slot1` command is installed on the server:
 |---|---|
 | `slot1 twitch` | Asks for the Twitch app's Client ID and Secret (the secret is hidden while you paste), restarts the apps, and turns on "Sign in with Twitch". It can also take your Twitch username (allowed to connect the chat bot) and the bot account's username. |
 | `slot1 ai` | Asks for an Anthropic API key and turns on the AI that watches streams. Anthropic bills the usage. |
-| `slot1 update` | Gets the latest code, rebuilds and restarts. Keeps `.env` and data. |
+| `slot1 update` | Gets the latest code now, rebuilds and restarts. Keeps `.env` and data. Normally not needed: see automatic updates below. |
+| `slot1 autodeploy on` / `off` / `status` | Automatic updates (on by default). `status` shows the running version, the last update and, after a failed one, the end of its log. |
 | `slot1 status` | Shows running containers and whether the API and the HTTPS site answer. |
 | `slot1 logs api` | Follows a service's logs. Services: `api`, `worker`, `web`, `inference`, `mediamtx`, `caddy`, `postgres`, `redis`. |
 | `slot1 domain NAME` | Moves to your own domain. |
+| `slot1 admin-password` | Sets or changes the `/admin` password. It asks twice, hidden; the server stores only a scrypt hash, and changing it signs out every admin session. |
+| `slot1 admins NAMES` | Sets which Twitch accounts are SLOT1 admins (comma-separated). They can open `/admin` when signed in with Twitch and link the chat bot. |
 | `slot1 admin-link` | Prints a one-time link (valid 15 minutes, single use) that signs you in to the `/admin` dashboard. Works before Twitch is set up. |
-| `slot1 demo on` / `slot1 demo off` | Starts or removes the live demo stream at `/demo`. It's a synthetic test video sent through the real pipeline. |
 | `slot1 legal` | Sets the business name, address, contact email and governing law shown on the Privacy Policy, Terms and Contact pages. |
 | `slot1 seo` | Sets the Google Search Console and Bing site-verification codes. Afterwards, submit `/sitemap.xml`. |
+
+### Automatic updates
+
+The server updates itself. A timer (`slot1-tick.timer`) checks the branch it was installed from every minute; when there is a new version it gets it, rebuilds and restarts, the same as `slot1 update`. While it builds, the running version keeps serving. A version that fails to build is retried at most three times, ten minutes apart, and the next new version is tried as usual. `slot1 autodeploy status` shows what happened; `slot1 autodeploy off` stops it.
+
+The same timer applies settings saved in `/admin`. The API can't edit `.env` itself: it leaves a request in `/opt/slot1/state/inbox/`, and the timer checks every value against a fixed list of settings and formats before writing `.env` and restarting what reads it. Database passwords, session and encryption secrets, and the domain can't be changed that way.
+
+The first `slot1 update` run in a terminal asks two questions once: the Twitch username that gets admin access, and a password for `/admin`.
 
 ### Twitch app (needed to sign in)
 

@@ -304,7 +304,7 @@ describe("Admin dashboard, analytics and contact", () => {
       expect(r.headers.location).toBe("/admin");
       const cookie = adminCookie(r);
       expect(cookie).toMatch(/HttpOnly/i);
-      expect(cookie).toMatch(/SameSite=Lax/i);
+      expect(cookie).toMatch(/SameSite=Strict/i);
 
       const b = new Browser(h);
       await b.refreshCsrf();

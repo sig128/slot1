@@ -5,19 +5,22 @@
 # First install: downloads the code, writes .env with fresh random secrets, builds, starts:
 #   curl -fsSL https://raw.githubusercontent.com/sig128/slot1/main/scripts/server-setup.sh | bash
 #
-# After that, the `slot1` command is available on the server:
-#   slot1 update        get the latest code, rebuild and restart (keeps .env and all data)
+# The server updates itself: every minute it checks the branch it was installed from, and when
+# there is a new version it rebuilds and restarts by itself (see "slot1 autodeploy").
+#
+# The `slot1` command on the server:
+#   slot1 update        get the latest code now, rebuild and restart (keeps .env and all data)
+#   slot1 autodeploy on|off|status   automatic updates (on by default)
 #   slot1 twitch        enter your Twitch app's Client ID and Secret (turns on "Sign in with Twitch")
 #   slot1 ai            enter an Anthropic API key (turns on the AI that watches streams)
 #   slot1 domain NAME   move to your own domain (point its A record at this server first)
 #   slot1 admins NAMES  set the Twitch usernames that are SLOT1 admins (comma-separated)
 #   slot1 admin-password  set (or change) the password for the /admin dashboard
 #   slot1 admin-link    print a one-time link that signs you in to the /admin dashboard
-#   slot1 demo on|off   start or remove the live demo stream (synthetic test video) at /demo
 #   slot1 legal         business name, address, contact email and governing law for the legal pages
 #   slot1 seo           Google / Bing site-verification codes
 #   slot1 status        what is running, and whether the site answers
-#   slot1 logs [name]   follow the logs (api, worker, web, inference, mediamtx, caddy, demo, ...)
+#   slot1 logs [name]   follow the logs (api, worker, web, inference, mediamtx, caddy, ...)
 #
 # First-install overrides: SLOT1_DOMAIN (default <ip-with-dashes>.sslip.io, a free name that points
 # at this server), SLOT1_GATEWAY (mediamtx = sub-second video on the site, default; or nginx-rtmp),
@@ -142,22 +145,170 @@ public_ipv4() {
   printf '%s' "$ip"
 }
 
+# The `slot1` command. It stays small and changes rarely: it is also what deploys new versions, so
+# a broken server script in a later version can't stop the next fix from arriving.
 install_cli() {
-  cat >/usr/local/bin/slot1 <<EOF
-#!/usr/bin/env bash
-# Runs SLOT1's server script from a copy, so "slot1 update" can replace the script safely.
-set -e
-DIR="$DIR"
-if [ "\${1:-}" = update ]; then
-  git -C "\$DIR" fetch --quiet --depth 1 origin "\$(git -C "\$DIR" rev-parse --abbrev-ref HEAD)"
-  git -C "\$DIR" reset --quiet --hard FETCH_HEAD
-fi
-tmp="\$(mktemp)"
-trap 'rm -f "\$tmp"' EXIT
-cp "\$DIR/scripts/server-setup.sh" "\$tmp"
-SLOT1_DIR="\$DIR" bash "\$tmp" "\$@"
+  local cli="${SLOT1_CLI:-/usr/local/bin/slot1}" tmp
+  tmp="$(mktemp "$(dirname "$cli")/.slot1.XXXXXX")"
+  {
+    printf '#!/usr/bin/env bash\n'
+    printf 'SLOT1_DIR=%q\n' "$DIR"
+    cat <<'EOF'
+# The slot1 command, installed by SLOT1's scripts/server-setup.sh ("slot1 help" lists commands).
+# It runs the server script from a copy, so an update can replace the script safely.
+# "slot1 tick" runs every minute (slot1-tick.timer) and deploys new versions by itself.
+set -euo pipefail
+DIR="$SLOT1_DIR"
+STATE="$DIR/state"
+LOCK="${SLOT1_LOCK:-/run/slot1.lock}"
+
+run_script() {
+  local tmp rc=0
+  tmp="$(mktemp)"
+  cp "$DIR/scripts/server-setup.sh" "$tmp"
+  SLOT1_DIR="$DIR" bash "$tmp" "$@" || rc=$?
+  rm -f "$tmp"
+  return "$rc"
+}
+
+get_latest() {
+  git -C "$DIR" fetch --quiet --depth 1 origin "$(git -C "$DIR" rev-parse --abbrev-ref HEAD)"
+  git -C "$DIR" reset --quiet --hard FETCH_HEAD
+}
+
+deploy_status() {
+  mkdir -p "$STATE/outbox"
+  printf '{"state":"%s","commit":"%s","at":"%s"}\n' "$1" "$2" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$STATE/outbox/deploy.json.tmp"
+  chmod 644 "$STATE/outbox/deploy.json.tmp"
+  mv -f "$STATE/outbox/deploy.json.tmp" "$STATE/outbox/deploy.json"
+}
+
+tick() {
+  exec 9>"$LOCK"
+  flock -n 9 || return 0 # an update is already running
+  if compgen -G "$STATE/inbox/*.settings" >/dev/null; then
+    SLOT1_UNATTENDED=1 run_script apply-settings || true
+  fi
+  if grep -q '^SLOT1_AUTODEPLOY=false' "$DIR/.env" 2>/dev/null; then return 0; fi
+  local branch remote deployed head f_sha="" f_tries=0 f_at=0
+  branch="$(git -C "$DIR" rev-parse --abbrev-ref HEAD)"
+  remote="$(timeout 60 git -C "$DIR" ls-remote origin "refs/heads/$branch" 2>/dev/null | cut -f1 || true)"
+  # No answer from GitHub: try again next minute.
+  [[ "$remote" =~ ^[0-9a-f]{40}$ ]] || return 0
+  deployed="$(cat "$STATE/deployed" 2>/dev/null || true)"
+  [ "$remote" != "$deployed" ] || return 0
+  if [ -f "$STATE/deploy-failed" ]; then
+    read -r f_sha f_tries f_at <"$STATE/deploy-failed" || true
+    [[ "${f_tries:-}" =~ ^[0-9]+$ ]] || f_tries=0
+    [[ "${f_at:-}" =~ ^[0-9]+$ ]] || f_at=0
+    if [ "$f_sha" = "$remote" ]; then
+      # A version that failed is tried at most 3 times, 10 minutes apart.
+      [ "${f_tries:-0}" -lt 3 ] || return 0
+      [ $(($(date +%s) - ${f_at:-0})) -ge 600 ] || return 0
+    else
+      f_tries=0
+    fi
+  fi
+  deploy_status building "$remote"
+  export SLOT1_UNATTENDED=1
+  if { get_latest && run_script update; } >"$STATE/outbox/deploy.log" 2>&1; then
+    rm -f "$STATE/deploy-failed"
+    deploy_status live "$(git -C "$DIR" rev-parse HEAD)"
+  else
+    head="$(git -C "$DIR" rev-parse HEAD 2>/dev/null || printf '%s' "$remote")"
+    printf '%s %s %s\n' "$head" "$((${f_tries:-0} + 1))" "$(date +%s)" >"$STATE/deploy-failed"
+    deploy_status failed "$head"
+  fi
+  chmod 644 "$STATE/outbox/deploy.log" 2>/dev/null || true
+}
+
+case "${1:-}" in
+  tick)
+    tick
+    exit 0
+    ;;
+  update)
+    exec 9>"$LOCK"
+    if ! flock -n 9; then
+      echo "An automatic update is running. Waiting for it to finish..."
+      flock 9
+    fi
+    get_latest
+    ;;
+esac
+run_script "$@"
 EOF
-  chmod 755 /usr/local/bin/slot1
+  } >"$tmp"
+  if ! bash -n "$tmp"; then
+    rm -f "$tmp"
+    die "the new slot1 command didn't pass a syntax check; keeping the old one."
+  fi
+  chmod 755 "$tmp"
+  # A new file, not an in-place rewrite: a running slot1 keeps reading its own copy.
+  mv -f "$tmp" "$cli"
+}
+
+# Every minute: deploy new versions (unless SLOT1_AUTODEPLOY=false) and apply waiting settings.
+install_autodeploy() {
+  if ! command -v systemctl >/dev/null 2>&1 || [ ! -d /run/systemd/system ]; then
+    note "Automatic updates need systemd, which this server doesn't run. Use slot1 update instead."
+    return 0
+  fi
+  cat >/etc/systemd/system/slot1-tick.service <<'EOF'
+[Unit]
+Description=SLOT1 automatic updates
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+Environment=HOME=/root
+ExecStart=/usr/local/bin/slot1 tick
+Nice=5
+TimeoutStartSec=90min
+EOF
+  cat >/etc/systemd/system/slot1-tick.timer <<'EOF'
+[Unit]
+Description=SLOT1 automatic updates: check every minute
+
+[Timer]
+OnActiveSec=30s
+OnUnitInactiveSec=60s
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target
+EOF
+  # A timer problem must not fail an update that otherwise worked.
+  systemctl daemon-reload || true
+  systemctl enable --now slot1-tick.timer >/dev/null 2>&1 || note "Couldn't start the update timer (systemctl status slot1-tick.timer)."
+  if [ "$(env_get SLOT1_AUTODEPLOY)" = "false" ]; then
+    note "Automatic updates: off (turn on with: slot1 autodeploy on)"
+  else
+    note "Automatic updates: on. New versions go live by themselves within a few minutes."
+  fi
+}
+
+# The state folder is shared with the API container (user 1000): it reads the deploy status from
+# outbox/, and inbox/ is where it leaves settings saved in /admin for the server to apply.
+ensure_state_dir() {
+  mkdir -p "$DIR/state/outbox" "$DIR/state/inbox"
+  chmod 755 "$DIR/state" "$DIR/state/outbox"
+  chmod 700 "$DIR/state/inbox"
+  # 1000 is the "node" user inside the API container; the server usually has no user with that
+  # number, and not every chown takes a bare number, so perl is the fallback. If both fail, only
+  # saving settings in /admin is off: never a reason to stop an update.
+  chown 1000:1000 "$DIR/state/inbox" 2>/dev/null ||
+    perl -e 'chown(1000, 1000, $ARGV[0]) or exit 1' "$DIR/state/inbox" 2>/dev/null ||
+    note "Couldn't hand the settings folder to the API, so saving settings in /admin stays off."
+}
+
+record_deployed() {
+  local sha
+  sha="$(git -C "$DIR" rev-parse HEAD)"
+  printf '%s\n' "$sha" >"$DIR/state/deployed"
+  printf '{"state":"live","commit":"%s","at":"%s"}\n' "$sha" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$DIR/state/outbox/deploy.json"
+  chmod 644 "$DIR/state/outbox/deploy.json"
 }
 
 # --- configuration ---------------------------------------------------------------------------
@@ -193,8 +344,9 @@ apply_gateway() {
 
 # Settings added after a server's first install get their defaults here; existing values stay.
 ensure_env_defaults() {
-  if [ -z "$(env_get SLOT1_DEMO_STREAM_KEY)" ]; then env_set SLOT1_DEMO_STREAM_KEY "$(rand_hex 24)"; fi
-  if [ -z "$(env_get SLOT1_DEMO)" ]; then env_set SLOT1_DEMO false; fi
+  # The demo stream was removed (SLOT1 shows real streams only): switch it off on older installs.
+  if [ "$(env_get SLOT1_DEMO)" != "false" ]; then env_set SLOT1_DEMO false; fi
+  if [ -z "$(env_get SLOT1_AUTODEPLOY)" ]; then env_set SLOT1_AUTODEPLOY true; fi
   # A full-featured vertical render can peak around 1.7 GB of memory: one at a time on one server.
   if [ -z "$(env_get WORKER_LIBRARY_CONCURRENCY)" ]; then env_set WORKER_LIBRARY_CONCURRENCY 1; fi
 }
@@ -242,7 +394,6 @@ compose() {
     mediamtx) extra+=(--profile mediamtx) ;;
     nginx-rtmp) extra+=(--profile ingest) ;;
   esac
-  if [ "$(env_get SLOT1_DEMO)" = "true" ]; then extra+=(--profile demo); fi
   docker compose --project-directory "$DIR" -f "$DIR/docker-compose.yml" \
     --profile infra --profile app --profile edge "${extra[@]}" "$@"
 }
@@ -253,10 +404,9 @@ start_stack() {
     mediamtx) docker compose --project-directory "$DIR" -f "$DIR/docker-compose.yml" --profile ingest rm -sf ingest >/dev/null 2>&1 || true ;;
     nginx-rtmp) docker compose --project-directory "$DIR" -f "$DIR/docker-compose.yml" --profile mediamtx rm -sf mediamtx >/dev/null 2>&1 || true ;;
   esac
-  # The demo stream only runs while the demo is on.
-  if [ "$(env_get SLOT1_DEMO)" != "true" ]; then
-    docker compose --project-directory "$DIR" -f "$DIR/docker-compose.yml" --profile demo rm -sf demo >/dev/null 2>&1 || true
-  fi
+  # The demo stream was removed from SLOT1: take down a demo container left by an older version.
+  docker ps -aq --filter label=com.docker.compose.project=slot1 --filter label=com.docker.compose.service=demo |
+    xargs -r docker rm -f >/dev/null 2>&1 || true
   say "Building SLOT1 (the first build takes about 5 to 15 minutes)"
   # The API image builds the shared stages once; the worker, inference and web images reuse them.
   compose build api
@@ -329,10 +479,10 @@ EOF
 EOF
   fi
   cat <<EOF
-  Admin dashboard: run  slot1 admin-link  and open the link (or sign in with the Twitch
-  username you gave to slot1 twitch, then open $origin/admin).
-  Live demo stream: slot1 demo on   (slot1 demo off removes it again)
+  Admin dashboard: $origin/admin (your admin password, or sign in with an admin Twitch
+  username). A one-time sign-in link: slot1 admin-link
   Business details on the legal pages: slot1 legal
+  Updates: automatic. New versions go live by themselves (slot1 autodeploy status).
 
   Streaming from OBS: sign in, open Studio, then "Stream setup" does it in one click.
   Server for OBS: rtmp://$domain:1935/live (the stream key is shown in Studio).
@@ -350,6 +500,8 @@ cmd_install() {
   ensure_tools
   ensure_docker
   ensure_swap
+  # Asked before the long build, so nobody has to wait at the terminal for the questions.
+  if [ -f "$ENV_FILE" ]; then first_time_questions; fi
   fetch_code
   local ip domain gateway
   ip="$(public_ipv4)"
@@ -370,12 +522,110 @@ cmd_install() {
     if [ "$(env_get MEDIAMTX_PUBLIC_HOST)" != "$ip" ]; then env_set MEDIAMTX_PUBLIC_HOST "$ip"; fi
   fi
   ensure_env_defaults
+  ensure_state_dir
   # Shown in /admin → System, so it's clear which version is running.
   env_set SLOT1_VERSION "$(git -C "$DIR" rev-parse --short HEAD)"
   install_cli
   start_stack
   wait_healthy
-  print_summary
+  save_pending_admin_password
+  record_deployed
+  install_autodeploy
+  if [ -z "${SLOT1_UNATTENDED:-}" ]; then print_summary; fi
+}
+
+# Only in a terminal (never during an automatic update) and only once per server.
+interactive() {
+  [ -z "${SLOT1_UNATTENDED:-}" ] && [ -t 1 ] && { true </dev/tty; } 2>/dev/null
+}
+
+# Twitch usernames: 4 to 25 letters, digits or underscores; several are comma-separated.
+valid_twitch_logins() { [[ "$1" =~ ^[a-z0-9_]{4,25}(,[a-z0-9_]{4,25}){0,9}$ ]]; }
+
+PENDING_ADMIN_PW=""
+first_time_questions() {
+  local current answer pw pw2
+  # Given on the command line, it's used as is and not asked:  SLOT1_ADMINS=name slot1 update
+  if [ -n "${SLOT1_ADMINS:-}" ]; then
+    answer="$(lower "$SLOT1_ADMINS")"
+    valid_twitch_logins "$answer" || die "SLOT1_ADMINS takes Twitch usernames (letters, digits, underscores), comma-separated."
+    env_set SLOT1_OPERATOR_TWITCH_LOGINS "$answer"
+    note "Admin Twitch username: $answer"
+  fi
+  interactive || return 0
+  [ ! -f "$DIR/state/setup-asked-2" ] || return 0
+  say "One-time setup"
+  if [ -z "${SLOT1_ADMINS:-}" ]; then
+    current="$(env_get SLOT1_OPERATOR_TWITCH_LOGINS)"
+    while :; do
+      read -r -p "    Your Twitch username, the NAME in twitch.tv/NAME [${current:-not set}]: " answer </dev/tty
+      answer="$(lower "$answer")"
+      [ -n "$answer" ] || break
+      if valid_twitch_logins "$answer"; then
+        env_set SLOT1_OPERATOR_TWITCH_LOGINS "$answer"
+        note "Admin Twitch username: $answer"
+        break
+      fi
+      note "That isn't a Twitch username (4 to 25 letters, digits or underscores). Once more."
+    done
+  fi
+  if [ -n "$(env_get SLOT1_ADMIN_PASSWORD_HASH)" ]; then
+    note "Admin password: already set (nothing to do)."
+  else
+    while :; do
+      read -r -s -p "    A password for your admin page (12+ characters, not shown; Enter skips): " pw </dev/tty
+      printf '\n'
+      if [ -z "$pw" ]; then
+        note "Skipped. Set one any time with: slot1 admin-password"
+        break
+      fi
+      if [ "${#pw}" -lt 12 ]; then
+        note "That's ${#pw} characters. Use at least 12."
+        continue
+      fi
+      read -r -s -p "    Same again: " pw2 </dev/tty
+      printf '\n'
+      if [ "$pw" = "$pw2" ]; then
+        PENDING_ADMIN_PW="$pw"
+        break
+      fi
+      note "Those didn't match. Once more."
+    done
+    unset pw pw2
+  fi
+  mkdir -p "$DIR/state"
+  : >"$DIR/state/setup-asked-2"
+  note "Thanks. The rest runs by itself (about 5 to 15 minutes)."
+}
+
+# Hashes a password with the API's own tool (scrypt) and stores the hash in .env.
+store_admin_password() {
+  local out line
+  # The password goes in on stdin (never as an argument), so it can't show up in the process list.
+  if ! out="$(printf '%s' "$1" | compose exec -T api node dist/admin-password.js 2>&1)"; then
+    printf '%s\n' "$out" >&2
+    return 1
+  fi
+  line="$(printf '%s\n' "$out" | tail -n 1)"
+  case "$line" in
+    SLOT1_ADMIN_PASSWORD_HASH=scrypt\$*) ;;
+    *) return 1 ;;
+  esac
+  # Single quotes: the hash contains "$", which Compose would otherwise read as variables.
+  env_set SLOT1_ADMIN_PASSWORD_HASH "'${line#SLOT1_ADMIN_PASSWORD_HASH=}'"
+}
+
+save_pending_admin_password() {
+  [ -n "$PENDING_ADMIN_PW" ] || return 0
+  if store_admin_password "$PENDING_ADMIN_PW"; then
+    PENDING_ADMIN_PW=""
+    compose up -d --force-recreate --no-deps api >/dev/null 2>&1
+    wait_healthy
+    note "Admin password saved. Sign in at $(env_get SLOT1_PUBLIC_ORIGIN)/admin"
+  else
+    PENDING_ADMIN_PW=""
+    note "Couldn't save the admin password. Set it with: slot1 admin-password"
+  fi
 }
 
 cmd_twitch() {
@@ -443,27 +693,18 @@ cmd_domain() {
 cmd_admin_password() {
   need_root
   need_env
-  local pw pw2 out line
+  local pw pw2
   read -r -s -p "New admin password (12+ characters): " pw </dev/tty
   printf '\n'
   read -r -s -p "Same again: " pw2 </dev/tty
   printf '\n'
   if [ "$pw" != "$pw2" ]; then die "the passwords don't match."; fi
   if [ "${#pw}" -lt 12 ]; then die "use at least 12 characters."; fi
-  # The password goes in on stdin (never as an argument), so it can't show up in the process list.
-  if ! out="$(printf '%s' "$pw" | compose exec -T api node dist/admin-password.js 2>&1)"; then
+  if ! store_admin_password "$pw"; then
     unset pw pw2
-    printf '%s\n' "$out" >&2
     die "could not set the password. Is SLOT1 up to date and running? Try: slot1 update"
   fi
   unset pw pw2
-  line="$(printf '%s\n' "$out" | tail -n 1)"
-  case "$line" in
-    SLOT1_ADMIN_PASSWORD_HASH=scrypt\$*) ;;
-    *) die "the password tool answered unexpectedly." ;;
-  esac
-  # Single quotes: the hash contains "$", which Compose would otherwise read as variables.
-  env_set SLOT1_ADMIN_PASSWORD_HASH "'${line#SLOT1_ADMIN_PASSWORD_HASH=}'"
   say "Restarting the API with the new password"
   compose up -d --force-recreate --no-deps api
   wait_healthy
@@ -483,30 +724,147 @@ cmd_admin_link() {
 }
 
 cmd_demo() {
+  note "The demo stream was removed: SLOT1 shows real streams only."
+}
+
+cmd_autodeploy() {
   need_root
   need_env
-  case "${1:-}" in
+  case "${1:-status}" in
     on)
-      ensure_env_defaults
-      env_set SLOT1_DEMO true
-      say "Preparing the demo stream"
-      # Same image target as the worker, so this mostly comes from the build cache.
-      compose build demo
-      # The API creates the demo channel (and stores the key's hash) on startup: it goes first.
-      restart_apps
-      say "Starting the demo stream"
-      compose up -d demo
-      note "Demo is on: $(env_get SLOT1_PUBLIC_ORIGIN)/demo (give it about 30 seconds)"
-      note "Remove it later with: slot1 demo off"
+      env_set SLOT1_AUTODEPLOY true
+      install_autodeploy
       ;;
     off)
-      say "Stopping the demo stream"
-      docker compose --project-directory "$DIR" -f "$DIR/docker-compose.yml" --profile demo rm -sf demo >/dev/null 2>&1 || true
-      env_set SLOT1_DEMO false
-      restart_apps
-      note "Demo is off and the demo channel is hidden. Turn it back on with: slot1 demo on"
+      env_set SLOT1_AUTODEPLOY false
+      install_autodeploy
       ;;
-    *) die "usage: slot1 demo on   or   slot1 demo off" ;;
+    status)
+      printf 'Automatic updates: %s\n' "$([ "$(env_get SLOT1_AUTODEPLOY)" = "false" ] && echo off || echo on)"
+      printf 'Running version:   %s\n' "$(cut -c1-7 "$DIR/state/deployed" 2>/dev/null || echo unknown)"
+      printf 'Last update:       %s\n' "$(cat "$DIR/state/outbox/deploy.json" 2>/dev/null || echo none)"
+      if [ -f "$DIR/state/deploy-failed" ]; then
+        printf 'Failed version:    %s (the last lines of its log follow)\n' "$(cut -c1-7 "$DIR/state/deploy-failed")"
+        tail -n 30 "$DIR/state/outbox/deploy.log" 2>/dev/null || true
+      fi
+      systemctl list-timers slot1-tick.timer --no-pager 2>/dev/null | head -n 2 || true
+      ;;
+    *) die "usage: slot1 autodeploy on|off|status" ;;
+  esac
+}
+
+# --- settings saved in /admin ----------------------------------------------------------------
+#
+# The API can't edit .env itself. When an admin saves settings in the browser, it writes a request
+# to state/inbox/<id>.settings; "slot1 tick" (every minute) checks it here and applies it:
+#   slot1-settings v1
+#   set KEY BASE64-VALUE
+#   clear KEY
+# Only the keys below are accepted, each with its own format check, and a request with anything
+# else is refused as a whole. The answer goes to state/outbox/settings-<id>.json.
+
+setting_ok() {
+  local key="$1" v="$2"
+  case "$key" in
+    TWITCH_CLIENT_ID | TWITCH_CLIENT_SECRET) [[ "$v" =~ ^[a-z0-9]{20,64}$ ]] ;;
+    SLOT1_OPERATOR_TWITCH_LOGINS) [[ "$v" =~ ^[a-z0-9_]{1,25}(,[a-z0-9_]{1,25}){0,9}$ ]] ;;
+    SLOT1_BOT_TWITCH_LOGIN) [[ "$v" =~ ^[a-z0-9_]{1,25}$ ]] ;;
+    ANTHROPIC_API_KEY) [[ "$v" =~ ^[A-Za-z0-9_-]{20,300}$ ]] ;;
+    VISION_PROVIDER) [[ "$v" =~ ^(anthropic|none)$ ]] ;;
+    SLOT1_AUTODEPLOY) [[ "$v" =~ ^(true|false)$ ]] ;;
+    SLOT1_GOOGLE_SITE_VERIFICATION | SLOT1_BING_SITE_VERIFICATION) [[ "$v" =~ ^[A-Za-z0-9_-]{1,120}$ ]] ;;
+    SLOT1_CONTACT_EMAIL) [[ "$v" =~ ^[^[:space:][:cntrl:]@\"\'\`\$\\#]{1,64}@[^[:space:][:cntrl:]@\"\'\`\$\\#]{1,190}$ ]] ;;
+    SLOT1_LEGAL_NAME | SLOT1_LEGAL_ADDRESS | SLOT1_GOVERNING_LAW) [[ "$v" =~ ^[^[:cntrl:]\"\'\`\$\\#]{1,200}$ ]] ;;
+    SLOT1_ADMIN_PASSWORD_HASH) [[ "$v" =~ ^scrypt\$[A-Za-z0-9+/=.:_\$-]{20,400}$ ]] ;;
+    *) return 1 ;;
+  esac
+}
+
+# Settings that may be emptied from /admin (the Twitch app, AI provider, update switch and admin
+# password can only be replaced).
+setting_clearable() {
+  case "$1" in
+    SLOT1_OPERATOR_TWITCH_LOGINS | SLOT1_BOT_TWITCH_LOGIN | ANTHROPIC_API_KEY) return 0 ;;
+    SLOT1_GOOGLE_SITE_VERIFICATION | SLOT1_BING_SITE_VERIFICATION | SLOT1_CONTACT_EMAIL) return 0 ;;
+    SLOT1_LEGAL_NAME | SLOT1_LEGAL_ADDRESS | SLOT1_GOVERNING_LAW) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Keys the website alone reads: saving only these restarts just the website.
+setting_web_only() {
+  case "$1" in
+    SLOT1_GOOGLE_SITE_VERIFICATION | SLOT1_BING_SITE_VERIFICATION | SLOT1_CONTACT_EMAIL | SLOT1_LEGAL_NAME | SLOT1_LEGAL_ADDRESS | SLOT1_GOVERNING_LAW) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+settings_answer() {
+  local id="$1" ok="$2" detail="$3" tmp
+  tmp="$DIR/state/outbox/.settings-$id.json"
+  printf '{"id":"%s","ok":%s,"detail":"%s","at":"%s"}\n' "$id" "$ok" "$detail" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$tmp"
+  chmod 644 "$tmp"
+  mv -f "$tmp" "$DIR/state/outbox/settings-$id.json"
+}
+
+cmd_apply_settings() {
+  need_root
+  need_env
+  ensure_state_dir
+  local f id line verb key b64 value restart=none n bad i
+  local -a keys values
+  for f in "$DIR"/state/inbox/*.settings; do
+    [ -f "$f" ] || continue
+    id="$(basename "$f" .settings)"
+    if ! [[ "$id" =~ ^[a-z0-9]{8,40}$ ]] || [ "$(wc -c <"$f")" -gt 16384 ]; then
+      rm -f "$f"
+      continue
+    fi
+    keys=()
+    values=()
+    n=0
+    bad=""
+    while IFS= read -r line || [ -n "$line" ]; do
+      n=$((n + 1))
+      if [ "$n" -eq 1 ]; then
+        [ "$line" = "slot1-settings v1" ] || bad="format"
+        continue
+      fi
+      [ -n "$line" ] || continue
+      read -r verb key b64 <<<"$line"
+      case "$verb" in
+        set) value="$(printf '%s' "$b64" | base64 -d 2>/dev/null)" || { bad="$key"; break; } ;;
+        clear) value="" ;;
+        *) bad="format"; break ;;
+      esac
+      if [ "$verb" = set ] && ! setting_ok "$key" "$value"; then bad="$key"; break; fi
+      if [ "$verb" = clear ] && ! setting_clearable "$key"; then bad="$key"; break; fi
+      keys+=("$key")
+      values+=("$value")
+    done <"$f"
+    rm -f "$f"
+    if [ -n "$bad" ] || [ "${#keys[@]}" -eq 0 ]; then
+      settings_answer "$id" false "not accepted: ${bad:-empty}"
+      continue
+    fi
+    for i in "${!keys[@]}"; do
+      if [ "${keys[$i]}" = SLOT1_ADMIN_PASSWORD_HASH ] && [ -n "${values[$i]}" ]; then
+        env_set "${keys[$i]}" "'${values[$i]}'"
+      else
+        env_set "${keys[$i]}" "${values[$i]}"
+      fi
+      if [ "${keys[$i]}" = SLOT1_AUTODEPLOY ]; then continue; fi
+      if setting_web_only "${keys[$i]}"; then
+        [ "$restart" = apps ] || restart=web
+      else
+        restart=apps
+      fi
+    done
+    settings_answer "$id" true "restart: $restart"
+  done
+  case "$restart" in
+    apps) restart_apps ;;
+    web) restart_web ;;
   esac
 }
 
@@ -581,6 +939,8 @@ usage() {
 }
 
 main() {
+  # Don't hand the update lock (fd 9 of the slot1 command) to anything this script starts.
+  exec 9>&-
   local cmd="${1:-install}"
   [ "$#" -gt 0 ] && shift
   case "$cmd" in
@@ -591,7 +951,9 @@ main() {
     admin-link) cmd_admin_link ;;
     admin-password) cmd_admin_password ;;
     admins) cmd_admins "$@" ;;
-    demo) cmd_demo "$@" ;;
+    demo) cmd_demo ;;
+    autodeploy) cmd_autodeploy "$@" ;;
+    apply-settings) cmd_apply_settings ;;
     legal) cmd_legal ;;
     seo) cmd_seo ;;
     status) cmd_status ;;

@@ -6,6 +6,7 @@ import type { MeResponse } from "@slot1/contracts";
 import { HeaderAvatar } from "./HeaderAvatar";
 import { MORE_NAV, PRIMARY_NAV, WIDE_QUERY } from "./site-nav";
 import { Wordmark } from "./Wordmark";
+import { twitchSignInHref } from "@/lib/signin-notice";
 
 const MENU_ID = "site-menu";
 
@@ -87,9 +88,9 @@ export function MobileMenu({ pathname, me }: { pathname: string; me: MeResponse 
             <HeaderAvatar broadcaster={broadcaster} className="h-8 w-8 text-[0.95rem]" />
           </Link>
         ) : (
-          <Link href="/studio" className="btn btn-ghost sh-bar-connect">
-            Connect my Twitch
-          </Link>
+          <a href={twitchSignInHref()} className="btn btn-coral sh-bar-connect">
+            Sign in
+          </a>
         )}
         <button
           ref={triggerRef}
@@ -171,9 +172,9 @@ export function MobileMenu({ pathname, me }: { pathname: string; me: MeResponse 
                 </span>
               </Link>
             ) : (
-              <Link href="/studio" className="btn btn-ghost sh-connect" onClick={close}>
-                Connect my Twitch
-              </Link>
+              <a href={twitchSignInHref()} className="btn btn-coral sh-connect">
+                Sign in with Twitch
+              </a>
             )}
           </div>
 

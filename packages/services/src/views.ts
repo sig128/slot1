@@ -250,7 +250,7 @@ export function sourceView(row: MediaSourceRow, health: SourceHealthRow | null, 
     publish:
       row.kind === "live_ingest" && row.publish_path && row.status !== "revoked"
         ? {
-            serverUrl: config.env.INGEST_PUBLIC_RTMP_URL ?? "(ingest gateway not configured)",
+            serverUrl: config.env.INGEST_PUBLIC_RTMP_URL ?? "(streaming to SLOT1 isn't open yet)",
             streamPath: row.publish_path,
             keyHint: row.publish_key_hint ?? "",
             protocol: "rtmp",

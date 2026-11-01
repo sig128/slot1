@@ -153,7 +153,7 @@ export function coverageCandidate(
   const last = frames[frames.length - 1];
   if (!first || !last) return null;
   const pct = input.durationMs > 0 ? Math.round((Math.min(input.analyzedFrames * input.intervalMs, input.durationMs) / input.durationMs) * 100) : 0;
-  const analyzers = input.analyzers.length ? input.analyzers.join(" + ") : "no analyzer configured";
+  const analyzers = input.analyzers.length ? input.analyzers.join(" + ") : "no analyzer switched on";
   return {
     ...measured(last, nowIso),
     type: "session_coverage",

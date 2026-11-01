@@ -46,8 +46,9 @@ export async function loadAuth(ctx: ServerContext, req: FastifyRequest): Promise
   const idHash = sha256(raw);
   const s = await getBrowserSession(ctx.db, idHash);
   if (!s) return { viewer: { userId: null, broadcasterId: null, isOperator: false }, user: null, broadcaster: null, sessionIdHash: null, csrfToken: null };
-  const user = s.user_id ? await getUser(ctx.db, s.user_id) : null;
-  const broadcaster = user ? await getBroadcasterForOwner(ctx.db, user.id) : null;
+  const stored = s.user_id ? await getUser(ctx.db, s.user_id) : null;
+  const broadcaster = stored ? await getBroadcasterForOwner(ctx.db, stored.id) : null;
+  const user = stored ? await withLiveOperatorStatus(ctx, stored, broadcaster) : null;
   return {
     viewer: { userId: user?.id ?? null, broadcasterId: broadcaster?.id ?? null, isOperator: user?.is_operator ?? false },
     user,
@@ -55,6 +56,20 @@ export async function loadAuth(ctx: ServerContext, req: FastifyRequest): Promise
     sessionIdHash: idHash,
     csrfToken: s.csrf_token,
   };
+}
+
+/**
+ * Operator status follows SLOT1_OPERATOR_TWITCH_LOGINS as it is now, on every request, so adding
+ * or removing a login (then restarting the API) applies to people who are already signed in, both
+ * ways. users.is_operator is only a cache of it (the /admin numbers count it). Local development
+ * accounts have no Twitch login and keep what's stored; local sign-in is off in production.
+ */
+async function withLiveOperatorStatus(ctx: ServerContext, user: UserRow, broadcaster: BroadcasterRow | null): Promise<UserRow> {
+  if (user.kind !== "twitch") return user;
+  const login = broadcaster?.kind === "twitch" ? broadcaster.login.toLowerCase() : null;
+  const isOperator = login !== null && ctx.config.operatorLogins.has(login);
+  if (isOperator !== user.is_operator) await ctx.db.query(`UPDATE users SET is_operator = $2 WHERE id = $1`, [user.id, isOperator]).catch(() => undefined);
+  return { ...user, is_operator: isOperator };
 }
 
 /** Ensure there is a browser session (anonymous is fine) — needed for CSRF and OAuth state binding. */

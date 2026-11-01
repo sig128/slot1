@@ -1,0 +1,38 @@
+/* /setup → Video sources (VideoSources.tsx): three routes side by side on wide screens. */
+@media (min-width: 1024px) {
+  .su-vchoices {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr);
+    align-items: stretch;
+  }
+}
+.su-vopts {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.su-vopt {
+  padding: 10px 12px;
+  background: rgb(244 237 226 / 0.045);
+}
+.su-vopt-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.su-vopt-head b {
+  color: #fbf4ea;
+  font-weight: 700;
+}
+.su-panel .su-vopt p + p {
+  margin-top: 4px;
+}
+/* What a route can't do: said plainly, set apart from the rest. */
+.su-panel p.su-vlimit {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgb(244 237 226 / 0.1);
+  color: #ffd27a;
+}

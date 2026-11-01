@@ -162,6 +162,8 @@ const EnvSchema = z.object({
   SLOT1_ANALYTICS: bool(true),
   /** Build or commit shown in /admin → System (the server script sets it on each update). */
   SLOT1_VERSION: optStr,
+  /** scrypt hash of the /admin password (docs/ADMIN.md); `slot1 admin-password` sets it. Never the password itself. */
+  SLOT1_ADMIN_PASSWORD_HASH: optStr,
 });
 
 export type Env = z.infer<typeof EnvSchema>;
