@@ -47,6 +47,12 @@ interface Props {
 
 const PREVIEW_LONG_SIDE = 960;
 
+function frameOf(el: HTMLVideoElement | HTMLImageElement | null | undefined): FrameSource | null {
+  if (!el) return null;
+  if (el instanceof HTMLVideoElement) return el.readyState >= 2 && el.videoWidth ? { src: el, w: el.videoWidth, h: el.videoHeight } : null;
+  return el.complete && el.naturalWidth ? { src: el, w: el.naturalWidth, h: el.naturalHeight } : null;
+}
+
 /**
  * The preview: hidden media elements feed a canvas compositor. In edit mode it plays the
  * finished edit (segments in order, speed ramps, overlays, captions, effects, audio clips); in
@@ -87,12 +93,6 @@ export function PreviewStage({ ref, edl, total, mode, sources, sourceSession, me
     }
     return [...out.values()];
   }, [edl.overlays, media]);
-
-  const frameOf = (el: HTMLVideoElement | HTMLImageElement | null | undefined): FrameSource | null => {
-    if (!el) return null;
-    if (el instanceof HTMLVideoElement) return el.readyState >= 2 && el.videoWidth ? { src: el, w: el.videoWidth, h: el.videoHeight } : null;
-    return el.complete && el.naturalWidth ? { src: el, w: el.naturalWidth, h: el.naturalHeight } : null;
-  };
 
   const draw = useCallback(() => {
     const c = canvas.current;
@@ -208,12 +208,12 @@ export function PreviewStage({ ref, edl, total, mode, sources, sourceSession, me
     for (const a of audioEls.current.values()) if (!a.paused) a.pause();
   }, []);
 
-  const report = (m: "program" | "source", ms: number, force = false) => {
+  const report = useCallback((m: "program" | "source", ms: number, force = false) => {
     const now = performance.now();
     if (!force && now - st.current.lastReport < 66) return;
     st.current.lastReport = now;
     props.current.onTime(m, ms);
-  };
+  }, []);
 
   const setPlaying = useCallback(
     (p: boolean) => {
@@ -288,7 +288,7 @@ export function PreviewStage({ ref, edl, total, mode, sources, sourceSession, me
     syncSide(s.out, true);
     report("program", s.out);
     draw();
-  }, [draw, enter, setPlaying, syncSide]);
+  }, [draw, enter, report, setPlaying, syncSide]);
 
   useEffect(() => {
     let id = 0;
@@ -340,7 +340,7 @@ export function PreviewStage({ ref, edl, total, mode, sources, sourceSession, me
       isPlaying: () => st.current.playing,
       video: (sessionId) => videos.current.get(sessionId) ?? null,
     }),
-    [enter, requestDraw, setPlaying, syncSide],
+    [enter, report, requestDraw, setPlaying, syncSide],
   );
 
   // Redraw on any change to the edit or mode while paused.
