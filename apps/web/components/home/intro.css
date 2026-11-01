@@ -1,0 +1,477 @@
+/*
+ * The home intro (components/onair/OnAirView.tsx): a game-style loading screen that resolves into
+ * SLOT1's title card. Timeline on a full page load:
+ *   0.0–1.7 s  the artwork pushes in, the loading bar fills, the first tip shows
+ *   1.75 s     "SLOT" lands like a mission banner, 2.1 s the boxed 1 slams in
+ *   2.45 s     the tagline rises, then the help box, buttons, status and HUD boot up
+ * After that only slow ambient life runs. Reduced motion, and coming back to the page within the
+ * app, show the final frame at once. Literal colours: this file is outside Tailwind's theme.
+ */
+.gx-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #1a0822;
+}
+.gx-art {
+  position: relative;
+  order: -1;
+  height: clamp(290px, 80vw, 400px);
+}
+.gx-art .sk-scene {
+  position: absolute;
+  inset: 0;
+  --sk-focus: 0.64;
+}
+.gx-copy {
+  position: relative;
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 26px 16px 22px;
+}
+.gx-tips {
+  position: relative;
+  margin: 0 16px 34px;
+}
+@media (min-width: 640px) {
+  .gx-copy {
+    padding-inline: 24px;
+  }
+  .gx-tips {
+    margin-inline: 24px;
+  }
+}
+@media (min-width: 1024px) {
+  .gx-hero {
+    min-height: max(clamp(660px, calc(92svh - 4rem), 980px), 46vw);
+  }
+  .gx-hero[data-mode="live"] {
+    min-height: max(clamp(620px, calc(86svh - 4rem), 900px), 43vw);
+  }
+  .gx-art {
+    position: absolute;
+    inset: 0;
+    height: auto;
+    order: 0;
+    z-index: -1;
+  }
+  .gx-art .sk-scene {
+    --sk-focus: 0.5;
+  }
+  /* keeps the copy readable over the artwork */
+  .gx-art::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse 50% 70% at 16% 38%, rgb(20 7 21 / 0.62), rgb(20 7 21 / 0) 72%);
+  }
+  .gx-copy {
+    padding: clamp(34px, 6vh, 80px) 40px 210px;
+  }
+  .gx-tips {
+    position: absolute;
+    right: 40px;
+    bottom: 34px;
+    width: min(32rem, 38vw);
+    margin: 0;
+  }
+}
+
+/* --- the title card --- */
+.gx-mark {
+  display: inline-flex;
+  align-items: stretch;
+  font-family: "SLOT1 Intro", "Passion One", "Barlow Condensed", Impact, sans-serif;
+  font-weight: 900;
+  font-size: clamp(4.4rem, 21vw, 6.6rem);
+  line-height: 0.82;
+  letter-spacing: 0.01em;
+}
+@media (min-width: 1024px) {
+  .gx-mark {
+    font-size: clamp(6.4rem, 10.4vw, 10rem);
+  }
+}
+.gx-mark-slot {
+  display: inline-block;
+  color: #ffc94d;
+  -webkit-text-stroke: 0.05em #140715;
+  paint-order: stroke fill;
+  text-shadow: 0.025em 0.06em 0 rgb(20 7 21 / 0.85);
+  padding-right: 0.05em;
+}
+.gx-mark-one {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin: 0.04em 0 0.06em;
+  padding: 0 0.13em;
+  border-radius: 0.07em;
+  border: 0.045em solid #140715;
+  background: linear-gradient(160deg, #ff4f87 0%, #ff7a7c 48%, #ffad72 100%);
+  box-shadow: 0.025em 0.06em 0 rgb(20 7 21 / 0.85);
+  color: #140715;
+  overflow: hidden;
+}
+.gx-mark-one::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #fff8e8;
+  opacity: 0;
+}
+.gx-tagline {
+  display: block;
+  overflow: hidden;
+  margin-top: 0.32em;
+  padding-bottom: 0.14em;
+  font-family: "SLOT1 Intro", "Passion One", "Barlow Condensed", Impact, sans-serif;
+  font-weight: 900;
+  font-size: clamp(1.9rem, 8.2vw, 2.6rem);
+  line-height: 0.95;
+  color: #fbf4ea;
+  text-shadow: 0.03em 0.05em 0 #140715;
+  text-wrap: balance;
+}
+@media (min-width: 1024px) {
+  .gx-tagline {
+    font-size: clamp(2.4rem, 3.3vw, 3.4rem);
+  }
+}
+.gx-tagline > span {
+  display: inline-block;
+}
+
+/* GTA-style help box: black glass, white text. */
+.gx-help {
+  max-width: 35rem;
+  padding: 14px 18px;
+  background: rgb(10 5 14 / 0.82);
+  color: #f4ede2;
+  font-size: 1.04rem;
+  line-height: 1.55;
+}
+.gx-sub {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  max-width: 38rem;
+  padding: 7px 12px;
+  background: rgb(10 5 14 / 0.74);
+  color: #d9d1c5;
+  font-size: 0.95rem;
+}
+
+/* --- HUD --- */
+.gx-hud-tr {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.gx-stars {
+  display: flex;
+  gap: 2px;
+}
+.gx-star {
+  width: 22px;
+  height: 22px;
+  fill: rgb(20 7 21 / 0.45);
+  stroke: #140715;
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+}
+.gx-star-on {
+  fill: #fbf4ea;
+}
+.gx-money {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1;
+  margin: 0;
+}
+.gx-money-num {
+  font-family: "SLOT1 Intro", "Passion One", Impact, sans-serif;
+  font-weight: 900;
+  font-size: 2.6rem;
+  line-height: 0.95;
+  color: #9fe38f;
+  -webkit-text-stroke: 0.07em #140715;
+  paint-order: stroke fill;
+  text-shadow: 0.03em 0.06em 0 rgb(20 7 21 / 0.85);
+}
+.gx-money-cap {
+  margin-top: 2px;
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #fbf4ea;
+  text-shadow:
+    0 1px 0 #140715,
+    0 0 4px #140715;
+}
+.gx-radar {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  width: 78px;
+  height: 78px;
+  filter: drop-shadow(0 3px 0 rgb(20 7 21 / 0.7));
+}
+@media (min-width: 1024px) {
+  .gx-hud-tr {
+    top: 28px;
+    right: 40px;
+  }
+  .gx-star {
+    width: 30px;
+    height: 30px;
+  }
+  .gx-money-num {
+    font-size: 3.6rem;
+  }
+  .gx-money-cap {
+    font-size: 1.1rem;
+  }
+  .gx-radar {
+    left: 40px;
+    bottom: 34px;
+    width: 168px;
+    height: 168px;
+  }
+}
+.gx-radar-ping {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* --- tips and the loading bar --- */
+.gx-tips {
+  padding: 12px 16px 13px;
+  background: rgb(10 5 14 / 0.84);
+  color: #f4ede2;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+.gx-tip-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gx-tip {
+  grid-area: 1 / 1;
+  opacity: 0;
+}
+.gx-tip:first-child {
+  opacity: 1;
+}
+.gx-tip-label {
+  color: #ffc94d;
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-weight: 800;
+  font-size: 1.06rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 4px;
+}
+.gx-load {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 4px;
+  background: rgb(255 201 77 / 0.18);
+  opacity: 0;
+}
+.gx-load-fill {
+  position: absolute;
+  inset: 0;
+  background: #ffc94d;
+  transform-origin: 0 50%;
+  transform: scaleX(1);
+}
+
+/* --- the sequence --- */
+@media (prefers-reduced-motion: no-preference) {
+  .gx-load {
+    animation: gx-load-out 2.3s linear both;
+  }
+  .gx-load-fill {
+    animation: gx-load-fill 1.65s steps(14, end) 0.05s both;
+  }
+  .gx-tip {
+    animation: gx-tip 45.5s linear calc(var(--i) * 6.5s) infinite both;
+  }
+  .gx-mark-slot {
+    animation: gx-banner 0.46s cubic-bezier(0.2, 0.7, 0.1, 1) 1.75s both;
+  }
+  .gx-mark-one {
+    animation: gx-slam 0.5s cubic-bezier(0.3, 0.6, 0.2, 1.2) 2.1s both;
+  }
+  .gx-mark-one::after {
+    animation: gx-flash 0.45s ease-out 2.32s both;
+  }
+  .gx-mark {
+    animation: gx-shake 0.24s linear 2.34s both;
+  }
+  .gx-tagline > span {
+    animation: gx-rise 0.7s cubic-bezier(0.2, 0.7, 0.1, 1) 2.45s both;
+  }
+  .gx-reveal {
+    animation: gx-appear 0.5s ease-out both;
+  }
+  .gx-hud-tr {
+    animation: gx-boot 0.5s cubic-bezier(0.2, 0.7, 0.1, 1) 2.75s both;
+  }
+  .gx-radar {
+    animation: gx-boot 0.5s cubic-bezier(0.2, 0.7, 0.1, 1) 2.6s both;
+  }
+  .gx-radar-ping {
+    animation: gx-ping 2.4s ease-out 3.1s infinite;
+  }
+}
+/* Coming back within the app: no intro, straight to the final frame. */
+[data-intro="skip"] .gx-mark,
+[data-intro="skip"] .gx-mark-slot,
+[data-intro="skip"] .gx-mark-one,
+[data-intro="skip"] .gx-mark-one::after,
+[data-intro="skip"] .gx-tagline > span,
+[data-intro="skip"] .gx-reveal,
+[data-intro="skip"] .gx-hud-tr,
+[data-intro="skip"] .gx-radar,
+[data-intro="skip"] .gx-load,
+[data-intro="skip"] .gx-load-fill,
+[data-intro="skip"] .sk-intro .sk-zoom {
+  animation: none !important;
+}
+[data-intro="skip"] .gx-load {
+  opacity: 0;
+}
+
+@keyframes gx-load-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes gx-load-out {
+  0%,
+  78% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+/* Seven tips, 6.5 s each (one slot = 1/7 of the 45.5 s cycle). Keep in step with INTRO_TIPS. */
+@keyframes gx-tip {
+  0% {
+    opacity: 0;
+  }
+  1.2%,
+  13% {
+    opacity: 1;
+  }
+  14.3%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes gx-banner {
+  0% {
+    opacity: 0;
+    transform: scale(1.22);
+    letter-spacing: 0.12em;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes gx-slam {
+  0% {
+    opacity: 0;
+    transform: scale(2.7) rotate(-14deg);
+  }
+  62% {
+    opacity: 1;
+    transform: scale(0.9) rotate(2deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+@keyframes gx-flash {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes gx-shake {
+  0%,
+  100% {
+    transform: none;
+  }
+  25% {
+    transform: translate(-3px, 2px);
+  }
+  50% {
+    transform: translate(3px, -1px);
+  }
+  75% {
+    transform: translate(-2px, -1px);
+  }
+}
+@keyframes gx-rise {
+  from {
+    transform: translateY(110%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes gx-appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes gx-boot {
+  0% {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes gx-ping {
+  0% {
+    opacity: 0.95;
+    transform: scale(0.5);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.1);
+  }
+}

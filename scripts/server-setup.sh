@@ -249,6 +249,10 @@ start_stack() {
     mediamtx) docker compose --project-directory "$DIR" -f "$DIR/docker-compose.yml" --profile ingest rm -sf ingest >/dev/null 2>&1 || true ;;
     nginx-rtmp) docker compose --project-directory "$DIR" -f "$DIR/docker-compose.yml" --profile mediamtx rm -sf mediamtx >/dev/null 2>&1 || true ;;
   esac
+  # The demo stream only runs while the demo is on.
+  if [ "$(env_get SLOT1_DEMO)" != "true" ]; then
+    docker compose --project-directory "$DIR" -f "$DIR/docker-compose.yml" --profile demo rm -sf demo >/dev/null 2>&1 || true
+  fi
   say "Building SLOT1 (the first build takes about 5 to 15 minutes)"
   # The API image builds the shared stages once; the worker, inference and web images reuse them.
   compose build api
@@ -451,10 +455,13 @@ cmd_demo() {
     on)
       ensure_env_defaults
       env_set SLOT1_DEMO true
-      # The API creates the demo channel on startup, so it goes first; then the stream starts.
+      say "Preparing the demo stream"
+      # Same image target as the worker, so this mostly comes from the build cache.
+      compose build demo
+      # The API creates the demo channel (and stores the key's hash) on startup: it goes first.
       restart_apps
       say "Starting the demo stream"
-      compose up -d --build demo
+      compose up -d demo
       note "Demo is on: $(env_get SLOT1_PUBLIC_ORIGIN)/demo (give it about 30 seconds)"
       note "Remove it later with: slot1 demo off"
       ;;
