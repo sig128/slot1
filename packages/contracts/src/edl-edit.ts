@@ -322,8 +322,10 @@ export function insertSegment(edl: Edl, seg: EdlSegment, afterIndex: number): Ed
 export function instantReplay(edl: Edl, atMs: number, lengthMs = 2500, speed = 0.5): { edl: Edl; note: string } | null {
   const split = splitSegmentAt(edl, atMs);
   const base = split?.edl ?? edl;
-  const { index, sourceMs } = edlLocate(base, Math.max(0, atMs - 1));
+  // The replay goes right after the moment: after the split's left half, or the segment there.
+  const index = split ? base.segments.findIndex((x) => x.id === split.leftId) : edlLocate(base, atMs).index;
   const s = base.segments[index]!;
+  const sourceMs = split ? s.outMs : edlLocate(base, atMs).sourceMs;
   const inMs = Math.max(0, sourceMs - lengthMs);
   if (sourceMs - inMs < 600 || base.segments.length >= 20) return null;
   const replay: EdlSegment = { ...s, id: edlId("r"), inMs, outMs: sourceMs, speed, rampTo: null, keys: keysWithin(s, inMs, sourceMs).filter((k) => k.atMs >= inMs && k.atMs <= sourceMs), transitionIn: { kind: "flash", durationMs: 250 } };

@@ -35,7 +35,14 @@ export function MediaTile({ item, size = "md" }: { item: LibraryItemView; size?:
 /** The item itself: a player for video, the full image for screenshots, Twitch's player for clips. */
 export function MediaPlayer({ item, twitchEmbed, startAtMs = null }: { item: LibraryItemView; twitchEmbed: string | null; startAtMs?: number | null }) {
   const portrait = Boolean(item.width && item.height && item.height > item.width);
-  if (item.kind === "screenshot" && item.url) {
+  if (item.format === "audio" && item.url) {
+    return (
+      <div className="bg-graphite-800 p-6">
+        <audio controls preload="metadata" src={item.url} aria-label={item.title} className="w-full" />
+      </div>
+    );
+  }
+  if ((item.kind === "screenshot" || item.kind === "thumbnail" || item.format === "gif") && item.url) {
     return (
       <a href={item.url} className="block bg-black" aria-label={`Open ${item.title} at full size`}>
         {/* The screenshot at full resolution, unfiltered. */}

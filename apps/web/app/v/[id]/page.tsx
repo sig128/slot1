@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const origin = await publicOrigin();
   const hasPoster = Boolean(item.posterUrl) && item.visibility !== "private";
   const images = hasPoster ? [{ url: `${origin}/api/library/${item.id}/poster`, width: item.width ?? undefined, height: item.height ?? undefined, alt: item.title }] : [];
-  const video = item.kind !== "screenshot" && item.kind !== "twitch_clip";
+  const video = item.kind !== "screenshot" && item.kind !== "twitch_clip" && item.kind !== "thumbnail" && item.format === "mp4";
   return pageMetadata({
     title: `${item.title} by ${channel.displayName}`,
     description: describe(item, channel),

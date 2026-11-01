@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { formatMediaTime, type LibraryItemView, type LibraryResponse, type LibraryVisibility } from "@slot1/contracts";
+import { EXPORT_PRESETS, formatMediaTime, type ExportFormat, type ExportPresetId, type LibraryItemView, type LibraryResponse, type LibraryVisibility } from "@slot1/contracts";
 import { ShareFilePanel } from "@/components/clipper/ShareClip";
 import { Toggle } from "@/components/ui/Toggle";
 import { api, ApiError } from "@/lib/api";
@@ -24,7 +24,7 @@ const RETENTION_DAYS = [1, 3, 7, 14, 30, 60, 90, 180, 365];
 function matches(i: LibraryItemView, f: Filter): boolean {
   if (f === "all") return true;
   if (f === "recordings") return i.kind === "recording";
-  if (f === "screenshots") return i.kind === "screenshot";
+  if (f === "screenshots") return i.kind === "screenshot" || i.kind === "thumbnail";
   // Clips: Twitch clips, rendered clip exports and SLOT1's own auto clips.
   if (f === "clips") return i.kind === "twitch_clip" || i.kind === "clip_export" || (i.kind === "render" && i.auto);
   return i.kind === "render" && !i.auto;
@@ -236,6 +236,7 @@ export function LibrarySection({ ctx }: { ctx: StudioCtx }) {
                   {p.title}
                 </Link>
                 <span className={`chip ${p.origin === "auto" ? "chip-replay" : "chip-muted"}`}>{p.origin === "auto" ? "Auto clip" : "Edit"}</span>
+                <BatchExport projectId={p.id} title={p.title} onStarted={() => void load()} />
                 <span className="tnum text-[0.8rem] text-ivory-3" suppressHydrationWarning>
                   {p.segments} segment{p.segments === 1 ? "" : "s"}, {relativeAge(p.updatedAt)}
                 </span>
@@ -255,6 +256,77 @@ export function LibrarySection({ ctx }: { ctx: StudioCtx }) {
           </ul>
         )}
       </section>
+    </div>
+  );
+}
+
+const BATCH: ExportPresetId[] = ["tiktok", "shorts", "reels", "x", "youtube"];
+
+/** Export one edit for several platforms at once (one library item per platform). */
+function BatchExport({ projectId, title, onStarted }: { projectId: string; title: string; onStarted: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [chosen, setChosen] = useState<ExportPresetId[]>(["tiktok", "shorts", "reels"]);
+  const [format, setFormat] = useState<ExportFormat>("mp4");
+  const [msg, setMsg] = useState<{ text: string; error: boolean } | null>(null);
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="w-full sm:w-auto">
+      <button type="button" className="btn btn-ghost btn-sm" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        Export for…<span className="sr-only"> {title}</span>
+      </button>
+      {open && (
+        <div className="mt-2 border hairline p-3">
+          <fieldset>
+            <legend className="label">Platforms</legend>
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+              {BATCH.map((p) => (
+                <label key={p} className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" className="accent-[#ffad72]" checked={chosen.includes(p)} onChange={(e) => setChosen((l) => (e.target.checked ? [...l, p] : l.filter((x) => x !== p)))} />
+                  {EXPORT_PRESETS[p].label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <div className="mt-2 flex flex-wrap items-end gap-2">
+            <div>
+              <label htmlFor={`bf-${projectId}`} className="label">
+                File type
+              </label>
+              <select id={`bf-${projectId}`} className="field h-8 w-auto py-0 text-[0.85rem]" value={format} onChange={(e) => setFormat(e.target.value as ExportFormat)}>
+                <option value="mp4">Video (MP4)</option>
+                <option value="gif">GIF</option>
+                <option value="audio">Audio only</option>
+              </select>
+            </div>
+            <button
+              type="button"
+              className="btn btn-coral btn-sm"
+              disabled={busy || chosen.length === 0}
+              onClick={async () => {
+                setBusy(true);
+                setMsg(null);
+                try {
+                  const r = await api<{ items: LibraryItemView[] }>(`/api/projects/${projectId}/exports`, { method: "POST", json: { presets: chosen, format } });
+                  setMsg({ text: `${r.items.length} export${r.items.length === 1 ? "" : "s"} started; they appear in your library.`, error: false });
+                  onStarted();
+                } catch (err) {
+                  setMsg({ text: err instanceof ApiError ? `${err.message}${err.requirement ? `. ${err.requirement}` : ""}` : "Couldn't start the exports", error: true });
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              {busy ? "Starting" : `Export ${chosen.length}`}
+            </button>
+          </div>
+          {msg && (
+            <p role={msg.error ? "alert" : "status"} className={`mt-2 text-[0.8rem] ${msg.error ? "text-coral" : "text-ivory-2"}`}>
+              {msg.text}
+            </p>
+          )}
+          <p className="mt-1 text-[0.72rem] text-ivory-3">Platform length limits are their published ones as of 2025 and can change.</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -328,8 +400,8 @@ function LibraryCard({
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
   const ready = i.status === "ready";
-  const isVideo = i.kind !== "screenshot" && i.kind !== "twitch_clip";
-  const ext = i.kind === "screenshot" ? "jpg" : "mp4";
+  const isVideo = i.kind !== "screenshot" && i.kind !== "twitch_clip" && i.kind !== "thumbnail" && i.format === "mp4";
+  const ext = i.kind === "screenshot" ? "jpg" : i.format === "png" ? "png" : i.format === "gif" ? "gif" : i.format === "audio" ? "m4a" : "mp4";
   const fileName = `${i.title.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-").slice(0, 60) || "slot1"}.${ext}`;
   const openHref = i.kind === "twitch_clip" ? (i.externalUrl ?? i.viewPath) : ownerOpenPath(i);
   const external = i.kind === "twitch_clip" && Boolean(i.externalUrl);
@@ -351,7 +423,11 @@ function LibraryCard({
         ) : (
           <div className="grid h-full place-items-center text-sm text-ivory-3">{i.kind === "twitch_clip" ? "Clip on Twitch" : ready ? "No preview" : ""}</div>
         )}
-        <span className="chip absolute left-2 top-2 bg-graphite-900/85">{itemKindLabel(i)}</span>
+        <span className="chip absolute left-2 top-2 bg-graphite-900/85">
+          {itemKindLabel(i)}
+          {i.preset && i.preset !== "original" ? ` · ${EXPORT_PRESETS[i.preset].label}` : ""}
+          {i.format === "gif" ? " · GIF" : i.format === "audio" ? " · Audio" : ""}
+        </span>
         {i.durationMs ? <span className="tnum absolute bottom-2 right-2 bg-graphite-900/85 px-1.5 text-[0.78rem]">{formatMediaTime(i.durationMs)}</span> : null}
         {i.status === "processing" && (
           <div className="absolute inset-x-0 bottom-0 bg-graphite-900/85 px-3 py-2">

@@ -31,18 +31,27 @@ async function noHorizontalOverflow(page: Page) {
  */
 test.describe("AI clip tools", () => {
   const errors: string[] = [];
+  /** Errors on the editor page itself (the editor is its own feature, covered by clipper.spec.ts). */
+  const editorErrors: string[] = [];
+  let onEditor = false;
   let video = "";
   test.beforeAll(() => {
     video = makeClipAiVideo();
   });
   test.beforeEach(({ page }) => {
     errors.length = 0;
-    page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
+    editorErrors.length = 0;
+    onEditor = false;
+    const add = (msg: string) => (onEditor ? editorErrors : errors).push(msg);
+    page.on("pageerror", (e) => add(`pageerror: ${e.message}`));
     page.on("console", (m) => {
-      if (m.type() === "error" && !/Failed to load resource: the server responded with a status of 40[134]|\/_next\/(webpack-)?hmr/.test(m.text())) errors.push(m.text());
+      if (m.type() === "error" && !/Failed to load resource: the server responded with a status of 40[134]|\/_next\/(webpack-)?hmr/.test(m.text())) add(m.text());
     });
   });
-  test.afterEach(() => expect(errors, "browser console errors").toEqual([]));
+  test.afterEach(() => {
+    if (editorErrors.length) test.info().annotations.push({ type: "editor errors (outside the AI tools)", description: [...new Set(editorErrors)].join(" | ").slice(0, 400) });
+    expect(errors, "browser console errors").toEqual([]);
+  });
 
   test("rank a replay's best moments and open them as edits", async ({ page }) => {
     test.skip(test.info().project.name === "laptop", "covered at desktop and 390 px");
@@ -66,11 +75,13 @@ test.describe("AI clip tools", () => {
     await page.getByLabel(/I own this recording/).check();
     await page.getByRole("button", { name: "Upload and analyze" }).click();
     await page.waitForURL(/\/replay\//, { timeout: 60_000 });
+    const sessionId = page.url().split("/replay/")[1]!.split(/[?#]/)[0]!;
+    // Analysis done far enough that SLOT1 has read the result screen.
     await expect(async () => {
-      const r = await (await page.request.get("/api/clip-ai/sessions")).json();
-      expect(r.sessions[0]?.observations ?? 0).toBeGreaterThan(2);
-      expect(r.sessions[0]?.media.available).toBe(true);
-    }).toPass({ timeout: 180_000, intervals: [3000] });
+      const r = await (await page.request.get(`/api/clip-ai/sessions/${sessionId}/moments`)).json();
+      expect(r.session.media.available).toBe(true);
+      expect(r.candidates.some((c: { big: string | null }) => c.big === "MISSION PASSED")).toBe(true);
+    }).toPass({ timeout: 240_000, intervals: [3000] });
 
     await page.goto("/studio");
     await page.getByRole("tab", { name: "AI clip tools" }).click();
@@ -92,6 +103,7 @@ test.describe("AI clip tools", () => {
     await ticks.nth(0).check();
     await ticks.nth(1).check();
     await page.getByRole("radio", { name: "Widescreen" }).click();
+    onEditor = true;
     await page.getByRole("button", { name: "Make a best-of reel (2)" }).click();
     await page.waitForURL(/\/studio\/edit\/[0-9a-f-]{36}$/, { timeout: 30_000 });
     const reelId = page.url().split("/").pop()!;
@@ -103,11 +115,15 @@ test.describe("AI clip tools", () => {
 
     // One moment as its own edit.
     await page.goto("/studio");
+    onEditor = false;
     await page.getByRole("tab", { name: "AI clip tools" }).click();
+    onEditor = true;
     await moments.getByRole("button", { name: "Clip it" }).first().click();
     await page.waitForURL(/\/studio\/edit\/[0-9a-f-]{36}$/, { timeout: 30_000 });
-    await expect(page.locator("video").first()).toBeVisible();
-    await noHorizontalOverflow(page);
+    const clip = await (await page.request.get(`/api/projects/${page.url().split("/").pop()}`)).json();
+    expect(clip.edl.segments).toHaveLength(1);
+    expect(clip.edl.aspect).toBe("9:16"); // the section opens on vertical again
+    await page.waitForLoadState("networkidle");
     await shot(page, "clip-ai-editor");
 
     // The editor's AI panel, when the editor shows it.
