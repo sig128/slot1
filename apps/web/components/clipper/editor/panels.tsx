@@ -51,6 +51,7 @@ export function placeMedia(
     ctx.announce(`${item.name} added at ${editTime(at)}`);
     return;
   }
+  if (item.ref.kind === "session") return;
   const full = item.visual === "frame" || item.visual === "overlay" || item.visual === "transition";
   const len = Math.max(200, Math.min(room, item.visual === "frame" ? room : (item.durationMs ?? 3000)));
   const ov: OverlayItem = { type: "image", id: edlId("i"), startMs: at, endMs: at + len, x: 0.5, y: full ? 0.5 : 0.62, scale: 1, rotation: 0, opacity: 1, keys: [], source: item.ref, widthPct: full ? 1 : 0.32 };

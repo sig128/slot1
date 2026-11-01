@@ -43,7 +43,14 @@ describe("Studio editor: timelines, media bin and filmstrips", () => {
   let projectId = "";
 
   const vertical = (): EdlInput => ({ version: 1, aspect: "9:16", segments: [{ id: "a", sessionId, inMs: 2000, outMs: 6000 }], markers: [{ id: "m1", atMs: 1000, label: "the jump", color: "gold" }] });
-  const wide = (): EdlInput => ({ version: 1, aspect: "16:9", segments: [{ id: "a", sessionId, inMs: 2000, outMs: 5000 }], effects: [{ id: "f", kind: "shake", startMs: 500, endMs: 1500, enabled: false }] });
+  // The widescreen cut plays V1's sound from a detached audio clip.
+  const wide = (): EdlInput => ({
+    version: 1,
+    aspect: "16:9",
+    segments: [{ id: "a", sessionId, inMs: 2000, outMs: 5000, volume: 0 }],
+    effects: [{ id: "f", kind: "shake", startMs: 500, endMs: 1500, enabled: false }],
+    audioTracks: [{ id: "d", name: "Detached audio", kind: "voice", clips: [{ id: "c", source: { kind: "session", sessionId }, startMs: 0, offsetMs: 2000, durationMs: 3000, link: "a" }] }],
+  });
 
   beforeAll(async () => {
     if (!existsSync(SAMPLE)) execFileSync("bash", [path.join(ROOT, "scripts/make-sample-video.sh")], { stdio: "ignore" });
@@ -91,6 +98,8 @@ describe("Studio editor: timelines, media bin and filmstrips", () => {
     // Someone else's video in a second timeline, a duplicate id, or the reserved id: refused.
     const theirs = { ...wide(), segments: [{ id: "a", sessionId: strangerSession, inMs: 0, outMs: 3000 }] };
     expect((await creator.request("PATCH", `/api/projects/${projectId}`, { json: { sequences: { extra: [{ id: "x", name: "Sneaky", edl: theirs }] } } })).status).toBe(404);
+    const theirSound = { ...wide(), audioTracks: [{ id: "d", clips: [{ id: "c", source: { kind: "session", sessionId: strangerSession }, startMs: 0, durationMs: 1000 }] }] };
+    expect((await creator.request("PATCH", `/api/projects/${projectId}`, { json: { edl: theirSound } })).status).toBe(404);
     expect((await creator.request("PATCH", `/api/projects/${projectId}`, { json: { sequences: { extra: [{ id: "w", name: "A", edl: wide() }, { id: "w", name: "B", edl: wide() }] } } })).status).toBe(400);
     expect((await creator.request("PATCH", `/api/projects/${projectId}`, { json: { sequences: { extra: [{ id: "main", name: "A", edl: wide() }] } } })).status).toBe(400);
     // A save of the title alone keeps the timelines.
@@ -110,6 +119,9 @@ describe("Studio editor: timelines, media bin and filmstrips", () => {
     const p = probe(await assetFile(h, row.asset_id));
     expect(p).toMatchObject({ video: "h264", width: 1920, height: 1080 });
     expect(Math.abs(p.durationMs - 3000)).toBeLessThan(250);
+    // The detached sound plays (the V1 clip itself is silent).
+    const level = execFileSync("bash", ["-c", `ffmpeg -hide_banner -i '${await assetFile(h, row.asset_id)}' -af volumedetect -f null - 2>&1 | grep mean_volume`]).toString();
+    expect(Number(/mean_volume:\s*(-?[\d.]+) dB/.exec(level)?.[1])).toBeGreaterThan(-40);
     expect((await creator.request("POST", `/api/projects/${projectId}/render`, { json: { sequences: ["gone"] } })).status).toBe(404);
     expect((await creator.request("POST", `/api/projects/${projectId}/render`, { json: { sequences: ["main", "wide"] } })).status).toBe(400);
   }, LONG);

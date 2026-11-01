@@ -1,5 +1,6 @@
 import {
   EDL_LIMITS,
+  type AudioClip,
   EDL_MAX_MS,
   edlDurationMs,
   MAIN_SEQUENCE_ID,
@@ -566,6 +567,79 @@ export function insertSourceClip(
   };
   next = withSegments(next, [...next.segments.slice(0, at), seg, ...next.segments.slice(at)]);
   return { edl: next, ref: { kind: "segment", id: seg.id }, note: len < src.outMs - src.inMs ? "Added the part that fits (an edit is at most 30 minutes)" : "Added to V1" };
+}
+
+/* -------------------------------------- detached audio ------------------------------------- */
+
+export const DETACHED_TRACK_NAME = "Detached audio";
+
+/** Why a V1 clip's sound can't be detached, or null when it can. */
+export function detachProblem(edl: Edl, segId: string): string | null {
+  const s = edl.segments.find((x) => x.id === segId);
+  if (!s) return "That clip isn't on V1";
+  if (s.runId) return "Detach the sound after the recording is finished";
+  if (s.speed !== 1 || (s.rampTo !== null && s.rampTo !== 1)) return "Detach audio works on clips at normal speed";
+  if (s.volume === 0) return "This clip's sound is already off (detached or muted)";
+  return null;
+}
+
+/**
+ * Detach a V1 clip's sound: it moves to an audio track as its own clip (same time, same part
+ * of the video), and the V1 clip goes quiet. The sound can then be moved and trimmed on its
+ * own, for J and L cuts. It no longer gets the game-audio clean-up (denoise, voice boost).
+ */
+export function detachAudio(edl: Edl, segId: string): { edl: Edl; ref: TimelineRef } | null {
+  if (detachProblem(edl, segId)) return null;
+  const i = edl.segments.findIndex((x) => x.id === segId);
+  const s = edl.segments[i]!;
+  const startMs = Math.round(segmentStartsMs(edl)[i]!);
+  const durationMs = Math.round(segmentOutputMs(s));
+  const free = (t: AudioTrack) => !t.locked && t.clips.length < EDL_LIMITS.audioClips && t.clips.every((c) => c.startMs + c.durationMs <= startMs || c.startMs >= startMs + durationMs);
+  let next = edl;
+  let track = next.audioTracks.find((t) => t.name === DETACHED_TRACK_NAME && free(t));
+  if (!track) {
+    const added = addTrack(next, "audio", "voice");
+    if (!added) return null;
+    next = renameTrack(added.edl, added.key, DETACHED_TRACK_NAME);
+    next = { ...next, audioTracks: next.audioTracks.map((t) => (`au:${t.id}` === added.key ? { ...t, duck: false } : t)) };
+    track = next.audioTracks.find((t) => `au:${t.id}` === added.key)!;
+  }
+  const clip: AudioClip = {
+    id: edlId("c"),
+    source: { kind: "session", sessionId: s.sessionId },
+    startMs,
+    offsetMs: s.inMs,
+    durationMs,
+    volume: Math.min(2, Math.round(s.volume * edl.volume * 100) / 100),
+    fadeInMs: 0,
+    fadeOutMs: 0,
+    loop: false,
+    envelope: [],
+    link: s.id,
+  };
+  const tid = track.id;
+  return {
+    edl: {
+      ...next,
+      segments: next.segments.map((x) => (x.id === s.id ? { ...x, volume: 0 } : x)),
+      audioTracks: next.audioTracks.map((t) => (t.id === tid ? { ...t, clips: [...t.clips, clip] } : t)),
+    },
+    ref: { kind: "audio", trackId: tid, id: clip.id },
+  };
+}
+
+/** Put a detached sound back on its V1 clip (the audio clip goes away). */
+export function relinkAudio(edl: Edl, trackId: string, clipId: string): Edl | null {
+  const c = edl.audioTracks.find((t) => t.id === trackId)?.clips.find((x) => x.id === clipId);
+  if (!c?.link || c.source.kind !== "session") return null;
+  const seg = edl.segments.find((s) => s.id === c.link);
+  if (!seg) return null;
+  const volume = Math.min(2, Math.max(0, Math.round((c.volume / Math.max(0.01, edl.volume)) * 100) / 100));
+  return {
+    ...edl,
+    segments: edl.segments.map((s) => (s.id === seg.id ? { ...s, volume } : s)),
+    audioTracks: edl.audioTracks.map((t) => (t.id === trackId ? { ...t, clips: t.clips.filter((x) => x.id !== clipId) } : t)),
+  };
 }
 
 /* ----------------------------------------- markers ----------------------------------------- */

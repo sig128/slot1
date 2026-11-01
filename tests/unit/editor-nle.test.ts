@@ -7,6 +7,8 @@ import {
   closeGaps,
   copyRefs,
   deleteRefs,
+  detachAudio,
+  detachProblem,
   docEdl,
   docSequences,
   duplicateRefs,
@@ -31,6 +33,7 @@ import {
   readSequences,
   refSpan,
   refsInRange,
+  relinkAudio,
   removeMarker,
   removeSequence,
   removeTrack,
@@ -269,6 +272,36 @@ describe("copy, paste, duplicate, nudge and select", () => {
       { kind: "segment", id: "a" },
     ]);
     expect(trackRefs(e0, "ov:o")).toHaveLength(2);
+  });
+});
+
+describe("detached audio", () => {
+  it("moves a V1 clip's sound to its own track and back", () => {
+    const e0 = edlOf({ volume: 0.8 });
+    const r = detachAudio(e0, "b")!;
+    expect(r.edl.segments[1]!.volume).toBe(0);
+    const tr = r.edl.audioTracks.at(-1)!;
+    expect(tr.name).toBe("Detached audio");
+    expect(tr.clips[0]).toMatchObject({ source: { kind: "session", sessionId: S }, startMs: 5000, offsetMs: 20_000, durationMs: 4000, volume: 0.8, link: "b" });
+    expect(valid(r.edl)).toBe(true);
+    // A second detach reuses the track when it fits.
+    const r2 = detachAudio(r.edl, "a")!;
+    expect(r2.edl.audioTracks).toHaveLength(1);
+    expect(r2.edl.audioTracks[0]!.clips).toHaveLength(2);
+    const back = relinkAudio(r2.edl, tr.id, tr.clips[0]!.id)!;
+    expect(back.segments[1]!.volume).toBe(1);
+    expect(back.audioTracks[0]!.clips.map((c) => c.link)).toEqual(["a"]);
+    expect(detachProblem(r.edl, "b")).toMatch(/already off/);
+    expect(detachProblem(edlOf({ segments: [seg("a", 0, 4000, { speed: 2 })] }), "a")).toMatch(/normal speed/);
+  });
+
+  it("renders the detached sound from the video file", () => {
+    const r = detachAudio(edlOf(), "a")!;
+    const media = [0, 1].map(() => ({ path: "/media/rec.mp4", offsetMs: 0, width: 1920, height: 1080, hasAudio: true }));
+    const plan = buildEdlRender({ edl: r.edl, media, output: "/tmp/o.mp4", workDir: "/tmp", fonts: { poster: null, caption: null }, refs: { [`session:${S}`]: { path: "/media/rec.mp4", kind: "audio", durationMs: 60_000 } } });
+    expect(plan.args.filter((a) => a === "/media/rec.mp4").length).toBeGreaterThanOrEqual(3);
+    // An image overlay can't point at a video's sound.
+    expect(Edl.safeParse({ ...r.edl, overlays: [{ id: "o", items: [{ type: "image", id: "i", startMs: 0, endMs: 1000, source: { kind: "session", sessionId: S } }] }] }).success).toBe(false);
   });
 });
 

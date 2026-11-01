@@ -100,6 +100,7 @@ async function assertEdlOwned(ctx: ServerContext, b: BroadcasterRow, edl: Edl) {
   // Hidden tracks too: they come back into the render as soon as they're shown.
   for (const t of edl.overlays) for (const it of t.items) if (it.type === "pip") await ownedSession(ctx, b, it.sessionId);
   for (const r of needs.refs) {
+    if (r.kind === "session") await ownedSession(ctx, b, r.sessionId);
     if (r.kind !== "upload") continue;
     const m = await getProjectMedia(ctx.db, r.assetId);
     if (!m || m.broadcaster_id !== b.id) throw badRequest("This edit uses an uploaded file that doesn't exist", "Upload it again, or remove it from the edit");
@@ -123,6 +124,9 @@ async function assertRenderable(ctx: ServerContext, b: BroadcasterRow, edl: Edl)
   for (const r of needs.refs) {
     if (r.kind === "library") {
       if (!resolveStudioAsset(r.assetId)) throw conflict(`This edit uses a Studio library item that isn't available on this server: ${r.assetId}`, "Remove it from the edit");
+    } else if (r.kind === "session") {
+      const session = await getSession(ctx.db, r.sessionId);
+      if (!session || session.broadcaster_id !== b.id || !(await playbackFor(ctx, session))) throw conflict("A detached sound's video is no longer stored", "Remove that audio clip from the edit");
     } else {
       const m = await getProjectMedia(ctx.db, r.assetId);
       if (!m || m.broadcaster_id !== b.id) throw conflict("An uploaded file this edit uses was deleted", "Upload it again, or remove it from the edit");

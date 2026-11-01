@@ -1055,6 +1055,7 @@ export function Timeline(p: Props) {
             >
               {ticks}
               <span aria-hidden className="nle-ruler-end" style={{ left: x(total) }} />
+              <span aria-hidden className="nle-ph-head" style={{ left: phX }} />
               {hasRange && (
                 <span aria-hidden className="nle-range-bar" style={{ left: x(ra), width: Math.max(2, x(rb - ra)) }}>
                   {rIn !== null && <span className="nle-range-h nle-range-in" onPointerDown={(e) => rangeHandle("inMs", e)} />}

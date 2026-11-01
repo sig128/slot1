@@ -20,22 +20,31 @@ async function noHorizontalOverflow(page: Page) {
   expect(overflow, "page scrolls sideways").toBeLessThanOrEqual(1);
 }
 
-/** A signed-in creator with two analysed uploads and an edit of the first; returns the edit's URL. */
+/** One signed-in creator with two analysed uploads, shared by the tests in this file (uploads are rate limited). */
+let shared: { cookies: Awaited<ReturnType<ReturnType<Page["context"]>["cookies"]>>; first: string; second: string } | null = null;
+
+/** A fresh edit of the first upload; returns its URL and the second upload's session. */
 async function setup(page: Page, name: string): Promise<{ url: string; second: string }> {
   await page.goto("/");
   const csrf = async () => (await (await page.request.get("/api/me")).json()).csrfToken as string;
-  expect((await page.request.post("/api/auth/local", { data: { displayName: name }, headers: { "x-slot1-csrf": await csrf() } })).ok()).toBe(true);
-  const token = await csrf();
-  const upload = async (title: string) => {
-    const r = await page.request.post("/api/uploads", { headers: { "x-slot1-csrf": token }, multipart: { title, rightsConfirmed: "true", file: { name: "run.mp4", mimeType: "video/mp4", buffer: readFileSync(SAMPLE) } } });
-    expect(r.ok()).toBe(true);
-    return ((await r.json()) as { sessionId: string }).sessionId;
-  };
-  const first = await upload("Docks run");
-  const second = await upload("Airport heist");
-  await expect.poll(async () => ((await (await page.request.get("/api/editor/sources")).json()).sources ?? []).length, { timeout: 120_000 }).toBe(2);
-  const p = await page.request.post("/api/projects", { headers: { "x-slot1-csrf": token }, data: { sessionId: first, inMs: 20_000, outMs: 32_000, title: "Docks run, the jump" } });
-  return { url: `/studio/edit/${((await p.json()) as { id: string }).id}`, second };
+  if (!shared) {
+    expect((await page.request.post("/api/auth/local", { data: { displayName: name }, headers: { "x-slot1-csrf": await csrf() } })).ok()).toBe(true);
+    const token = await csrf();
+    const upload = async (title: string) => {
+      const r = await page.request.post("/api/uploads", { headers: { "x-slot1-csrf": token }, multipart: { title, rightsConfirmed: "true", file: { name: "run.mp4", mimeType: "video/mp4", buffer: readFileSync(SAMPLE) } } });
+      expect(r.ok(), await r.text()).toBe(true);
+      return ((await r.json()) as { sessionId: string }).sessionId;
+    };
+    const first = await upload("Docks run");
+    const second = await upload("Airport heist");
+    await expect.poll(async () => ((await (await page.request.get("/api/editor/sources")).json()).sources ?? []).length, { timeout: 120_000 }).toBe(2);
+    shared = { cookies: await page.context().cookies(), first, second };
+  } else {
+    await page.context().addCookies(shared.cookies);
+  }
+  const p = await page.request.post("/api/projects", { headers: { "x-slot1-csrf": await csrf() }, data: { sessionId: shared.first, inMs: 20_000, outMs: 32_000, title: "Docks run, the jump" } });
+  expect(p.ok()).toBe(true);
+  return { url: `/studio/edit/${((await p.json()) as { id: string }).id}`, second: shared.second };
 }
 
 for (const width of [1440, 1024]) {

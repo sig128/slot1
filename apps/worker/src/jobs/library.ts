@@ -419,6 +419,14 @@ export async function renderProject(ctx: ServerContext, data: { itemId: string; 
         const ext = path.extname(found.path).toLowerCase();
         const audio = found.asset.kind === "sfx" || found.asset.kind === "music" || found.asset.kind === "ambience";
         refs[refKey(r)] = { path: found.path, kind: audio ? "audio" : [".png", ".jpg", ".jpeg", ".webp"].includes(ext) ? "image" : "video", durationMs: found.asset.durationMs ?? null };
+      } else if (r.kind === "session") {
+        // Detached audio: the sound of one of the creator's stored videos.
+        const session = await getSession(ctx.db, r.sessionId);
+        if (!session || session.broadcaster_id !== project.broadcaster_id) throw new UnrecoverableError("A detached sound's video no longer exists");
+        if (!stored.has(r.sessionId)) stored.set(r.sessionId, await storedMediaFor(ctx, r.sessionId));
+        const sm = stored.get(r.sessionId);
+        if (!sm) throw new UnrecoverableError("A detached sound's video is no longer stored");
+        refs[refKey(r)] = { path: sm.input, kind: "audio", durationMs: sm.probe.durationMs ?? null };
       } else {
         const m = await getProjectMedia(ctx.db, r.assetId);
         if (!m || m.broadcaster_id !== project.broadcaster_id) throw new UnrecoverableError("An uploaded file this edit uses was deleted");

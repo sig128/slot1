@@ -9,6 +9,7 @@ import {
   type AudioClip,
   type EdlInput,
   type EdlSegment,
+  type MediaRef,
   type OverlayItem,
 } from "./clipper";
 import { SessionKind, SourceLabel } from "./enums";
@@ -446,7 +447,13 @@ export function edlLibraryRefs(edl: Edl): { assetId: string; atMs: number; where
  */
 export function stripUnknownAssets(edl: Edl, knownLibrary: ReadonlySet<string>, allowedUploads: ReadonlySet<string>): { edl: Edl; removed: string[] } {
   const removed: string[] = [];
-  const ok = (src: { kind: "library" | "upload"; assetId: string }) => {
+  // Detached sound of the edit's own videos is kept: the edit already uses those sessions.
+  const used = new Set(edl.segments.map((s) => s.sessionId));
+  const ok = (src: MediaRef) => {
+    if (src.kind === "session") {
+      if (!used.has(src.sessionId)) removed.push("a video's sound the edit doesn't use");
+      return used.has(src.sessionId);
+    }
     const good = src.kind === "library" ? knownLibrary.has(src.assetId) : allowedUploads.has(src.assetId);
     if (!good) removed.push(src.kind === "library" ? `library item “${src.assetId}”` : "an uploaded file the edit didn't use");
     return good;
@@ -586,7 +593,7 @@ const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringif
 export function describeEdlChanges(before: Edl, after: Edl, assetName: (id: string) => string | null = () => null): string[] {
   const out: string[] = [];
   const libName = (id: string) => `“${assetName(id) ?? id}”`;
-  const sound = (src: { kind: string; assetId: string }) => (src.kind === "library" ? `sound ${libName(src.assetId)}` : "an uploaded sound");
+  const sound = (src: MediaRef) => (src.kind === "library" ? `sound ${libName(src.assetId)}` : src.kind === "session" ? "a video's own sound" : "an uploaded sound");
   const lenA = edlDurationMs(before);
   const lenB = edlDurationMs(after);
   if (Math.abs(lenA - lenB) >= 100) out.push(`Length ${clipTime(lenA)} → ${clipTime(lenB)}`);

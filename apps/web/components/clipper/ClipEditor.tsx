@@ -11,6 +11,8 @@ import {
   copyRefs,
   docSequences,
   deleteRefs,
+  detachAudio,
+  detachProblem,
   duplicateRefs,
   Edl,
   edlDurationMs,
@@ -30,6 +32,7 @@ import {
   ProjectSequences,
   razorAll,
   refKeyOf,
+  relinkAudio,
   refSpan,
   removeMarker,
   removeSequence,
@@ -253,12 +256,21 @@ export function ClipEditor({ initial }: { initial: ProjectView }) {
   /* ------------------------------------------ saving ---------------------------------------- */
 
   const dirty = project.rev > 0 || titleRev > 0;
+  const docRef = useRef(project.doc);
+  useEffect(() => {
+    docRef.current = project.doc;
+  });
   const [savedRev, setSavedRev] = useState({ edl: 0, title: 0 });
+  // Timelines are only sent when they changed since the last save (most saves touch one edit).
+  const sentSeqs = useRef(project.doc.sequences);
   const doSave = useCallback(
     async (main: Edl, seqs: ProjectSequences, t: string): Promise<boolean> => {
       setSave("saving");
+      const raw = docRef.current.sequences;
+      const changed = raw !== sentSeqs.current;
       try {
-        const v = await api<ProjectView>(`/api/projects/${initial.id}`, { method: "PATCH", json: { title: t.trim() || initial.title, edl: main, sequences: seqs } });
+        const v = await api<ProjectView>(`/api/projects/${initial.id}`, { method: "PATCH", json: { title: t.trim() || initial.title, edl: main, ...(changed ? { sequences: seqs } : {}) } });
+        if (changed) sentSeqs.current = raw;
         setSave("saved");
         setSaved(v);
         setRenders((r) => mergeRenders(r, v.renders));
@@ -337,7 +349,10 @@ export function ClipEditor({ initial }: { initial: ProjectView }) {
   }, []);
 
   // Waveforms of the videos on this timeline (built once on the server, then cached).
-  const sessionIds = useMemo(() => [...new Set(edl.segments.map((s) => s.sessionId))], [edl.segments]);
+  const sessionIds = useMemo(
+    () => [...new Set([...edl.segments.map((s) => s.sessionId), ...edl.audioTracks.flatMap((t) => t.clips.flatMap((c) => (c.source.kind === "session" ? [c.source.sessionId] : [])))])],
+    [edl.segments, edl.audioTracks],
+  );
   const wavesAsked = useRef(new Set<string>());
   useEffect(() => {
     const load = (id: string, tries: number) => {
@@ -397,13 +412,23 @@ export function ClipEditor({ initial }: { initial: ProjectView }) {
         const kind = AUDIO_KINDS.includes(a.kind) ? "audio" : /\.(webm|mp4|mov)$/i.test(a.file) ? "video" : "image";
         return { url, kind, name: a.name };
       }
+      if (ref.kind === "session") {
+        const s = sourceOf(ref.sessionId);
+        return s?.playbackUrl ? { url: s.playbackUrl, kind: "audio", name: `${s.title} (sound)` } : null;
+      }
       const m = uploads.find((u) => u.id === ref.assetId);
       return m?.url ? { url: m.url, kind: m.kind === "audio" ? "audio" : "image", name: m.name } : null;
     },
-    [assetOf, library, uploads],
+    [assetOf, library, uploads, sourceOf],
   );
-  const refName = useCallback((ref: MediaRef) => (ref.kind === "library" ? (assetOf(ref.assetId)?.name ?? ref.assetId) : (uploads.find((u) => u.id === ref.assetId)?.name ?? "Uploaded file")), [assetOf, uploads]);
-  const refDurationMs = useCallback((ref: MediaRef) => (ref.kind === "library" ? (assetOf(ref.assetId)?.durationMs ?? null) : (uploads.find((u) => u.id === ref.assetId)?.durationMs ?? null)), [assetOf, uploads]);
+  const refName = useCallback(
+    (ref: MediaRef) => (ref.kind === "library" ? (assetOf(ref.assetId)?.name ?? ref.assetId) : ref.kind === "session" ? `${sourceOf(ref.sessionId)?.title ?? "Video"} (sound)` : (uploads.find((u) => u.id === ref.assetId)?.name ?? "Uploaded file")),
+    [assetOf, uploads, sourceOf],
+  );
+  const refDurationMs = useCallback(
+    (ref: MediaRef) => (ref.kind === "library" ? (assetOf(ref.assetId)?.durationMs ?? null) : ref.kind === "session" ? (dims(ref.sessionId).durationMs || null) : (uploads.find((u) => u.id === ref.assetId)?.durationMs ?? null)),
+    [assetOf, uploads, dims],
+  );
   const clipPeaks = useCallback(
     (ref: MediaRef) => {
       if (ref.kind === "library") {
@@ -411,9 +436,13 @@ export function ClipEditor({ initial }: { initial: ProjectView }) {
         const d = assetOf(ref.assetId)?.durationMs;
         return pk && d ? { peaks: pk, durationMs: d } : null;
       }
+      if (ref.kind === "session") {
+        const w = waves[ref.sessionId];
+        return w && w.status === "ready" && w.durationMs ? { peaks: w.peaks, durationMs: w.durationMs } : null;
+      }
       return uploadPeaks[ref.assetId] ?? null;
     },
-    [library, assetOf, uploadPeaks],
+    [library, assetOf, uploadPeaks, waves],
   );
   const peaksRequested = useRef(new Set<string>());
   useEffect(() => {
@@ -695,6 +724,7 @@ export function ClipEditor({ initial }: { initial: ProjectView }) {
   const clipMenu = (ref: TimelineRef, at: number): MenuEntry[] => {
     const fx = ref.kind === "effect" ? edl.effects.find((f) => f.id === ref.id) : undefined;
     const seg = ref.kind === "segment" ? edl.segments.find((s) => s.id === ref.id) : undefined;
+    const linked = ref.kind === "audio" ? edl.audioTracks.find((t) => t.id === ref.trackId)?.clips.find((c) => c.id === ref.id)?.link : undefined;
     return [
       { label: "Split here", onSelect: () => splitSel(at) },
       { label: "Split at playhead", hint: "Ctrl K", onSelect: () => splitSel(playhead) },
@@ -715,7 +745,31 @@ export function ClipEditor({ initial }: { initial: ProjectView }) {
                 requestAnimationFrame(() => seekSource(seg.inMs, seg.sessionId));
               },
             },
+            {
+              label: "Detach audio",
+              disabled: detachProblem(edl, seg.id) !== null,
+              onSelect: () => {
+                const r = detachAudio(edl, seg.id);
+                if (!r) return announce(detachProblem(edl, seg.id) ?? "Couldn't detach the sound");
+                apply(() => r.edl, "Detach audio");
+                select([r.ref]);
+                announce("The clip's sound is on its own track now. Move or trim it for J and L cuts");
+              },
+            },
             { label: seg.volume === 0 ? "Unmute clip audio" : "Mute clip audio", onSelect: () => apply((e) => ({ ...e, segments: e.segments.map((s) => (s.id === seg.id ? { ...s, volume: s.volume === 0 ? 1 : 0 } : s)) }), "Clip audio") },
+          ]
+        : []),
+      ...(linked && ref.kind === "audio"
+        ? [
+            {
+              label: "Put audio back on V1",
+              onSelect: () => {
+                const next = relinkAudio(edl, ref.trackId, ref.id);
+                if (!next) return announce("Its V1 clip is gone");
+                apply(() => next, "Put audio back");
+                select([{ kind: "segment", id: linked }]);
+              },
+            },
           ]
         : []),
       { label: "Inspector", onSelect: () => setTab(ref.kind === "effect" ? "effects" : "clip") },
@@ -1314,8 +1368,8 @@ export function ClipEditor({ initial }: { initial: ProjectView }) {
                 Extract
               </button>
               {(range.inMs !== null || range.outMs !== null) && (
-                <span className="nle-range-read tnum">
-                  In {timecode(range.inMs ?? 0, FPS)} · Out {timecode(range.outMs ?? total, FPS)}
+                <span className="nle-range-read tnum" title={`In ${timecode(range.inMs ?? 0, FPS)}, out ${timecode(range.outMs ?? total, FPS)}`}>
+                  {shortTc(range.inMs ?? 0)}–{shortTc(range.outMs ?? total)}
                   <button type="button" className="nle-tgl" aria-label="Clear in and out" onClick={() => setRange(NO_RANGE)}>
                     ×
                   </button>
@@ -1420,6 +1474,9 @@ export function ClipEditor({ initial }: { initial: ProjectView }) {
     </EditorContext.Provider>
   );
 }
+
+/** Timecode without the hours when there are none (for tight spots). */
+const shortTc = (ms: number) => timecode(ms, FPS).replace(/^00:/, "");
 
 /** Every timeline must be valid before the project saves. */
 function validateDoc(doc: ProjectDoc): { ok: true; main: Edl; sequences: ProjectSequences } | { ok: false; message: string } {

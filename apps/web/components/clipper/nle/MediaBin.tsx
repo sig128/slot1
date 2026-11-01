@@ -105,7 +105,7 @@ export function MediaBin(p: Props) {
 
   return (
     <section aria-label="Media" className="nle-bin">
-      <div role="tablist" aria-label="Media bin" className="nle-tabs">
+      <div role="tablist" aria-label="Media bin" className="nle-tabs nle-tabs-wrap">
         {TABS.map(([id, label]) => (
           <button key={id} type="button" role="tab" id={`bin-${id}`} aria-selected={tab === id} aria-controls={`binp-${id}`} onClick={() => setTab(id)}>
             {label}
