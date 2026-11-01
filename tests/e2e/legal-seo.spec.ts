@@ -82,8 +82,10 @@ test.describe("legal pages and search", () => {
   test("the home page explains SLOT1 to search engines and new visitors", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
-    await expect(page.getByRole("heading", { level: 2, name: "A broadcast companion that shows its evidence." })).toBeVisible();
-    await expect(page.getByRole("heading", { level: 2, name: "What’s in SLOT1" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "How it works" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "The GTA AI we’re building together" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "What you get" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Proof, not guesses" })).toBeVisible();
     await expect(page.getByRole("heading", { level: 3, name: "Instant replay" })).toBeVisible();
     // The FAQ opens like a disclosure and its answers are in the page for crawlers.
     const q = page.getByText("Does SLOT1 work with a PS5?");

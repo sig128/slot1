@@ -1,3 +1,4 @@
+import "./intro.css";
 import Link from "next/link";
 import type { EvidenceClass } from "@slot1/contracts";
 import { EVIDENCE_CLASS_LABEL } from "@slot1/contracts";
@@ -50,10 +51,9 @@ export function HomeLanding() {
   const stillAhead = gtaViStillAhead();
   return (
     <div className="border-t hairline">
-      <section aria-labelledby="gta-ai" id="gta-ai-section" className="mx-auto grid max-w-[1600px] scroll-mt-20 gap-12 px-4 py-20 sm:px-6 lg:grid-cols-12 lg:px-10">
+      <section aria-labelledby="gta-ai" className="mx-auto grid max-w-[1600px] gap-12 px-4 py-20 sm:px-6 lg:grid-cols-12 lg:px-10">
         <div className="lg:col-span-6">
-          <span id="gta-ai" className="block scroll-mt-24" />
-          <h2 id="gta-ai-title" className="poster-title text-[length:var(--text-display-lg)] font-black leading-[0.88]">
+          <h2 id="gta-ai" className="poster-title scroll-mt-24 text-[length:var(--text-display-lg)] font-black leading-[0.88]">
             The GTA AI we’re building together
           </h2>
           <p className="mt-6 max-w-[56ch] text-[1.1rem] text-ivory-2">

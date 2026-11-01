@@ -165,7 +165,9 @@ describe("home page copy", () => {
   it("lists every feature once, with a destination", () => {
     expect(new Set(FEATURES.map((f) => f.name)).size).toBe(FEATURES.length);
     for (const f of FEATURES) expect(f.href).toMatch(/^\/[a-z-]*([#/][a-z-]+)?$/);
-    expect(STEPS).toHaveLength(4);
+    // "How it works" under the home intro is three real steps, each with its highlighted words in the text.
+    expect(STEPS).toHaveLength(3);
+    for (const s of STEPS) for (const k of s.keys) expect(s.body).toContain(k);
   });
 
   it("doesn't overclaim the GTA model or the live delay", () => {
