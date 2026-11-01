@@ -16,3 +16,4 @@ export * from "./factory";
 export * from "./gta/weak-labels";
 export * from "./gta/model";
 export * from "./edl-render";
+export * from "./studio-assets";

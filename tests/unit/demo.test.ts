@@ -74,7 +74,8 @@ describe("demo scene", () => {
     try {
       const scene = await buildDemoScene(dir, { width: 1280, height: 720, fps: 30, font: "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" });
       const graph = await readFile(path.join(dir, "filter.txt"), "utf8");
-      expect(graph.match(/drawtext=/g)?.length).toBe(DEMO_EVENTS.length + 2);
+      // Every event, plus the watermark, the cash readout and the placeholder webcam's CAM label.
+      expect(graph.match(/drawtext=/g)?.length).toBe(DEMO_EVENTS.length + 3);
       for (const e of DEMO_EVENTS) expect(graph).toContain(`between(mod(t,${DEMO_CYCLE_SEC}),${e.start},${e.end})`);
       expect(await readFile(path.join(dir, "watermark.txt"), "utf8")).toBe(DEMO_WATERMARK);
       expect(graph).not.toMatch(/pricedown/i);

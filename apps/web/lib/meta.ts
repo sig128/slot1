@@ -24,10 +24,10 @@ export interface PageMeta {
 export const SITE = {
   name: "SLOT1",
   /** Home page title: under 60 characters so search results don't cut it. */
-  title: "SLOT1: live GTA streams with an AI that shows its evidence",
+  title: "SLOT1: your AI sidekick for GTA streams",
   description:
-    "Watch GTA streams with a live AI log that links every line to the frames it came from. Instant replays, clips, moments and multistreaming for creators.",
-  tagline: "Live GTA streams, with an AI that shows its evidence.",
+    "SLOT1 watches your GTA stream live, spots missions, chases and crashes, and turns them into clips and instant replays. Opt in to help train an AI for GTA VI.",
+  tagline: "Your AI sidekick for GTA.",
   locale: "en_US",
   themeColor: "#101014",
 } as const;
@@ -79,7 +79,7 @@ export function pageMetadata(p: {
 
 /** The site-wide share card (app/opengraph-image.tsx); the alt text matches what the card says. */
 export function defaultShareImage(): OgImage {
-  return { url: "/opengraph-image", width: 1200, height: 630, alt: "SLOT1: the AI that watches GTA streams with you." };
+  return { url: "/opengraph-image", width: 1200, height: 630, alt: "SLOT1: your AI sidekick for GTA." };
 }
 
 /**

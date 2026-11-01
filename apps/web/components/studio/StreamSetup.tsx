@@ -7,6 +7,7 @@ import { api, ApiError } from "@/lib/api";
 import { relativeAge } from "@/lib/format";
 import { connectObs, OBS_DEFAULT_PORT, ObsError, obsIsStreaming, obsUrl, setObsStreamTarget, type ObsConnection } from "@/lib/obs";
 import { requirementText } from "@/lib/requirements";
+import { CameraMaskSection } from "./CameraMask";
 import type { StudioCtx } from "./StudioApp";
 
 const PLATFORM: Record<RelayPlatform, string> = { twitch: "Twitch", youtube: "YouTube", kick: "Kick", custom: "Custom server" };
@@ -126,6 +127,7 @@ export function StreamSetupSection({ ctx }: { ctx: StudioCtx }) {
               <code className="text-ivory">!slot1 relay</code> shows where you’re live (never any keys).
             </p>
           </Step>
+          <CameraMaskSection ctx={ctx} mainSourceId={data.ingest.sourceId} />
           <section className="border-t hairline py-6">
             <h3 className="mb-2 font-display text-xl font-bold">Good to know</h3>
             <ul className="max-w-[70ch] list-disc space-y-2 pl-5 text-sm text-ivory-2">

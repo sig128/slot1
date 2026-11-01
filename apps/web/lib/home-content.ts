@@ -13,71 +13,77 @@ export interface Feature {
 
 export const FEATURES: Feature[] = [
   {
-    name: "The live log",
-    body: "A running record of what SLOT1 saw: mission titles, results, crashes, chases. Every entry links to its frames and says whether it was read on screen, seen, heard or inferred.",
-    href: "/setup#ai",
-    cta: "How the AI works",
-  },
-  {
-    name: "SLOT1 live video",
-    body: "When a creator streams to SLOT1, viewers watch its own copy over WebRTC, typically under a second behind the creator’s upload. The player shows its own estimate.",
-    href: "/demo",
-    cta: "Watch the demo",
-  },
-  {
-    name: "Instant replay",
-    body: "Replay a moment seconds after it happened while the stream is still live. Every timestamp in the log jumps the video to that second.",
-    href: "/demo",
-    cta: "Try it on the demo",
-  },
-  {
-    name: "Moments",
-    body: "MISSION PASSED, WASTED, BUSTED: the big moments SLOT1 read on screen, saved and searchable across public streams.",
-    href: "/moments",
-    cta: "Search moments",
-  },
-  {
-    name: "Clipper studio",
-    body: "Recording, screenshots and automatic clips of big moments, with a trim-and-caption editor in the browser. Send a finished clip to TikTok, YouTube or Instagram from your phone’s share sheet.",
+    name: "Auto-clips",
+    body: "Big moments are cut into clips while you play. Trim, caption and share them to TikTok, YouTube or Instagram from your phone.",
     href: "/studio#library",
     cta: "Open Studio",
   },
   {
+    name: "Instant replay",
+    body: "Missed it? Jump back a few seconds while the stream is still live. Every timestamp in the log jumps the video to that second.",
+    href: "/demo",
+    cta: "Try it on the demo",
+  },
+  {
+    name: "The live log",
+    body: "What SLOT1 saw, as it happens: missions, results, crashes, chases. Each line links to its frames and says how SLOT1 knows.",
+    href: "/setup#ai",
+    cta: "How the AI works",
+  },
+  {
+    name: "Moments",
+    body: "MISSION PASSED, WASTED, BUSTED: the big moments from public streams, saved and searchable.",
+    href: "/moments",
+    cta: "Search moments",
+  },
+  {
+    name: "Live video",
+    body: "Watch SLOT1’s own copy of a stream, usually under a second behind the creator. The player shows its own estimate.",
+    href: "/demo",
+    cta: "Watch the demo",
+  },
+  {
     name: "Stream everywhere",
-    body: "Stream once from OBS. SLOT1 passes the same stream on to Twitch, YouTube and Kick without re-encoding it.",
+    body: "Stream once from OBS and SLOT1 sends the same stream on to Twitch, YouTube and Kick.",
     href: "/setup#stream",
     cta: "Set it up",
   },
   {
     name: "Los Santos right now",
-    body: "Every public stream SLOT1 is watching on one page, with what each one is doing this minute. Flip between them with the radio wheel.",
+    body: "Every public stream SLOT1 is watching, on one page. Flip between them with the radio wheel.",
     href: "/los-santos",
     cta: "See who’s live",
   },
   {
     name: "The chat bot",
-    body: "!slot1 now, recap, find, ask and clip in Twitch chat. It answers only from what it observed, and says so when it hasn’t seen something.",
+    body: "Type !slot1 now, recap, find, ask or clip in Twitch chat. It answers only from what it saw, and says so when it hasn’t seen something.",
     href: "/setup#bot",
     cta: "Bot commands",
   },
 ];
 
-export const STEPS: { title: string; body: string }[] = [
+export interface Step {
+  title: string;
+  body: string;
+  /** Words shown in the highlight colour, like the key words in a game's objective text. */
+  keys: string[];
+}
+
+export const STEPS: Step[] = [
   {
-    title: "Connect Twitch",
-    body: "Sign in with the Twitch account you stream from. SLOT1 asks only for the permissions each feature needs.",
+    title: "Stream GTA like you always do",
+    body: "Go live from OBS and send the stream to SLOT1. Studio sets it up in one click. Connect Twitch too and the chat bot joins your stream.",
+    keys: ["OBS", "SLOT1", "Twitch"],
   },
   {
-    title: "Send your stream",
-    body: "Studio sets up OBS in one click. From a PS5 that means a capture card and OBS on a computer: the console on its own can only stream to Twitch or YouTube.",
+    title: "SLOT1’s AI watches along",
+    body: "Live, while you play. It reads what’s on screen and spots the big moments: MISSION PASSED, WASTED, crashes and chases.",
+    keys: ["reads what’s on screen", "big moments"],
   },
   {
-    title: "SLOT1 watches",
-    body: "It samples frames every few seconds, reads on-screen text on its own server, and describes the gameplay with an AI vision model when this site has one switched on.",
-  },
-  {
-    title: "Viewers watch, you clip",
-    body: "Your page shows the stream with the log beside it. Replay, clip and share from Studio, or straight from chat.",
+    title: "You get the good stuff",
+    body: "Auto-clips, instant replays and highlights, ready to share. Go live on Twitch, YouTube and Kick at the same time.",
+    keys: ["Auto-clips", "instant replays", "highlights"],
   },
 ];
 
@@ -109,6 +115,14 @@ export const FAQ: { q: string; a: string }[] = [
   {
     q: "Who can see my streams and clips?",
     a: "Nothing is public until you switch it on. You choose whether your channel, its analysis, recordings and each clip are public, and how long recordings are kept. You can delete everything from Studio at any time.",
+  },
+  {
+    q: "How is SLOT1 training its own GTA AI?",
+    a: "Only with gameplay from creators who opt in, in Studio under GTA model. It learns from frames of their streams: missions, places, vehicles and moments. Switching it off stops collection and removes those frames from future training sets; copies already used in a training run can't be recalled. SLOT1's own GTA model is still being trained and isn't used for the log yet.",
+  },
+  {
+    q: "Does SLOT1 work with GTA VI?",
+    a: "Not yet. SLOT1 supports GTA V and GTA Online streams today, and it is getting ready to learn GTA VI's world as soon as players stream it.",
   },
   {
     q: "Is SLOT1 affiliated with Rockstar Games or Twitch?",

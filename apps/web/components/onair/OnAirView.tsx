@@ -4,6 +4,7 @@ import type { Capabilities, ChannelCard, DirectoryResponse } from "@slot1/contra
 import { ScenePlayback } from "@/components/brand/ScenePlayback";
 import { SkylineArt } from "@/components/brand/SkylineArt";
 import { IntroHudCounter, IntroRadar } from "@/components/home/IntroHud";
+import { IntroSteps } from "@/components/home/IntroSteps";
 import { IntroTips } from "@/components/home/IntroTips";
 import { compactNumber } from "@/lib/format";
 import { requirementText } from "@/lib/requirements";
@@ -11,9 +12,10 @@ import { LinkOpener } from "./LinkOpener";
 import { ChannelAvatar, LiveDirectory } from "./LiveDirectory";
 
 /**
- * The top of the home page: a game-style loading screen that resolves into SLOT1's title card,
- * with a HUD that shows real numbers, then the live directory. Server-rendered (the artwork costs
- * no JavaScript); only the directory search, the link opener and the playback control are client
+ * The top of the home page: a game-style loading screen that resolves into SLOT1's title card
+ * ("Your AI sidekick for GTA."), with a HUD that shows real numbers, then "How it works" in three
+ * steps (after the live directory when channels are listed). Server-rendered (the artwork costs no
+ * JavaScript); only the directory search, the link opener and the playback control are client
  * code. The sequence is in components/home/intro.css.
  */
 export function OnAirView({ directory, capabilities }: { directory: DirectoryResponse; capabilities: Capabilities | null }) {
@@ -35,12 +37,12 @@ export function OnAirView({ directory, capabilities }: { directory: DirectoryRes
             </span>
             <span className="sr-only">SLOT1: </span>
             <span className="gx-tagline">
-              <span>The AI that watches GTA streams with you.</span>
+              <span>Your AI sidekick for GTA.</span>
             </span>
           </h1>
           <p className="gx-help gx-reveal mt-5" style={{ animationDelay: "2.7s" }}>
-            SLOT1 sits beside a GTA broadcast, logs what it actually sees and links every line to the frames it came from. Streams sent to SLOT1 also get
-            live video, instant replays and clips.
+            SLOT1 watches your GTA stream live, spots the missions, chases and crashes, and turns them into clips, instant replays and highlights.{" "}
+            <span className="text-ivory-2">Everything it tells you comes with proof: the exact frames.</span>
           </p>
           <div className="gx-reveal mt-5 flex flex-wrap gap-3" style={{ animationDelay: "2.85s" }}>
             <Link href="/demo" className="btn btn-coral h-12 px-5 text-[1.12rem]">
@@ -56,7 +58,13 @@ export function OnAirView({ directory, capabilities }: { directory: DirectoryRes
               </Link>
             )}
           </div>
-          <div className="gx-reveal mt-5" style={{ animationDelay: "3s" }}>
+          <p className="gx-train gx-reveal mt-5" style={{ animationDelay: "2.95s" }}>
+            Opt in, and your streams help train SLOT1’s own GTA AI, getting ready for <span className="gx-vi">GTA VI</span>.{" "}
+            <a href="#gta-ai" className="whitespace-nowrap underline decoration-line-strong underline-offset-4 hover:text-ivory">
+              How it learns
+            </a>
+          </p>
+          <div className="gx-reveal mt-4" style={{ animationDelay: "3.05s" }}>
             {mode === "empty" ? <EmptyStatus /> : <LiveStatus live={live} listed={listed.length} />}
           </div>
         </div>
@@ -70,9 +78,16 @@ export function OnAirView({ directory, capabilities }: { directory: DirectoryRes
       </section>
 
       {mode === "empty" ? (
-        <EmptyBand twitchReady={twitchReady} capabilities={capabilities} />
+        <>
+          <IntroSteps />
+          <EmptyBand twitchReady={twitchReady} capabilities={capabilities} />
+        </>
       ) : (
-        <LiveDirectory directory={directory} fallbackArt={<SkylineArt idPrefix="skf" className="h-full w-full" />} />
+        <>
+          {/* People are live: the channels come first, then how it works. */}
+          <LiveDirectory directory={directory} fallbackArt={<SkylineArt idPrefix="skf" className="h-full w-full" />} />
+          <IntroSteps />
+        </>
       )}
     </>
   );
@@ -140,7 +155,7 @@ function EmptyBand({ twitchReady, capabilities }: { twitchReady: boolean; capabi
         </div>
         <div className="lg:col-span-6 lg:col-start-7">
           <h2 className="font-display text-2xl font-bold">Have a replay?</h2>
-          <p className="mt-1 max-w-[52ch] text-sm text-ivory-3">Upload a GTA recording and see exactly what SLOT1 logs from it, frame by frame.</p>
+          <p className="mt-1 max-w-[52ch] text-sm text-ivory-3">Upload a GTA recording and see what SLOT1 spots in it, with the frames to prove it.</p>
           <div className="mt-4 flex flex-wrap gap-3">
             <Link href="/studio#sources" className="btn btn-ghost">
               Upload a replay

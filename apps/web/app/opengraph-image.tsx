@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 import { C, OG_SIZE, OgHelpBox, OgShade, OgWordmark, inkOutline, ogFonts, ogHost, ogScene } from "@/lib/og";
 import { publicOrigin } from "@/lib/origin";
 
-export const alt = "SLOT1: the AI that watches GTA streams with you.";
+export const alt = "SLOT1: your AI sidekick for GTA.";
 export const size = OG_SIZE;
 export const contentType = "image/png";
 // The host name on the card comes from the deployment's configured origin, so render per request.
@@ -31,10 +31,10 @@ export default async function Image() {
               maxWidth: 640,
             }}
           >
-            The AI that watches GTA streams with you.
+            Your AI sidekick for GTA.
           </div>
           <div style={{ display: "flex", marginTop: 34 }}>
-            <OgHelpBox accent={ogHost(origin)}>Live AI log · Instant replay · Clips</OgHelpBox>
+            <OgHelpBox accent={ogHost(origin)}>Auto-clips, instant replays and highlights</OgHelpBox>
           </div>
         </div>
       </div>

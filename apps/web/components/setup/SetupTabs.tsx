@@ -14,20 +14,36 @@ export function SetupTabs() {
 
   useEffect(() => {
     const targets = SECTIONS.map((s) => document.getElementById(s.id)).filter((el): el is HTMLElement => el !== null);
-    // A section is "current" once its top passes just under the two sticky bars.
-    const seen = new Map<string, boolean>();
-    const io = new IntersectionObserver(
-      (entries) => {
-        // Edge-adjacent counts as intersecting with a ratio of 0: the section above the one a link
-        // jumped to touches the line exactly, and must not win.
-        for (const e of entries) seen.set(e.target.id, e.isIntersecting && e.intersectionRatio > 0);
-        const first = SECTIONS.find((s) => seen.get(s.id));
-        if (first) setActive(first.id);
-      },
-      { rootMargin: "-132px 0px -55% 0px" },
-    );
-    targets.forEach((t) => io.observe(t));
-    return () => io.disconnect();
+    if (targets.length === 0) return;
+    // The current section is the last one whose top has passed the line just under the two sticky
+    // bars (site header + this strip). Measured from geometry on every scroll frame, so anchor
+    // jumps, late font loads and resizes all land on the right tab.
+    const LINE = 140;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      let current = targets[0]!.id;
+      for (const el of targets) {
+        if (el.getBoundingClientRect().top <= LINE) current = el.id;
+        else break;
+      }
+      // The last sections are short: at the very bottom of the page the last one wins.
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2) current = targets[targets.length - 1]!.id;
+      setActive(current);
+    };
+    const schedule = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    schedule();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    window.addEventListener("hashchange", schedule);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("hashchange", schedule);
+    };
   }, []);
 
   // Keep the selected tab in view when the strip scrolls sideways (phones).
