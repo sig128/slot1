@@ -279,7 +279,8 @@ AccuracySec=5s
 [Install]
 WantedBy=timers.target
 EOF
-  systemctl daemon-reload
+  # A timer problem must not fail an update that otherwise worked.
+  systemctl daemon-reload || true
   systemctl enable --now slot1-tick.timer >/dev/null 2>&1 || note "Couldn't start the update timer (systemctl status slot1-tick.timer)."
   if [ "$(env_get SLOT1_AUTODEPLOY)" = "false" ]; then
     note "Automatic updates: off (turn on with: slot1 autodeploy on)"
