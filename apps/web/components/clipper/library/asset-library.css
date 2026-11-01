@@ -21,12 +21,7 @@
   align-items: end;
   gap: 0.75rem 1.5rem;
 }
-.alib-h {
-  font-size: 1.9rem;
-  line-height: 0.9;
-}
 .alib-count {
-  margin-top: 0.35rem;
   font-size: 0.82rem;
   color: var(--color-ivory-3);
 }

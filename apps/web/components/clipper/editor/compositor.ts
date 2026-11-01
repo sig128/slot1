@@ -210,7 +210,7 @@ function drawTextItem(ctx: CanvasRenderingContext2D, W: number, H: number, it: O
       alpha *= clamp(Math.min(local / 80, left / 160), 0, 1);
       break;
     case "slide":
-      dx = local < 260 ? -(1 - local / 260) ** 2 * 0.4 * W : 0;
+      dx = local < 260 ? -((1 - local / 260) ** 2) * 0.4 * W : 0;
       alpha *= clamp(Math.min(local / 120, left / 160), 0, 1);
       break;
     case "typewriter": {

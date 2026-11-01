@@ -310,13 +310,13 @@ export function AdminApp({ initial, initialMessages }: { initial: AdminOverview;
                 </tr>
               </thead>
               <tbody>
-                {(["vision", "qa", "transcription"] as const).map((k) => {
+                {(["vision", "qa", "transcription", "clip_ai"] as const).map((k) => {
                   const d = usageLine(data.ai.usage24h, k);
                   const m = usageLine(data.ai.usage30d, k);
                   return (
                     <tr key={k} className="border-t hairline">
                       <th scope="row" className="py-2 text-left font-normal">
-                        {k === "vision" ? "Vision (frames)" : k === "qa" ? "Answers (Ask SLOT1)" : "Speech to text"}
+                        {k === "vision" ? "Vision (frames)" : k === "qa" ? "Answers (Ask SLOT1)" : k === "clip_ai" ? "AI clip tools" : "Speech to text"}
                       </th>
                       <td className="tnum py-2 text-right">{num(d?.calls ?? 0)}</td>
                       <td className="tnum py-2 text-right">{num(m?.calls ?? 0)}</td>

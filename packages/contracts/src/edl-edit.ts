@@ -338,16 +338,24 @@ export function instantReplay(edl: Edl, atMs: number, lengthMs = 2500, speed = 0
 
 /* ----------------------------------- overlays, audio, rest --------------------------------- */
 
-/** Put an overlay item on the first unlocked overlay track with room (or a new track). */
-export function addOverlayItem(edl: Edl, item: OverlayItem, trackId?: string): Edl {
-  const target = trackId ? edl.overlays.find((t) => t.id === trackId && !t.locked) : edl.overlays.find((t) => !t.locked && t.items.length < 40 && !t.items.some((x) => x.startMs < item.endMs && x.endMs > item.startMs));
-  if (target) return { ...edl, overlays: edl.overlays.map((t) => (t.id === target.id ? { ...t, items: [...t.items, item].slice(0, 40) } : t)) };
-  if (edl.overlays.length >= 4) {
-    const any = edl.overlays.find((t) => !t.locked && t.items.length < 40);
-    if (!any) return edl;
-    return { ...edl, overlays: edl.overlays.map((t) => (t.id === any.id ? { ...t, items: [...t.items, item] } : t)) };
-  }
-  const track: OverlayTrack = { id: edlId("ov"), name: `Overlay ${edl.overlays.length + 1}`, hidden: false, locked: false, items: [item] };
+/** Which overlay track a new item would go on: an existing track's id, or null for a new track. */
+export function pickOverlayTrack(edl: Edl, item: { startMs: number; endMs: number }): string | null {
+  const free = edl.overlays.find((t) => !t.locked && t.items.length < 40 && !t.items.some((x) => x.startMs < item.endMs && x.endMs > item.startMs));
+  if (free) return free.id;
+  if (edl.overlays.length < 4) return null;
+  return edl.overlays.find((t) => !t.locked && t.items.length < 40)?.id ?? null;
+}
+
+/**
+ * Put an overlay item on `trackId` when that track exists and is unlocked, otherwise on the first
+ * unlocked track with room, otherwise on a new track (named `newTrackId` when given).
+ */
+export function addOverlayItem(edl: Edl, item: OverlayItem, trackId?: string, newTrackId?: string): Edl {
+  const explicit = trackId ? edl.overlays.find((t) => t.id === trackId && !t.locked && t.items.length < 40) : undefined;
+  const id = explicit?.id ?? pickOverlayTrack(edl, item);
+  if (id) return { ...edl, overlays: edl.overlays.map((t) => (t.id === id ? { ...t, items: [...t.items, item] } : t)) };
+  if (edl.overlays.length >= 4) return edl;
+  const track: OverlayTrack = { id: newTrackId ?? edlId("ov"), name: `Overlay ${edl.overlays.length + 1}`, hidden: false, locked: false, items: [item] };
   return { ...edl, overlays: [...edl.overlays, track] };
 }
 

@@ -254,10 +254,8 @@ export function AssetLibraryPanel({ kinds, onPick, mode = "pick" }: AssetLibrary
   return (
     <section className="alib" data-mode={mode} aria-label="Sounds and elements library">
       <div className="alib-head">
-        <div className="alib-title">
-          {pickMode && <h3 className="alib-h poster-title">Library</h3>}
-          {data && <p className="alib-count tnum">{inKinds.length} items, all made for SLOT1</p>}
-        </div>
+        {/* The host names the panel (the editor's "Studio library", Studio's "Sounds and elements"). */}
+        <div className="alib-title">{data && inKinds.length > 0 && <p className="alib-count tnum">{inKinds.length} items, all made for SLOT1</p>}</div>
         <label className="alib-search">
           <span className="sr-only">Search {noun}</span>
           <svg viewBox="0 0 24 24" aria-hidden className="alib-search-icon">
@@ -301,7 +299,9 @@ export function AssetLibraryPanel({ kinds, onPick, mode = "pick" }: AssetLibrary
         </p>
       )}
 
-      {data && activeTab && (
+      {data && inKinds.length === 0 && <p className="alib-state">The sound and element library isn&apos;t installed on this server.</p>}
+
+      {data && inKinds.length > 0 && activeTab && (
         <Tabs.Root
           className="alib-tabsroot"
           value={activeTab.id}

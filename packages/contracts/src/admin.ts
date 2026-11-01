@@ -145,7 +145,7 @@ export const AdminHealth = z.object({
 export type AdminHealth = z.infer<typeof AdminHealth>;
 
 export const AdminUsage = z.object({
-  kind: z.enum(["vision", "transcription", "qa"]),
+  kind: z.enum(["vision", "transcription", "qa", "clip_ai"]),
   calls: Count,
   frames: Count,
   inputTokens: Count,

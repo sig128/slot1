@@ -112,43 +112,42 @@ test.describe("studio library", () => {
     await expect(cash).toHaveAttribute("aria-pressed", "false");
   });
 
-  test("plays one preview at a time, then stops", async () => {
-    const rows = list("Sounds").getByRole("listitem");
-    const first = rows.nth(2);
-    const second = rows.nth(5);
+  test("a sound effect plays and stops on its own", async () => {
+    const row = list("Sounds").getByRole("listitem").first();
     const file = page.waitForResponse((r) => r.url().includes("/api/studio/assets/file/") && r.request().method() === "GET");
-    await first.getByRole("button", { name: /^Play / }).click();
+    await row.getByRole("button", { name: /^Play / }).click();
     const res = await file;
     expect([200, 206]).toContain(res.status());
     expect(res.headers()["content-type"]).toBe("audio/mp4");
     expect(res.headers()["cache-control"]).toContain("immutable");
+    // A one-shot under a second: it ends by itself and the row goes back to Play.
+    await expect(row.getByRole("button", { name: /^Play / })).toBeVisible();
+    await expect(row).not.toHaveAttribute("data-state", /.+/);
+  });
+
+  test("music plays one loop at a time until stopped", async () => {
+    await panel().getByRole("tab", { name: "Music", exact: true }).click();
+    const rows = list("Music").getByRole("listitem");
+    expect(await rows.count()).toBeGreaterThanOrEqual(12);
+    const first = rows.nth(0);
+    const second = rows.nth(1);
+    await expect(first.getByText("Loops,", { exact: false })).toBeAttached();
+    await first.getByRole("button", { name: /^Play / }).click();
     await expect(first).toHaveAttribute("data-state", "playing");
     await expect(first.getByRole("button", { name: /^Stop / })).toBeVisible();
-    await shot(page, "library-playing", panel());
+    await shot(page, "studio-library-playing", panel());
 
-    // Starting another sound stops the first.
+    // Starting another loop stops the first.
     await second.getByRole("button", { name: /^Play / }).click();
-    await expect(second).toHaveAttribute("data-state", /loading|playing/);
+    await expect(second).toHaveAttribute("data-state", "playing");
     await expect(first).not.toHaveAttribute("data-state", /.+/);
     await expect(panel().getByRole("button", { name: /^Stop / })).toHaveCount(1);
     await second.getByRole("button", { name: /^Stop / }).click();
     await expect(panel().getByRole("button", { name: /^Stop / })).toHaveCount(0);
-  });
 
-  test("music loops keep playing until stopped", async () => {
-    await panel().getByRole("tab", { name: "Music", exact: true }).click();
-    const rows = list("Music").getByRole("listitem");
-    expect(await rows.count()).toBeGreaterThanOrEqual(12);
-    const row = rows.first();
-    await expect(row.getByText("Loops,", { exact: false })).toBeAttached();
-    await row.getByRole("button", { name: /^Play / }).click();
-    await expect(row).toHaveAttribute("data-state", "playing");
-    const looping = await page.evaluate(async () => {
-      await new Promise((r) => setTimeout(r, 400));
-      return [...document.querySelectorAll(".alib-row[data-state='playing']")].length;
-    });
-    expect(looping).toBe(1);
-    // Switching sections stops the preview.
+    // Switching sections stops a preview too.
+    await first.getByRole("button", { name: /^Play / }).click();
+    await expect(first).toHaveAttribute("data-state", "playing");
     await panel().getByRole("tab", { name: "Ambience", exact: true }).click();
     expect(await list("Ambience").getByRole("listitem").count()).toBeGreaterThanOrEqual(6);
     await expect(panel().getByRole("button", { name: /^Stop / })).toHaveCount(0);
@@ -170,7 +169,7 @@ test.describe("studio library", () => {
     await favChip.click();
     await expect(list("Sounds").getByRole("listitem")).toHaveCount(1);
     await expect(list("Sounds").locator(".alib-name")).toHaveText(name);
-    await shot(page, "library-favorites", panel());
+    await shot(page, "studio-library-favorites", panel());
 
     // Unstarring empties the filter and says how to fill it.
     await panel().getByRole("button", { name: `Favorite ${name}` }).click();
@@ -188,7 +187,7 @@ test.describe("studio library", () => {
       .poll(async () => imgs.first().evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0), { message: "first thumbnail loads" })
       .toBe(true);
     await noHorizontalOverflow(page);
-    await shot(page, "library-elements", panel());
+    await shot(page, "studio-library-elements", panel());
 
     await panel().getByRole("tab", { name: "Frames", exact: true }).click();
     expect(await list("Frames").getByRole("listitem").count()).toBeGreaterThanOrEqual(8);
@@ -197,7 +196,7 @@ test.describe("studio library", () => {
     const t = list("Transitions").getByRole("listitem");
     expect(await t.count()).toBeGreaterThanOrEqual(8);
     await expect.poll(async () => t.first().locator("img").evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0)).toBe(true);
-    await shot(page, "library-transitions", panel());
+    await shot(page, "studio-library-transitions", panel());
   });
 
   test("tabs work from the keyboard", async () => {
@@ -211,6 +210,6 @@ test.describe("studio library", () => {
     await expect(panel().getByRole("button", { name: "Favorites", exact: true })).toBeFocused();
     await noHorizontalOverflow(page);
     await page.evaluate(() => window.scrollTo(0, 0));
-    await shot(page, "library-studio");
+    await shot(page, "studio-library-page");
   });
 });
