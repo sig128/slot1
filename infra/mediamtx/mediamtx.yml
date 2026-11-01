@@ -11,30 +11,33 @@ authHTTPExclude:
   - action: metrics
   - action: pprof
 
-api: no
-metrics: no
-pprof: no
-playback: no
+api: false
+metrics: false
+pprof: false
+playback: false
 
 # Creators publish over RTMP (OBS: rtmp://<host>:1935/live, stream key from Studio).
-rtmp: yes
+rtmp: true
 rtmpAddress: :1935
 # The SLOT1 worker reads over RTSP on the private network.
-rtsp: yes
+rtsp: true
 rtspAddress: :8554
-hls: no
+# TCP only: RTSP over UDP needs the real client address, which Docker's network can rewrite.
+rtspTransports: [tcp]
+hls: false
 
 # WebRTC: OBS 30+ publishes with WHIP (<base>/live/<name>/whip, bearer token = stream key) and
 # browsers watch with WHEP (<base>/live/<name>/whep, bearer token from SLOT1's API). Sub-second
 # delay. Public host names and STUN/TURN servers come from the environment, e.g.
 # MTX_WEBRTCADDITIONALHOSTS=live.example.com and MTX_WEBRTCICESERVERS2_0_URL=turn:turn.example.com:3478
-# (see docs/LIVE_VIDEO.md). Put TLS in front of :8889 in production (browsers need HTTPS).
-webrtc: yes
+# (see docs/LIVE_VIDEO.md). In production Caddy serves :8889 over HTTPS under /live/* on the
+# site's own domain (infra/caddy/Caddyfile), so INGEST_PUBLIC_WEBRTC_URL is https://<your domain>.
+webrtc: true
 webrtcAddress: :8889
 webrtcLocalUDPAddress: :8189
 
 # SRT publishing (srt://<host>:8890?streamid=publish:live/<name>:<name>:<key>).
-srt: yes
+srt: true
 srtAddress: :8890
 
 paths:

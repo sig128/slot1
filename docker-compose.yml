@@ -53,7 +53,9 @@ services:
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-slot1-minio}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY to use MinIO}
+      # Compose reads every service's variables even when its profile is off, so no ":?" guard here;
+      # MinIO itself refuses to start without a password of 8+ characters.
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-}
     ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
     volumes: [minio:/data]
 
@@ -67,6 +69,13 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+    # Healthy once migrations have run and the database and Redis answer.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
     restart: unless-stopped
 
   worker:
@@ -77,8 +86,8 @@ services:
     # Same media volume as the API when STORAGE_DRIVER=fs.
     volumes: [media:/data]
     depends_on:
-      postgres: { condition: service_healthy }
-      redis: { condition: service_healthy }
+      # The API applies the database migrations the worker reads.
+      api: { condition: service_healthy }
     restart: unless-stopped
 
   # Shared GTA-model inference: batches frames from every live stream. Workers use it when .env
@@ -96,8 +105,7 @@ services:
     # Reads model files from the same storage as the API when STORAGE_DRIVER=fs.
     volumes: [media:/data]
     depends_on:
-      postgres: { condition: service_healthy }
-      redis: { condition: service_healthy }
+      api: { condition: service_healthy }
     restart: unless-stopped
     # deploy:
     #   resources:
@@ -127,21 +135,25 @@ services:
     profiles: [ingest]
     environment:
       SLOT1_HOOK_BASE: http://api:4000
-      INGEST_HOOK_SECRET: ${INGEST_HOOK_SECRET:?set INGEST_HOOK_SECRET}
+      # Empty = every hook call is refused by the API (it fails closed without INGEST_HOOK_SECRET).
+      INGEST_HOOK_SECRET: ${INGEST_HOOK_SECRET:-}
     ports: ["1935:1935"]
     restart: unless-stopped
 
   mediamtx:
-    image: ${MEDIAMTX_IMAGE:-bluenviron/mediamtx:latest}
+    # "1" is MediaMTX's latest 1.x release (kept backward compatible within 1.x).
+    image: ${MEDIAMTX_IMAGE:-bluenviron/mediamtx:1}
     profiles: [mediamtx]
     environment:
-      MTX_AUTHHTTPADDRESS: http://api:4000/api/ingest/hooks/mediamtx/auth?hook_secret=${INGEST_HOOK_SECRET:?set INGEST_HOOK_SECRET}
+      MTX_AUTHHTTPADDRESS: http://api:4000/api/ingest/hooks/mediamtx/auth?hook_secret=${INGEST_HOOK_SECRET:-}
       # Host name or IP browsers use to reach WebRTC media (ICE candidates). See docs/LIVE_VIDEO.md.
       MTX_WEBRTCADDITIONALHOSTS: ${MEDIAMTX_PUBLIC_HOST:-}
     volumes: ["./infra/mediamtx/mediamtx.yml:/mediamtx.yml:ro"]
     ports:
       - "1935:1935"          # RTMP publish (OBS)
-      - "8889:8889"          # WebRTC HTTP: WHIP publish, WHEP playback
+      # WebRTC HTTP (WHIP publish, WHEP playback). Public traffic reaches it over HTTPS through
+      # Caddy (/live/*); this port is for local development only.
+      - "127.0.0.1:8889:8889"
       - "8189:8189/udp"      # WebRTC media (ICE)
       - "8890:8890/udp"      # SRT publish
     restart: unless-stopped

@@ -1,0 +1,16 @@
+# Keep secrets, local data and host build output out of the Docker build context.
+.git
+.env
+.env.*
+!.env.example
+**/node_modules
+**/.next
+**/dist
+.data
+.local-services
+_legacy-prototype
+_to_delete
+tests/e2e/.results
+tests/fixtures/generated
+ml/runs
+**/__pycache__

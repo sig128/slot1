@@ -5,6 +5,8 @@ import type { NowResponse } from "@slot1/contracts";
 import {
   createIngestSession,
   createIngestSource,
+  createLocalBroadcaster,
+  createLocalUser,
   insertAsset,
   insertObservation,
   markPublishEnded,
@@ -27,7 +29,7 @@ import { Browser, MockTwitch, startHarness, type Harness } from "./harness";
 const JPEG = execFileSync("ffmpeg", ["-v", "error", "-f", "lavfi", "-i", "testsrc2=s=320x180:d=1", "-frames:v", "1", "-f", "image2pipe", "-c:v", "mjpeg", "-"]);
 
 interface Seeded {
-  browser: Browser;
+  browser: Browser | null;
   broadcasterId: string;
   login: string;
   displayName: string;
@@ -48,11 +50,19 @@ describe("Los Santos right now", () => {
   /** A creator whose stream reaches SLOT1, with the privacy settings under test. */
   async function seedStream(
     name: string,
-    o: { channel?: "public" | "private"; publicAnalysis?: boolean; session?: "public" | "private"; publishing?: boolean; label?: "live" | "test"; state?: "live_vision" | "stopped" } = {},
+    o: { channel?: "public" | "private"; publicAnalysis?: boolean; session?: "public" | "private"; publishing?: boolean; label?: "live" | "test"; state?: "live_vision" | "stopped"; owner?: boolean } = {},
   ): Promise<Seeded> {
-    const browser = new Browser(h);
-    const me = (await browser.signInLocal(name)) as { broadcaster: { id: string; login: string; displayName: string } };
-    const b = me.broadcaster;
+    // Only creators whose own view is checked sign in through the (rate-limited) sign-in route.
+    let browser: Browser | null = null;
+    let b: { id: string; login: string; displayName: string };
+    if (o.owner) {
+      browser = new Browser(h);
+      b = (await signIn(browser, name)).broadcaster;
+    } else {
+      const user = await createLocalUser(h.ctx.db, name);
+      const row = await createLocalBroadcaster(h.ctx.db, user.id, `${name.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 16)}${randomBytes(2).toString("hex")}`, name);
+      b = { id: row.id, login: row.login, displayName: row.display_name };
+    }
     // A private channel can never have public analysis (the database refuses it).
     await updateSettings(h.ctx.db, b.id, { visibility: o.channel ?? "public", publicAnalysis: o.channel === "private" ? false : (o.publicAnalysis ?? true) });
     const label = o.label ?? "live";
@@ -67,6 +77,18 @@ describe("Los Santos right now", () => {
     const asset = await insertAsset(h.ctx.db, { broadcasterId: b.id, sessionId: session.id, sourceId: source.id, kind: "frame", storageKey: key, contentType: "image/jpeg", bytes, mediaPtsMs: 1000 });
     await upsertSourceHealth(h.ctx.db, source.id, { lastFrameAt: new Date(), lastFrameAssetId: asset.id, lastFramePtsMs: 1000, framesReceivedDelta: 1 });
     return { browser, broadcasterId: b.id, login: b.login, displayName: b.displayName, sessionId: session.id, sourceId: source.id };
+  }
+
+  /** Local sign-in, waiting out the per-address limit the rest of the suite may have used up. */
+  async function signIn(b: Browser, name: string): Promise<{ broadcaster: { id: string; login: string; displayName: string } }> {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return (await b.signInLocal(name)) as { broadcaster: { id: string; login: string; displayName: string } };
+      } catch (err) {
+        if (attempt >= 3 || !/ 429 /.test((err as Error).message)) throw err;
+        await new Promise((r) => setTimeout(r, 21_000));
+      }
+    }
   }
 
   async function observe(s: Seeded, agoMs: number, o: Pick<NewObservation, "type" | "description"> & Partial<NewObservation>) {
@@ -123,9 +145,9 @@ describe("Los Santos right now", () => {
 
     // Never listed: a private channel, private analysis, a private session, a stream that ended.
     for (const [name, opts] of [
-      ["Private Channel", { channel: "private" }],
+      ["Private Channel", { channel: "private", owner: true }],
       ["Private Analysis", { publicAnalysis: false }],
-      ["Private Session", { session: "private" }],
+      ["Private Session", { session: "private", owner: true }],
       ["Already Ended", { publishing: false }],
     ] as const) {
       const s = await seedStream(name, opts);
@@ -166,7 +188,7 @@ describe("Los Santos right now", () => {
   });
 
   it("never lets a private stream through, not even to its owner", async () => {
-    for (const viewer of [anon, ...hidden.map((s) => s.browser)]) {
+    for (const viewer of [anon, ...hidden.flatMap((s) => (s.browser ? [s.browser] : []))]) {
       const { raw } = await now(viewer);
       for (const s of hidden) {
         for (const secret of [s.login, s.displayName, s.sessionId, s.sourceId, `Secret heist of ${s.displayName}`]) expect(raw).not.toContain(secret);
@@ -198,7 +220,8 @@ describe("Los Santos right now", () => {
   it("is computed once for everyone and cached briefly", async () => {
     clearNowCache(h.ctx);
     const a = (await anon.get("/api/now")).json<NowResponse>();
-    const b = (await driving.browser.get("/api/now")).json<NowResponse>();
+    const other = new Browser(h);
+    const b = (await other.get("/api/now")).json<NowResponse>();
     expect(b.generatedAt).toBe(a.generatedAt);
   });
 

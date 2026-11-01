@@ -18,6 +18,7 @@ When a piece is missing, the interface names the missing piece instead of showin
 - [How it works](#how-it-works)
 - [Quick start (local, no Docker)](#quick-start-local-no-docker)
 - [Quick start (Docker)](#quick-start-docker)
+- [Run it on a server](#run-it-on-a-server)
 - [Configuration](#configuration)
   - [Twitch app registration](#twitch-app-registration)
   - [EventSub webhooks and a public HTTPS address](#eventsub-webhooks-and-a-public-https-address)
@@ -116,7 +117,23 @@ Other profiles:
 - `s3` adds MinIO.
 - `mediamtx` runs MediaMTX instead of nginx-rtmp.
 
-The images are built from `infra/docker/app.Dockerfile`, with targets `api`, `worker` and `web`. The API and worker images include ffmpeg, tesseract and a caption font. The Docker files were written for this build but were **not** built in the environment where SLOT1 was developed; see [docs/FINAL_REPORT.md](docs/FINAL_REPORT.md).
+The images are built from `infra/docker/app.Dockerfile`, with targets `api`, `worker`, `web`, `inference` and `inference-gpu`. The API and worker images include ffmpeg, tesseract and a caption font. The Dockerfile's install, build and deploy steps were replayed natively, and the resulting production builds were started; the images themselves were **not** built where SLOT1 was developed (no Docker daemon). See [docs/DEPLOY_HETZNER.md](docs/DEPLOY_HETZNER.md#what-was-and-wasnt-verified).
+
+## Run it on a server
+
+One Ubuntu server with a public IPv4 runs everything: the site, API, worker, inference, Postgres, Redis, MediaMTX and Caddy with automatic HTTPS. Run this as root on the server:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sig128/slot1/main/scripts/server-setup.sh | bash
+```
+
+It writes `.env` with fresh secrets, builds and starts the stack, and prints the address. Without a domain, the address is `https://<ip-with-dashes>.sslip.io`. Afterwards:
+
+- `slot1 twitch` turns on sign-in.
+- `slot1 ai` turns on the AI.
+- `slot1 update` deploys the latest code.
+
+Firewall ports and details are in [docs/DEPLOY_HETZNER.md](docs/DEPLOY_HETZNER.md).
 
 ## Configuration
 
@@ -246,4 +263,5 @@ docs/           capability matrix, asset manifest, console checklist, Twitch sco
 - [docs/TWITCH_SCOPES.md](docs/TWITCH_SCOPES.md): scopes, endpoints and EventSub subscriptions
 - [docs/ASSET_MANIFEST.md](docs/ASSET_MANIFEST.md): fonts, artwork and test media, with licenses
 - [docs/CONSOLE_TEST_CHECKLIST.md](docs/CONSOLE_TEST_CHECKLIST.md): what to verify on a real PS5
+- [docs/DEPLOY_HETZNER.md](docs/DEPLOY_HETZNER.md): running SLOT1 on one server, the `slot1` command, and what the deploy path verified
 - [docs/FINAL_REPORT.md](docs/FINAL_REPORT.md): what was built, what was tested, and what is blocked

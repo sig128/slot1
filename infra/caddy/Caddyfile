@@ -16,6 +16,12 @@
 	@hooks path /api/ingest/hooks/*
 	respond @hooks 404
 
+	# MediaMTX WebRTC over HTTPS: browsers watch with WHEP and OBS can publish with WHIP at
+	# https://<domain>/live/<name>/whep|whip. Only answers when the mediamtx gateway is running.
+	handle /live/* {
+		reverse_proxy mediamtx:8889
+	}
+
 	handle /api/* {
 		reverse_proxy api:4000 {
 			# Server-sent events must reach the browser immediately.
