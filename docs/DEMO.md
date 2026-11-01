@@ -85,7 +85,7 @@ Measured on the 2-vCPU machine where SLOT1 was built:
 |---|---|
 | Generator at 1280×720, 30 fps, `veryfast`, 2500 kbps | ≈ 0.38 CPU-seconds per second of video (≈ 40% of one core) |
 | OCR, 4 regions per frame | 0.7–0.9 s CPU per analyzed frame (≈ 25–30% of a core at one frame every 3 s) |
-| Disk, frames | 1280×720 frames are about 50 KB as JPEG: ≈ 60 MB per hour, about 3–4 hours' worth at most (≈ 250 MB) |
+| Disk, frames | Demo frames as the worker stores them (1280×720 JPEG) average about 62 KB: ≈ 70 MB per hour at one frame every 3 s. At most about 3 hours' worth are kept (≈ 210 MB). |
 | Disk, rolling buffer | ≈ 30 MB |
 | Disk, clips | 20 clips of about 10 s each |
 

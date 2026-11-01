@@ -344,9 +344,6 @@ function SkyFx({ evidence }: { evidence: boolean }) {
       <span className="sk-beam sk-beam-a" style={{ left: px(985 - 60), bottom: py(VB.h - H), width: px(120), height: py(H) }} />
       <span className="sk-beam sk-beam-b" style={{ left: px(1150 - 60), bottom: py(VB.h - H), width: px(120), height: py(H) }} />
 
-      {/* neon halo behind the ON AIR sign */}
-      <span className="sk-halo" style={{ left: px(SIGN.x - 44), top: py(SIGN.y - 36), width: px(SIGN.w + 88), height: py(SIGN.h + 72) }} />
-
       {/* the station transmits */}
       <span className="sk-ring" style={{ left: px(MAST.x), top: py(MAST.top - 8), width: px(280) }} />
       <span className="sk-ring sk-ring-2" style={{ left: px(MAST.x), top: py(MAST.top - 8), width: px(280) }} />
@@ -422,6 +419,9 @@ const TOWER_LIGHTS: [number, number, number][] = [
 function FrontFx({ evidence }: { evidence: boolean }) {
   return (
     <div className="sk-fx">
+      {/* the ON AIR sign's glow (screen-blended over the sign) */}
+      <span className="sk-halo" style={{ left: px(SIGN.x - 44), top: py(SIGN.y - 36), width: px(SIGN.w + 88), height: py(SIGN.h + 72) }} />
+
       {/* the water's light breathes */}
       <span className="sk-shimmer" style={{ left: px(700), top: py(H + 4), width: px(520), height: py(CAUSEWAY_Y - H - 8) }} />
       <span className="sk-shimmer sk-shimmer-2" style={{ left: px(1400), top: py(H + 4), width: px(140), height: py(CAUSEWAY_Y - H - 8) }} />

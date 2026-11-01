@@ -362,6 +362,8 @@ cmd_install() {
     if [ "$(env_get MEDIAMTX_PUBLIC_HOST)" != "$ip" ]; then env_set MEDIAMTX_PUBLIC_HOST "$ip"; fi
   fi
   ensure_env_defaults
+  # Shown in /admin → System, so it's clear which version is running.
+  env_set SLOT1_VERSION "$(git -C "$DIR" rev-parse --short HEAD)"
   install_cli
   start_stack
   wait_healthy

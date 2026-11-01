@@ -79,12 +79,12 @@ function sections(cfg: LegalConfig): LegalSection[] {
             what={
               <>
                 For each page view: the time, the page path (without anything after “?” or “#”), the host name of the site you came from (for example{" "}
-                <code>google.com</code>, never the full address), the device type (mobile, tablet or desktop), the browser family, and a visitor ID. While
+                <code>google.com</code>, never the full address), the device type (mobile, tablet or desktop, worked out from the User-Agent and the window width), the browser family, and a visitor ID. While
                 a page is open and visible, your browser sends a short heartbeat every 30 seconds so we can count how many people are on the site right
                 now.
               </>
             }
-            why="Knowing how many people use SLOT1 and which pages they use, without tracking anyone. This uses no cookies, no local storage and no fingerprinting."
+            why="Knowing how many people use SLOT1 and which pages they use, without tracking anyone. Counting uses no cookies, no local storage and no fingerprinting. If you are signed in, your browser attaches its sign-in cookie to these requests by itself; the count ignores it."
             kept="Page views are deleted after 90 days; after that only daily totals remain. The “on the site now” count lives only in memory and expires within 5 minutes."
           />
           <p>

@@ -434,7 +434,8 @@
   transform: rotate(3deg);
 }
 .sk-halo {
-  background: radial-gradient(closest-side, rgb(255 79 135 / 0.42), rgb(255 79 135 / 0.12) 55%, rgb(255 79 135 / 0));
+  mix-blend-mode: screen;
+  background: radial-gradient(closest-side, rgb(255 79 135 / 0.34), rgb(255 79 135 / 0.1) 55%, rgb(255 79 135 / 0));
 }
 .sk-ring {
   aspect-ratio: 1;
@@ -694,6 +695,26 @@
   }
   .sk-reveal {
     animation: sk-appear 0.7s ease-out both;
+  }
+}
+
+/* Depth on scroll: the sky, hills and mast drift slower than the city (scroll-driven, compositor). */
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .sk-hero .sk-stage > .sk-layer:first-child,
+    .sk-hero .sk-stage > .sk-fx:nth-child(2) {
+      animation: sk-parallax linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 100vh;
+    }
+  }
+}
+@keyframes sk-parallax {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(12%);
   }
 }
 
