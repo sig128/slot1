@@ -231,6 +231,8 @@ describe("AI clip tools", () => {
     expect(loud.atMs).toBeGreaterThanOrEqual(16_000);
     expect(loud.atMs).toBeLessThan(18_000);
     expect(after.note).toBeNull();
+    // The opening and the result are separate moments, not one 40 s chain.
+    expect(after.candidates.length).toBeGreaterThanOrEqual(2);
     const top = after.candidates[0]!;
     expect(top.score).toBeGreaterThan(0);
     expect(top.stars).toBeGreaterThanOrEqual(1);
@@ -377,6 +379,23 @@ describe("AI clip tools", () => {
     // Usage is logged per call, with the cost from the server's prices.
     const usage = await h.ctx.db.query<{ n: number; cost: string }>(`SELECT count(*)::int AS n, sum(estimated_cost_usd)::text AS cost FROM usage_events WHERE broadcaster_id = $1 AND kind = 'clip_ai'`, [broadcasterId]);
     expect(usage.rows[0]!.n).toBe(2);
+  });
+
+  it("falls back to plain JSON when the provider refuses the schema, and still validates the reply", async () => {
+    stub.reply = (body) => {
+      if (body.output_config) return { status: 400, json: { type: "error", error: { type: "invalid_request_error", message: "output_config.format.schema: schema is too complex" } } };
+      const user = String(body.messages[0].content);
+      const current = JSON.parse(user.split("CURRENT EDIT (JSON):\n")[1]!.split("\n")[0]!);
+      current.fadeOutMs = 600;
+      return { text: "```json\n" + JSON.stringify({ summary: "Added a fade out.", edl: current }) + "\n```" };
+    };
+    const r = await creator.request("POST", "/api/clip-ai/edit", { json: { request: "fade out at the end", edl } });
+    expect(r.status).toBe(200);
+    expect(r.json<EditForMeResponse>().changes).toEqual(["Fade out 0:00.0 → 0:00.6"]);
+    const [strict, plainCall] = stub.calls.slice(-2).map((c) => c.body);
+    expect(strict.output_config.format.type).toBe("json_schema");
+    expect(plainCall.output_config).toBeUndefined();
+    expect(plainCall.system).toContain("It must match this JSON Schema");
   });
 
   it("rejects proposals that aren't valid edits or reach outside this edit", async () => {

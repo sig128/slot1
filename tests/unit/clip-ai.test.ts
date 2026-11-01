@@ -123,6 +123,18 @@ describe("best moments", () => {
       for (const b of ranked) if (a !== b) expect(Math.min(a.endMs, b.endMs) - Math.max(a.startMs, b.startMs)).toBeLessThanOrEqual(0.5 * Math.min(a.endMs - a.startMs, b.endMs - b.startMs));
   });
 
+  it("splits a busy stretch into separate moments around the strongest signals", () => {
+    const chatter = Array.from({ length: 24 }, (_, i) => obs({ type: "subtitle", mediaStartMs: i * 5_000, rawText: `line ${i}`, description: `Dialogue line ${i}` }));
+    const crash = obs({ type: "possible_collision", mediaStartMs: 61_000, origin: "video", model: { provider: "test", version: "1" }, description: "Car hits a wall" });
+    const ranked = rankMoments({ sessionId: SESSION, durationMs: 120_000, observations: [...chatter, crash], rmsDb: null, clipRequests: [] });
+    expect(ranked.length).toBeGreaterThanOrEqual(3);
+    expect(ranked[0]!.title).toBe("Crash + Dialogue");
+    expect(ranked[0]!.reasons[0]!.label).toBe("AI vision: Car hits a wall at 01:01");
+    expect(ranked[0]!.startMs).toBeGreaterThanOrEqual(45_000);
+    expect(ranked[0]!.endMs).toBeLessThanOrEqual(80_000);
+    for (const m of ranked) expect(m.endMs - m.startMs).toBeLessThanOrEqual(60_000);
+  });
+
   it("returns nothing when nothing was detected", () => {
     expect(rankMoments({ sessionId: SESSION, durationMs: 60_000, observations: [], rmsDb: null, clipRequests: [] })).toEqual([]);
   });

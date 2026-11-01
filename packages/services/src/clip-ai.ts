@@ -1,4 +1,4 @@
-import { estimateCostUsd, loadStudioAssetManifest, postJson, type FetchLike, type TokenUsage } from "@slot1/analysis";
+import { estimateCostUsd, loadStudioAssetManifest, postJson, ProviderError, type FetchLike, type TokenUsage } from "@slot1/analysis";
 import {
   bigMoment,
   clipTime,
@@ -290,7 +290,6 @@ const ROLL: Record<MomentSignal, [number, number]> = {
 const MIN_WINDOW = 8_000;
 const MAX_WINDOW = 60_000;
 const CLUSTER_GAP = 12_000;
-const CLUSTER_SPAN = 45_000;
 
 /** Audio spikes: seconds well above the session's typical level (silence ignored). */
 export function audioPeaks(rmsDb: number[]): { atMs: number; excessDb: number }[] {
@@ -360,8 +359,9 @@ export interface RankedMoment extends Omit<MomentCandidate, "frameUrl"> {
 
 /**
  * Rank a session's moments from what SLOT1 detected: result screens, mission titles, action,
- * audio spikes, bursts of scene cuts and clip requests. Signals close together form one moment;
- * its score grows with each extra signal (with diminishing weight) and with variety. Pure.
+ * audio spikes, bursts of scene cuts and clip requests. Signals within 12 s of a stronger one join
+ * its moment; a moment's score grows with each extra signal (with diminishing weight) and with
+ * variety. Pure.
  */
 export function rankMoments(input: RankInput): RankedMoment[] {
   const events: RankEvent[] = [];
@@ -408,11 +408,16 @@ export function rankMoments(input: RankInput): RankedMoment[] {
   if (events.length === 0) return [];
   events.sort((a, b) => a.atMs - b.atMs);
 
+  // Moments grow around their strongest signal: each seed, strongest first, takes the unclaimed
+  // signals within 12 s of it. Weaker signals further away seed moments of their own, so a busy
+  // stretch splits into separate moments instead of chaining into one long one.
+  const claimed = new Set<RankEvent>();
   const clusters: RankEvent[][] = [];
-  for (const e of events) {
-    const c = clusters.at(-1);
-    if (c && e.atMs - c.at(-1)!.atMs <= CLUSTER_GAP && e.atMs - c[0]!.atMs <= CLUSTER_SPAN) c.push(e);
-    else clusters.push([e]);
+  for (const seed of [...events].sort((a, b) => b.points - a.points || a.atMs - b.atMs)) {
+    if (claimed.has(seed)) continue;
+    const members = events.filter((e) => !claimed.has(e) && Math.abs(e.atMs - seed.atMs) <= CLUSTER_GAP);
+    for (const e of members) claimed.add(e);
+    clusters.push(members);
   }
 
   const duration = input.durationMs ?? Math.max(...events.map((e) => e.atMs + e.post));
@@ -658,26 +663,50 @@ export function providerSchema(schema: Parameters<typeof toProviderJsonSchema>[0
   return walk(toProviderJsonSchema(schema)) as Record<string, unknown>;
 }
 
+/** A provider refusing the structured-output schema itself (too large or unsupported), not the request. */
+function schemaRefused(err: unknown): boolean {
+  return err instanceof ProviderError && err.status === 400 && /schema|output_config|text\.format|response_format|grammar|too (many|complex|large)/i.test(err.message);
+}
+
+/** Without structured output the schema goes in the instructions; the reply is validated the same way. */
+function plainJsonSystem(system: string, schema: Record<string, unknown>): string {
+  return `${system}\n\nReply with ONE JSON object and nothing else (no prose, no code fences). It must match this JSON Schema:\n${JSON.stringify(schema)}`;
+}
+
 export function createClipTextModel(env: AppConfig["env"], fetchImpl: FetchLike = fetch): ClipTextModel | null {
   if (env.VISION_PROVIDER === "anthropic" && env.ANTHROPIC_API_KEY) {
     const model = env.ANTHROPIC_TEXT_MODEL ?? env.ANTHROPIC_VISION_MODEL;
     if (!model) return null;
     const key = env.ANTHROPIC_API_KEY;
     const base = env.ANTHROPIC_BASE_URL.replace(/\/$/, "");
+    const call = async (o: Parameters<ClipTextModel["json"]>[0], strict: boolean) => {
+      const res = (await postJson(
+        fetchImpl,
+        "anthropic",
+        `${base}/v1/messages`,
+        { "x-api-key": key, "anthropic-version": "2023-06-01" },
+        {
+          model,
+          max_tokens: o.maxTokens,
+          system: strict ? o.system : plainJsonSystem(o.system, o.schema),
+          messages: [{ role: "user", content: o.user }],
+          ...(strict ? { output_config: { format: { type: "json_schema", schema: o.schema } } } : {}),
+        },
+        o.timeoutMs ?? 60_000,
+      )) as { content?: { type: string; text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number } };
+      const text = res.content?.find((c) => c.type === "text")?.text ?? "";
+      return { raw: parseJsonText(text), usage: { inputTokens: res.usage?.input_tokens ?? 0, outputTokens: res.usage?.output_tokens ?? 0 } };
+    };
     return {
       provider: "anthropic",
       model,
-      async json({ system, user, schema, maxTokens, timeoutMs }) {
-        const res = (await postJson(
-          fetchImpl,
-          "anthropic",
-          `${base}/v1/messages`,
-          { "x-api-key": key, "anthropic-version": "2023-06-01" },
-          { model, max_tokens: maxTokens, system, messages: [{ role: "user", content: user }], output_config: { format: { type: "json_schema", schema } } },
-          timeoutMs ?? 60_000,
-        )) as { content?: { type: string; text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number } };
-        const text = res.content?.find((c) => c.type === "text")?.text ?? "";
-        return { raw: parseJsonText(text), usage: { inputTokens: res.usage?.input_tokens ?? 0, outputTokens: res.usage?.output_tokens ?? 0 } };
+      async json(o) {
+        try {
+          return await call(o, true);
+        } catch (err) {
+          if (schemaRefused(err)) return call(o, false);
+          throw err;
+        }
       },
     };
   }
@@ -686,28 +715,36 @@ export function createClipTextModel(env: AppConfig["env"], fetchImpl: FetchLike 
     if (!model) return null;
     const key = env.OPENAI_API_KEY;
     const base = env.OPENAI_BASE_URL.replace(/\/$/, "");
+    const call = async (o: Parameters<ClipTextModel["json"]>[0], strict: boolean) => {
+      const res = (await postJson(
+        fetchImpl,
+        "openai",
+        `${base}/responses`,
+        { authorization: `Bearer ${key}` },
+        {
+          model,
+          max_output_tokens: o.maxTokens,
+          input: [
+            { role: "system", content: [{ type: "input_text", text: strict ? o.system : plainJsonSystem(o.system, o.schema) }] },
+            { role: "user", content: [{ type: "input_text", text: o.user }] },
+          ],
+          text: { format: strict ? { type: "json_schema", name: o.name, schema: o.schema, strict: true } : { type: "json_object" } },
+        },
+        o.timeoutMs ?? 60_000,
+      )) as { output?: { content?: { type: string; text?: string }[] }[]; usage?: { input_tokens?: number; output_tokens?: number } };
+      const text = res.output?.flatMap((x) => x.content ?? []).find((c) => c.type === "output_text")?.text ?? "";
+      return { raw: parseJsonText(text), usage: { inputTokens: res.usage?.input_tokens ?? 0, outputTokens: res.usage?.output_tokens ?? 0 } };
+    };
     return {
       provider: "openai",
       model,
-      async json({ system, user, schema, name, maxTokens, timeoutMs }) {
-        const res = (await postJson(
-          fetchImpl,
-          "openai",
-          `${base}/responses`,
-          { authorization: `Bearer ${key}` },
-          {
-            model,
-            max_output_tokens: maxTokens,
-            input: [
-              { role: "system", content: [{ type: "input_text", text: system }] },
-              { role: "user", content: [{ type: "input_text", text: user }] },
-            ],
-            text: { format: { type: "json_schema", name, schema, strict: true } },
-          },
-          timeoutMs ?? 60_000,
-        )) as { output?: { content?: { type: string; text?: string }[] }[]; usage?: { input_tokens?: number; output_tokens?: number } };
-        const text = res.output?.flatMap((o) => o.content ?? []).find((c) => c.type === "output_text")?.text ?? "";
-        return { raw: parseJsonText(text), usage: { inputTokens: res.usage?.input_tokens ?? 0, outputTokens: res.usage?.output_tokens ?? 0 } };
+      async json(o) {
+        try {
+          return await call(o, true);
+        } catch (err) {
+          if (schemaRefused(err)) return call(o, false);
+          throw err;
+        }
       },
     };
   }
@@ -716,11 +753,19 @@ export function createClipTextModel(env: AppConfig["env"], fetchImpl: FetchLike 
 
 /** The model's JSON, or undefined when the reply isn't JSON (its usage is still logged). */
 function parseJsonText(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
-  }
+  const attempt = (t: string) => {
+    try {
+      return JSON.parse(t) as unknown;
+    } catch {
+      return undefined;
+    }
+  };
+  const direct = attempt(text.trim());
+  if (direct !== undefined) return direct;
+  // Tolerate a code fence or a sentence around the object (plain-JSON fallback).
+  const a = text.indexOf("{");
+  const b = text.lastIndexOf("}");
+  return a >= 0 && b > a ? attempt(text.slice(a, b + 1)) : undefined;
 }
 
 function requireJson(raw: unknown): unknown {
