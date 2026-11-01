@@ -85,10 +85,11 @@ export const CITY: Building[] = [
   { x: 852, w: 84, top: 534, kind: "moderne", tone: 2 },
 ];
 
+/** Cel-shaded pairs: the face in shadow, the sunlit side, and the rim light on the sunward edge. */
 export const TONES = [
-  { face: "#2b1338", rim: "#ff9a52" },
-  { face: "#351741", rim: "#ffb067" },
-  { face: "#24102f", rim: "#ff8a4c" },
+  { face: "#2b1338", lit: "#46194b", rim: "#ff9a52" },
+  { face: "#351741", lit: "#55204f", rim: "#ffb067" },
+  { face: "#24102f", lit: "#3d1645", rim: "#ff8a4c" },
 ] as const;
 
 export function buildingPath(b: Building): string {

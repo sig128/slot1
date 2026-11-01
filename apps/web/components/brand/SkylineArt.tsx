@@ -186,18 +186,33 @@ function MidLayer({ id }: { id: string }) {
         );
       })}
 
-      {/* the city, sunlit edges on the right */}
+      {/* the city: cel-shaded faces (shadow, sunlit side, rim light), halftone, sunset windows */}
       {CITY.map((b, i) => {
         const t = TONES[b.tone];
+        const litX = b.x + b.w * 0.64;
         return (
           <g key={i}>
             <path d={buildingPath(b)} fill={t.face} />
+            <rect x={litX} y={b.top} width={b.x + b.w - litX} height={G - b.top} fill={t.lit} />
+            <path d={buildingPath(b)} fill={`url(#${id}-dots)`} opacity="0.55" />
             <rect x={b.x + b.w - 7} y={b.top} width="6" height={G - b.top} fill={t.rim} opacity="0.85" />
             <path d={windowsPath(b, 31 + i * 5)} fill={i % 2 ? "#ffd36b" : "#ffc04d"} />
             <path d={buildingPath(b)} fill="none" stroke={INK} strokeWidth="3.5" strokeLinejoin="round" />
           </g>
         );
       })}
+      {/* rooftops: a billboard for the station, a water tower, antennas */}
+      <g stroke={INK} strokeWidth="3" strokeLinejoin="round">
+        <path d="M790 506V490M842 506V490" fill="none" />
+        <rect x="772" y="452" width="88" height="40" fill="#1c0b22" />
+        <rect x="778" y="458" width="76" height="28" fill="none" stroke="#ff4f87" strokeWidth="2" />
+        <path d="M420 478L424 452M450 478L446 452M422 466H448" fill="none" strokeWidth="2.4" />
+        <path d="M414 452V436Q435 424 456 436V452Z" fill="#3a1846" />
+        <path d="M140 408V392M150 408V398M166 408V386" fill="none" strokeWidth="2.4" />
+      </g>
+      <text x="816" y="478" textAnchor="middle" fill="#ffd2df" stroke="#ff4f87" strokeWidth="0.8" style={{ font: "800 17px 'Barlow Condensed', 'Arial Narrow', sans-serif", letterSpacing: "0.1em" }}>
+        ON AIR
+      </text>
       <rect x="-10" y={G - 2} width={VB.w + 20} height={VB.h - G + 2} fill="#1d0a22" />
       <rect x="-10" y={G - 2} width={VB.w + 20} height={VB.h - G + 2} fill={`url(#${id}-dots)`} />
       <path d={`M-10 ${G}H${VB.w + 10}`} stroke={INK} strokeWidth="4" />
@@ -247,7 +262,36 @@ function FrontLayer({ id }: { id: string }) {
       <path d="M-10 810V724C300 704 700 734 1000 716C1300 700 1500 720 1610 708V810Z" fill="#13061a" />
       <path d="M-10 810V724C300 704 700 734 1000 716C1300 700 1500 720 1610 708V810Z" fill={`url(#${id}-dots2)`} />
       <path d="M-10 724C300 704 700 734 1000 716C1300 700 1500 720 1610 708" fill="none" stroke={INK} strokeWidth="4" />
+      <Coupe x={600} y={692} />
     </svg>
+  );
+}
+
+/** A low two-door coupe parked in the lot, side on, nose to the right (original design). */
+function Coupe({ x, y }: { x: number; y: number }) {
+  return (
+    <g transform={`translate(${x} ${y})`} strokeLinejoin="round">
+      <ellipse cx="112" cy="70" rx="122" ry="7" fill="#000" opacity="0.4" />
+      <path
+        d="M4 52L8 38Q22 31 46 29L76 14Q92 7 116 8L150 23Q182 25 208 32L220 42Q224 52 216 58H8Q2 58 4 52Z"
+        fill="#2b1236"
+        stroke={INK}
+        strokeWidth="4"
+      />
+      <path d="M48 31L77 17Q92 11 112 12L140 26Z" fill="#6c3b6e" stroke={INK} strokeWidth="3" />
+      <path d="M96 12V27" stroke={INK} strokeWidth="3" />
+      <path d="M10 37Q24 31 46 29M150 23Q182 25 208 32" fill="none" stroke="#ffb067" strokeWidth="3" />
+      <path d="M8 45H216" stroke="#ff9a52" strokeWidth="2" opacity="0.6" />
+      <rect x="208" y="36" width="12" height="7" rx="2" fill="#fff1c9" stroke={INK} strokeWidth="2" />
+      <rect x="2" y="38" width="9" height="7" rx="2" fill="#ff4f87" stroke={INK} strokeWidth="2" />
+      {[48, 172].map((cx) => (
+        <g key={cx}>
+          <circle cx={cx} cy="58" r="17" fill="#140715" stroke={INK} strokeWidth="3" />
+          <circle cx={cx} cy="58" r="9" fill="#ffc94d" stroke={INK} strokeWidth="2.5" />
+          <circle cx={cx} cy="58" r="3" fill={INK} />
+        </g>
+      ))}
+    </g>
   );
 }
 
