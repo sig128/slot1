@@ -193,6 +193,8 @@ apply_gateway() {
 ensure_env_defaults() {
   if [ -z "$(env_get SLOT1_DEMO_STREAM_KEY)" ]; then env_set SLOT1_DEMO_STREAM_KEY "$(rand_hex 24)"; fi
   if [ -z "$(env_get SLOT1_DEMO)" ]; then env_set SLOT1_DEMO false; fi
+  # A full-featured vertical render can peak around 1.7 GB of memory: one at a time on one server.
+  if [ -z "$(env_get WORKER_LIBRARY_CONCURRENCY)" ]; then env_set WORKER_LIBRARY_CONCURRENCY 1; fi
 }
 
 # Free text for .env: one line, without characters the env-file format would interpret.
