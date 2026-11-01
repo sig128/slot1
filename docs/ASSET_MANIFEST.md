@@ -22,7 +22,7 @@ Considered and **not** shipped:
 | Asset | File | Notes |
 |---|---|---|
 | SLOT1 wordmark | `apps/web/components/brand/Wordmark.tsx` | "SLOT" set in Barlow Condensed Black; the "1" sits in a sunset-gradient badge like a channel-number bug. It plays once per browser session and never under reduced motion. |
-| Skyline art | `apps/web/components/brand/SkylineArt.tsx` | Inline SVG: generic night skyline, palms, a low sun and light on the water. Simple geometric shapes, not traced from any game or photo. |
+| Skyline art and the home intro | `apps/web/components/brand/SkylineArt.tsx`, `skyline-geometry.ts`, `skyline.css`; `apps/web/components/home/IntroHud.tsx`, `IntroTips.tsx`, `intro.css` | Inline SVG and CSS drawn for SLOT1: a golden-hour bay city in a loading-screen style with ink outlines, flat shading and halftone dots. It includes a hillside sign spelling SLOT1, palms, a freeway with light trails, a coupe and a helicopter, plus a HUD (radar, stars, counter) that shows real live-channel data. Not traced from any game, photo, cover or loading screen. It uses no Rockstar artwork, logos, characters or fonts (the title uses Passion One, OFL). |
 | App icon | `apps/web/app/icon.svg` | Gradient "1" badge matching the wordmark |
 | Color palette | `apps/web/app/globals.css` (`@theme`) | Graphite, ivory, apricot, coral and signal tokens chosen for this project |
 
@@ -31,7 +31,7 @@ Considered and **not** shipped:
 | Asset | How it's made | Notes |
 |---|---|---|
 | `tests/fixtures/generated/sample-replay.mp4` | `scripts/make-sample-video.sh`, using ffmpeg's built-in generators (`testsrc2`, `testsrc`, `smptehdbars`, solid black, sine tones, silence) and `drawtext` | Synthetic. It contains no game footage. The overlaid strings are typed text written to exercise OCR. They include place and character names such as "Vespucci Beach" and "Lamar" because they resemble GTA subtitles; they are words, not assets. The file is generated locally and git-ignored. |
-| `/demo` fixtures | `apps/web/lib/fixtures.ts` | Invented observations, clearly labeled "DEMO … Fixture data for design review" on the page. They are never mixed into real sessions. |
+| Live demo stream | `apps/worker/src/demo/scene.ts`, `broadcast.ts` | Generated live by ffmpeg's built-in sources and `drawtext` with the OFL fonts in `packages/analysis/fonts`. It is a synthetic GTA-style HUD scene with typed mission titles, subtitles, result screens and a money counter, plus a generated tone bed. It contains no game footage or music, and every page that shows it labels it as a demo with a synthetic test video. See [DEMO.md](DEMO.md). |
 | E2E screenshots | `tests/e2e/screenshots/{desktop,laptop,narrow}/` | Captured by Playwright from this app running on the synthetic sample |
 
 ## System fonts used at runtime (not bundled)
