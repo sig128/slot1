@@ -187,6 +187,9 @@ const IVORY = 0xf5efe6;
 const CORAL = 0xff4f87;
 const WASTED_RED = 0xe0565b;
 
+/** Font size of each overlay text style at 1080p (see assStyles). */
+const TEXT_SIZE: Record<string, number> = { poster: 120, banner: 84, caption: 54, mission: 150, wasted: 170, "lower-third": 76, "title-card": 140 };
+
 /** Styles in output pixels, sized from the frame height so 720p and 1080p look the same. */
 function assStyles(W: number, H: number): string[] {
   const u = Math.min(W, H) / 1080;
@@ -201,7 +204,7 @@ function assStyles(W: number, H: number): string[] {
     row("wasted", "Passion One", fs(170), assColor(WASTED_RED), assColor(WASTED_RED), assColor(INK), assColor(0, 0.6), 0, 6, 1, fs(10), fs(8), 5, 0),
     row("lower-third", "Passion One", fs(76), assColor(0x101014), assColor(0x101014), assColor(GOLD), assColor(GOLD), 0, 1, 3, fs(16), 0, 4, 0),
     row("title-card", "Passion One", fs(140), assColor(IVORY), assColor(IVORY), assColor(INK), assColor(GOLD, 0.9), 0, 1, 1, fs(9), fs(10), 5, 0),
-    row("sub", "DejaVu Sans", fs(44), assColor(IVORY), assColor(IVORY), assColor(INK), assColor(0, 0.5), -1, 1, 1, fs(5), fs(3), 5, 0),
+    row("sub", "Passion One", fs(64), assColor(IVORY), assColor(IVORY), assColor(INK), assColor(0, 0.5), 0, 2, 1, fs(6), fs(4), 5, 0),
     row("cap-karaoke", "Passion One", fs(92), assColor(GOLD), assColor(0xffffff), assColor(INK), assColor(0, 0.5), 0, 1, 1, fs(8), fs(4), 2, fs(300)),
     row("cap-line", "DejaVu Sans", fs(54), assColor(0xffffff), assColor(0xffffff), assColor(0, 0.45), assColor(0, 0.45), -1, 0, 3, fs(14), 0, 2, fs(300)),
     row("cap-pop", "Passion One", fs(130), assColor(0xffffff), assColor(0xffffff), assColor(INK), assColor(0, 0.5), 0, 1, 1, fs(10), fs(6), 5, 0),
@@ -292,7 +295,9 @@ function textItemEvents(it: OverlayTextItem, W: number, H: number, layer: number
     }
     if (sub) {
       const subStyle = style === "lower-third" ? "banner" : "sub";
-      const offset = style === "lower-third" ? Math.round(H * 0.075 * va.scale) : Math.round(H * (style === "caption" ? 0.05 : 0.085) * va.scale);
+      // Below the main line: half of each line's height plus a small gap, in style units.
+      const u = Math.min(W, H) / 1080;
+      const offset = style === "lower-third" ? Math.round(u * 122 * va.scale) : Math.round(u * ((TEXT_SIZE[style] ?? 120) * 0.56 + 64 * 0.56 + 8) * va.scale);
       const sx = px(va.x) + (style === "lower-third" ? Math.round(W * 0.01) : 0);
       out.push(dialogue(layer, a, b, subStyle, `{${alignTag}\\pos(${sx},${py(va.y) + offset})\\alpha${assAlpha(va.opacity)}${first ? "\\fad(200,120)" : ""}}${sub}`));
     }
@@ -666,11 +671,11 @@ export function buildEdlRender(input: {
         case "wasted": {
           const first = Math.round(a * fps);
           const last = Math.max(first, Math.round(b * fps) - 1);
-          // freezeframes takes the replacement frame from its second input: a copy of the stream.
-          const i = step;
-          filters.push(`${label}split=2[fza${i}][fzb${i}]`);
-          label = `[fz${i}]`;
-          filters.push(`[fza${i}][fzb${i}]freezeframes=first=${first}:last=${last}:replace=${first}${label}`);
+          // Freeze: repeat the window's first frame over the window, in one linear chain. (A
+          // split into freezeframes stalls ffmpeg 6 when other inputs are still being read.)
+          // loop's `start` counts from 1 here: start=first+1 repeats frame `first`.
+          const n = last - first + 1;
+          if (n > 1) chain(`loop=loop=${n - 1}:size=1:start=${first + 1},select='lt(n,${last + 1})+gte(n,${last + n})',setpts=N/(${fps}*TB)`);
           chain(`hue=s=0:${win},eq=brightness=-0.06:contrast=1.18:${win},vignette=angle=0.95:${win}`);
           banners.push(...effectEvents(f, W, H));
           break;

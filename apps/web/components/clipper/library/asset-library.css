@@ -1,0 +1,586 @@
+/*
+ * Studio library browser. Quiet graphite list and grid; the one loud moment is the sound that is
+ * playing, which goes "on air" in gold and sweeps its waveform. Coral means favorite, ivory means
+ * selected. The panel sizes itself to its container (editor sidebar or Studio page), not the window.
+ */
+
+.alib {
+  container: alib / inline-size;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  color: var(--color-ivory);
+}
+
+/* Header: title and count, then search (side by side when there is room). */
+.alib-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: end;
+  gap: 0.75rem 1.5rem;
+}
+.alib-h {
+  font-size: 1.9rem;
+  line-height: 0.9;
+}
+.alib-count {
+  margin-top: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--color-ivory-3);
+}
+.alib-search {
+  position: relative;
+  display: block;
+}
+.alib-search-icon {
+  position: absolute;
+  left: 0.8rem;
+  top: 50%;
+  width: 1.05rem;
+  height: 1.05rem;
+  transform: translateY(-50%);
+  color: var(--color-ivory-3);
+  pointer-events: none;
+}
+.alib-search-input.field {
+  height: 2.5rem;
+  padding-left: 2.4rem;
+}
+
+/* Section tabs: the site's pause-menu selection bar, scrolling sideways when the panel is narrow. */
+.alib-tabsroot {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.alib-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 1.1rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--color-line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.alib-tabs::-webkit-scrollbar {
+  display: none;
+}
+.alib-tab {
+  flex: none;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+  color: var(--color-ivory-2);
+  border-radius: 2px;
+  transition: color 120ms var(--ease-broadcast);
+}
+.alib-tab:hover {
+  color: var(--color-ivory);
+}
+.alib-tab[data-state="active"] {
+  background: var(--color-ivory);
+  color: var(--color-graphite);
+}
+
+/* Filter chips: sentence case (they are filters, not on-air status). */
+.alib-chips {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  padding-bottom: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.alib-chips::-webkit-scrollbar {
+  display: none;
+}
+.alib-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 1.9rem;
+  padding: 0 0.7rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.98rem;
+  letter-spacing: 0.02em;
+  color: var(--color-ivory-2);
+  border: 1px solid var(--color-line-strong);
+  border-radius: 2px;
+  transition:
+    color 120ms var(--ease-broadcast),
+    border-color 120ms var(--ease-broadcast),
+    background-color 120ms var(--ease-broadcast);
+}
+.alib-chip:hover {
+  color: var(--color-ivory);
+  border-color: var(--color-ivory-3);
+}
+.alib-chip[aria-pressed="true"] {
+  color: var(--color-ivory);
+  border-color: var(--color-ivory);
+  background: rgb(244 237 226 / 0.09);
+}
+.alib-chip .alib-star {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+.alib-chip-fav[aria-pressed="true"] {
+  color: var(--color-coral);
+  border-color: var(--color-coral);
+  background: rgb(255 79 135 / 0.09);
+}
+.alib-chip-fav[aria-pressed="true"] .alib-star {
+  fill: currentColor;
+}
+
+.alib-body {
+  flex: 1;
+  min-height: 0;
+  margin-top: 0.9rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.alib-body:focus-visible {
+  outline-offset: 2px;
+}
+
+.alib-state {
+  margin-top: 1rem;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  font-size: 0.92rem;
+  color: var(--color-ivory-2);
+  background: var(--color-graphite-800);
+  border: 1px solid var(--color-line);
+  border-radius: 2px;
+}
+.alib-state p {
+  margin: 0;
+  max-width: 54ch;
+}
+
+/* ---- Audio rows ------------------------------------------------------------------------- */
+
+.alib-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--color-line);
+}
+.alib-row {
+  position: relative;
+  display: grid;
+  align-items: center;
+  column-gap: 0.7rem;
+  row-gap: 0.3rem;
+  padding: 0.6rem 0.4rem 0.6rem 0.55rem;
+  border-bottom: 1px solid var(--color-line);
+  /* Narrow: name and duration over the waveform. */
+  grid-template-columns: 2.5rem minmax(0, 1fr) auto auto auto;
+  grid-template-areas:
+    "play text dur fav add"
+    "play wave wave fav add";
+  transition: background-color 160ms var(--ease-broadcast);
+}
+.alib[data-mode="browse"] .alib-row {
+  grid-template-columns: 2.5rem minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "play text dur fav"
+    "play wave wave fav";
+}
+.alib-row[draggable="true"] {
+  cursor: grab;
+}
+.alib-row:hover {
+  background: rgb(244 237 226 / 0.035);
+}
+.alib-row[data-state] {
+  background: rgb(255 201 77 / 0.075);
+  box-shadow: inset 3px 0 0 var(--color-gold);
+}
+
+.alib-play {
+  grid-area: play;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--color-ivory);
+  background: var(--color-graphite-800);
+  border: 1px solid var(--color-line-strong);
+  border-radius: 2px;
+  transition:
+    color 120ms var(--ease-broadcast),
+    background-color 120ms var(--ease-broadcast),
+    border-color 120ms var(--ease-broadcast);
+}
+.alib-play svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: currentColor;
+}
+.alib-play:hover {
+  border-color: var(--color-ivory-2);
+}
+.alib-row[data-state="loading"] .alib-play {
+  color: var(--color-gold);
+  border-color: var(--color-gold);
+}
+.alib-row[data-state="playing"] .alib-play {
+  color: var(--color-graphite-900);
+  background: var(--color-gold);
+  border-color: var(--color-gold);
+}
+
+.alib-text {
+  grid-area: text;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.alib-name {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.08rem;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.alib-cat {
+  font-size: 0.78rem;
+  line-height: 1.3;
+  color: var(--color-ivory-3);
+}
+
+.alib-wave {
+  grid-area: wave;
+  position: relative;
+  display: block;
+  min-width: 0;
+  height: 1.55rem;
+  color: var(--color-ivory-3);
+}
+.alib-wave svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+.alib-wave-base {
+  opacity: 0.5;
+  transition: opacity 160ms var(--ease-broadcast);
+}
+.alib-row:hover .alib-wave-base {
+  opacity: 0.8;
+}
+.alib-row[data-state="playing"] .alib-wave-base {
+  opacity: 0.32;
+}
+.alib-wave .alib-wave-on {
+  fill: var(--color-gold);
+  clip-path: inset(0 100% 0 0);
+  animation: alib-sweep var(--alib-dur, 1s) linear var(--alib-iter, 1) both;
+}
+@keyframes alib-sweep {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.alib-dur {
+  grid-area: dur;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  color: var(--color-ivory-2);
+}
+.alib-loop {
+  width: 0.95rem;
+  height: 0.95rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: var(--color-ivory-3);
+}
+
+.alib-star {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+.alib-fav {
+  grid-area: fav;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  color: var(--color-ivory-3);
+  border-radius: 2px;
+  transition: color 120ms var(--ease-broadcast);
+}
+.alib-fav .alib-star {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+.alib-fav:hover {
+  color: var(--color-ivory);
+}
+.alib-fav[aria-pressed="true"] {
+  color: var(--color-coral);
+}
+.alib-fav[aria-pressed="true"] .alib-star {
+  fill: currentColor;
+}
+
+.alib-add {
+  grid-area: add;
+}
+
+/* ---- Visual grid ------------------------------------------------------------------------ */
+
+.alib-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.25rem), 1fr));
+  gap: 1rem 0.75rem;
+}
+.alib-tile {
+  min-width: 0;
+}
+.alib-tile[draggable="true"] {
+  cursor: grab;
+}
+.alib-thumb {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: 2px;
+  transition: border-color 120ms var(--ease-broadcast);
+}
+.alib-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.alib-tile[data-kind="sticker"] .alib-thumb {
+  aspect-ratio: 4 / 3;
+}
+.alib-tile[data-kind="sticker"] .alib-thumb img {
+  inset: 12%;
+  width: 76%;
+  height: 76%;
+}
+/* Stickers sit on a transparency checker; full-frame pieces over a dusk sky, so glows and grain read. */
+.alib-thumb-check {
+  background-color: var(--color-graphite-700);
+  background-image: conic-gradient(var(--color-graphite-600) 25%, transparent 0 50%, var(--color-graphite-600) 0 75%, transparent 0);
+  background-size: 18px 18px;
+}
+.alib-thumb-scene {
+  background: linear-gradient(180deg, #24102e 0%, #4e1a44 44%, #a8426a 76%, #ee8a6b 100%);
+}
+.alib-thumb[role="button"] {
+  cursor: pointer;
+}
+.alib-thumb[role="button"]:hover {
+  border-color: var(--color-ivory-2);
+}
+.alib-thumb[role="button"]:focus-visible {
+  outline-offset: 2px;
+}
+.alib-thumb-add {
+  position: absolute;
+  right: 0.4rem;
+  bottom: 0.4rem;
+  display: grid;
+  place-items: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  color: var(--color-ivory);
+  background: var(--color-graphite-900);
+  border: 1px solid var(--color-line-strong);
+  border-radius: 2px;
+  transition:
+    color 120ms var(--ease-broadcast),
+    background-color 120ms var(--ease-broadcast);
+}
+.alib-thumb-add svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+.alib-thumb[role="button"]:hover .alib-thumb-add,
+.alib-thumb[role="button"]:focus-visible .alib-thumb-add {
+  color: var(--color-graphite);
+  background: var(--color-ivory);
+}
+.alib-tile-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 0;
+  margin-top: 0.3rem;
+}
+.alib-tile-foot .alib-name {
+  flex: 1;
+  font-size: 1rem;
+}
+.alib-tile-foot .alib-fav {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+}
+
+/* Wider panels: one line per sound, chips wrap instead of scrolling. */
+@container alib (min-width: 34rem) {
+  .alib-head {
+    grid-template-columns: minmax(0, 1fr) minmax(14rem, 21rem);
+  }
+  .alib-chips {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+  .alib-row {
+    grid-template-columns: 2.5rem minmax(0, 1fr) minmax(7rem, 15rem) 3.75rem auto auto;
+    grid-template-areas: "play text wave dur fav add";
+  }
+  .alib[data-mode="browse"] .alib-row {
+    grid-template-columns: 2.5rem minmax(0, 1fr) minmax(7rem, 16rem) 3.75rem auto;
+    grid-template-areas: "play text wave dur fav";
+  }
+  .alib-grid {
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  }
+}
+
+/* Hovering or focusing a transition plays its motion (only for people who haven't asked for less). */
+@media (prefers-reduced-motion: no-preference) {
+  .alib-tile[data-motion]:is(:hover, :focus-within) .alib-thumb img {
+    animation: alib-fade 1.5s var(--ease-broadcast) infinite;
+  }
+  .alib-tile[data-motion="slide-left"]:is(:hover, :focus-within) .alib-thumb img {
+    animation-name: alib-slide-left;
+  }
+  .alib-tile[data-motion="slide-right"]:is(:hover, :focus-within) .alib-thumb img {
+    animation-name: alib-slide-right;
+  }
+  .alib-tile[data-motion="zoom"]:is(:hover, :focus-within) .alib-thumb img {
+    animation-name: alib-zoom;
+  }
+  .alib-tile[data-motion="shake"]:is(:hover, :focus-within) .alib-thumb img {
+    animation-name: alib-shake;
+    animation-timing-function: steps(1, end);
+    animation-duration: 0.9s;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .alib-wave .alib-wave-on {
+    animation: none;
+    clip-path: none;
+  }
+}
+@keyframes alib-fade {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  40%,
+  60% {
+    opacity: 1;
+  }
+}
+@keyframes alib-slide-left {
+  0% {
+    transform: translateX(105%);
+  }
+  42%,
+  58% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-105%);
+  }
+}
+@keyframes alib-slide-right {
+  0% {
+    transform: translateX(-105%);
+  }
+  42%,
+  58% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(105%);
+  }
+}
+@keyframes alib-zoom {
+  0% {
+    transform: scale(0.25);
+    opacity: 0;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+@keyframes alib-shake {
+  0% {
+    transform: translate(0, 0);
+  }
+  15% {
+    transform: translate(-4%, 1%);
+  }
+  30% {
+    transform: translate(3%, -2%);
+  }
+  45% {
+    transform: translate(-2%, 2%);
+  }
+  60% {
+    transform: translate(4%, 0);
+  }
+  75% {
+    transform: translate(-3%, -1%);
+  }
+  90% {
+    transform: translate(0, 0);
+  }
+}

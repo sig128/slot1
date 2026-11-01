@@ -1,4 +1,4 @@
-import { estimateCostUsd, loadStudioAssetManifest, postJson, ProviderError, type FetchLike, type TokenUsage } from "@slot1/analysis";
+import { estimateCostUsd, loadStudioAssetManifest, postJson, ProviderError, studioAssetsRev, type FetchLike, type TokenUsage } from "@slot1/analysis";
 import {
   bigMoment,
   clipTime,
@@ -855,9 +855,9 @@ async function transcriptLines(ctx: ServerContext, edl: Edl): Promise<{ outMs: n
 /* Studio library                                                                             */
 /* ------------------------------------------------------------------------------------------ */
 
-/** Browser link to play or show a library item (served by the Studio library route). */
-export function studioAssetPreviewUrl(asset: Pick<StudioAsset, "file">): string {
-  return `/api/studio/assets/file/${asset.file.split("/").map(encodeURIComponent).join("/")}`;
+/** Browser link to play or show a library item: the Studio library's file route, by id, cacheable per revision. */
+export function studioAssetPreviewUrl(asset: Pick<StudioAsset, "id">): string {
+  return `/api/studio/assets/file/${asset.id}?v=${encodeURIComponent(studioAssetsRev())}`;
 }
 
 function libraryIndex(): Map<string, StudioAsset> {

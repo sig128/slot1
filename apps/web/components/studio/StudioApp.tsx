@@ -11,6 +11,7 @@ import { AdvancedSection, BotSection, JobsSection, OverviewSection, PrivacySecti
 import { GtaModelSection } from "./GtaModelSection";
 import { LibrarySection } from "./LibrarySection";
 import { AiClipToolsSection } from "@/components/clipper/ai/AiClipToolsSection";
+import { SoundsSection } from "@/components/clipper/library/SoundsSection";
 import { StreamSetupSection } from "./StreamSetup";
 
 export interface StudioCtx {
@@ -30,6 +31,7 @@ const SECTIONS = [
   ["sources", "Video sources"],
   ["library", "Library"],
   ["ai-clips", "AI clip tools"],
+  ["sounds", "Sounds and elements"],
   ["bot", "Bot and chat"],
   ["privacy", "Privacy and data"],
   ["jobs", "Jobs and usage"],
@@ -77,6 +79,7 @@ export function StudioApp() {
     }
     if (window.location.hash === "#sources") setSection("sources");
     if (window.location.hash === "#library") setSection("library");
+    if (window.location.hash === "#sounds") setSection("sounds");
     if (window.location.hash === "#stream" || q.get("tab") === "stream") setSection("stream");
   }, [reload]);
 
@@ -188,6 +191,9 @@ export function StudioApp() {
           </Tabs.Content>
           <Tabs.Content value="ai-clips" id="ai-clips">
             <AiClipToolsSection ctx={ctx} />
+          </Tabs.Content>
+          <Tabs.Content value="sounds" id="sounds">
+            <SoundsSection />
           </Tabs.Content>
           <Tabs.Content value="advanced">
             <AdvancedSection ctx={ctx} />

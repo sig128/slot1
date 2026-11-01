@@ -300,8 +300,13 @@ describe("AI clip tools", () => {
     expect(p.usedAi).toBe(false);
     expect(p.usage).toBeNull();
     const fanfare = p.placed.find((a) => a.assetId === "sfx/fanfare-test")!;
-    expect(fanfare).toMatchObject({ kind: "sfx", name: "Test fanfare", reason: "MISSION PASSED on screen", previewUrl: "/api/studio/assets/file/sfx/fanfare-test.wav" });
+    expect(fanfare).toMatchObject({ kind: "sfx", name: "Test fanfare", reason: "MISSION PASSED on screen" });
+    expect(fanfare.previewUrl).toMatch(/^\/api\/studio\/assets\/file\/sfx\/fanfare-test\?v=[0-9a-f]{12}$/);
     expect(fanfare.atMs).toBeGreaterThanOrEqual(27_000);
+    // The preview link plays the library file for the creator.
+    const file = await creator.get(fanfare.previewUrl!);
+    expect(file.status).toBe(200);
+    expect(file.raw.subarray(0, 4).toString("latin1")).toBe("RIFF");
     expect(p.placed.some((a) => a.assetId === "music/drive-test" && a.atMs === 0)).toBe(true);
     expect(p.edl.audioTracks.map((t) => t.name)).toEqual(["AI sounds", "Music"]);
     expect(p.edl.audioTracks[1]).toMatchObject({ kind: "music", duck: true });
@@ -361,7 +366,7 @@ describe("AI clip tools", () => {
     expect(e.unchanged).toBe(false);
     expect(e.stripped).toEqual(["library item “sfx/invented-sound”"]);
     expect(e.changes).toEqual(expect.arrayContaining(["Length 0:40.0 → 0:20.0", "Part 1 plays at 2×", "Adds the audio track “AI sounds”", "Adds sound “Test fanfare” at 0:14.0"]));
-    expect(e.placed).toEqual([expect.objectContaining({ assetId: "sfx/fanfare-test", atMs: 14_000, previewUrl: "/api/studio/assets/file/sfx/fanfare-test.wav" })]);
+    expect(e.placed).toEqual([expect.objectContaining({ assetId: "sfx/fanfare-test", atMs: 14_000, previewUrl: expect.stringMatching(/^\/api\/studio\/assets\/file\/sfx\/fanfare-test\?v=/) })]);
     expect(e.edl.audioTracks[0]!.clips.map((c) => c.id)).toEqual(["s1"]);
     expect(e.model).toBe("stub-text-model");
     expect(e.usage.estimatedCostUsd).toBeCloseTo((9000 * 3 + 1400 * 15) / 1e6, 8);

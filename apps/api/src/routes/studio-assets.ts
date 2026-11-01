@@ -9,12 +9,27 @@ import { notFound } from "../lib/errors";
 import { requireBroadcaster } from "../lib/session";
 
 const ID = StudioAsset.shape.id;
+/** A manifest `file` path (sfx/cash/register-01.m4a): lowercase segments and one extension, nothing else. */
+const FILE = /^[a-z0-9]+(?:[/-][a-z0-9]+)*\.[a-z0-9]{2,4}$/;
+
+let byFile: { manifest: object; map: Map<string, string> } | null = null;
+
+/** Find a library item by id (canonical) or by its manifest file path. Anything else is not found. */
+function lookup(param: string) {
+  if (ID.safeParse(param).success) return resolveStudioAsset(param);
+  if (!FILE.test(param)) return null;
+  const manifest = loadStudioAssetManifest();
+  if (byFile?.manifest !== manifest) byFile = { manifest, map: new Map(manifest.assets.map((a) => [a.file, a.id])) };
+  const id = byFile.map.get(param);
+  return id ? resolveStudioAsset(id) : null;
+}
 
 /**
  * The Studio's built-in library (docs/ASSET_MANIFEST.md, "Studio library"): sounds, music,
  * ambience and visual elements SLOT1 ships with. Creators only. File URLs carry `?v=<rev>` from
  * the manifest so browsers can cache them for good; Range requests are supported so audio can
- * seek (and Safari plays it).
+ * seek (and Safari plays it). Files are addressed by item id (canonical) or by the manifest's
+ * `file` path; both resolve through resolveStudioAsset, so nothing outside the library is served.
  */
 export const studioAssetRoutes =
   (_ctx: ServerContext): FastifyPluginAsync =>
@@ -32,9 +47,7 @@ export const studioAssetRoutes =
 
     app.get("/api/studio/assets/file/*", { config: { rateLimit: { max: 900, timeWindow: "1 minute" } } }, async (req, reply) => {
       requireBroadcaster(req);
-      const parsed = ID.safeParse((req.params as { "*": string })["*"]);
-      if (!parsed.success) throw notFound("No such library item");
-      const found = resolveStudioAsset(parsed.data);
+      const found = lookup(String((req.params as { "*"?: string })["*"] ?? ""));
       if (!found) throw notFound("No such library item");
       const { v } = z.object({ v: z.string().max(64).optional() }).parse(req.query);
       const rev = studioAssetsRev();
