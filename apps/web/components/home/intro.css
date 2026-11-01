@@ -7,6 +7,16 @@
  * After that only slow ambient life runs. Reduced motion, and coming back to the page within the
  * app, show the final frame at once. Literal colours: this file is outside Tailwind's theme.
  */
+/* The title's face with a block period, so the intro never animates a fallback font (same file
+   as Passion One 900 in globals.css, so the browser fetches it once). */
+@font-face {
+  font-family: "SLOT1 Intro";
+  src: url("/fonts/passion-one/passion-one-latin-900-normal.woff2") format("woff2");
+  font-weight: 900;
+  font-style: normal;
+  font-display: block;
+}
+
 .gx-hero {
   position: relative;
   isolation: isolate;

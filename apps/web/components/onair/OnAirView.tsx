@@ -1,16 +1,20 @@
+import "@/components/home/intro.css";
 import Link from "next/link";
 import type { Capabilities, ChannelCard, DirectoryResponse } from "@slot1/contracts";
 import { ScenePlayback } from "@/components/brand/ScenePlayback";
 import { SkylineArt } from "@/components/brand/SkylineArt";
+import { IntroHudCounter, IntroRadar } from "@/components/home/IntroHud";
+import { IntroTips } from "@/components/home/IntroTips";
 import { compactNumber } from "@/lib/format";
 import { requirementText } from "@/lib/requirements";
 import { LinkOpener } from "./LinkOpener";
 import { ChannelAvatar, LiveDirectory } from "./LiveDirectory";
 
 /**
- * The top of the home page: SLOT1's intro over the animated skyline, then the live directory.
- * Server-rendered (the artwork costs no JavaScript); only the directory search, the link opener
- * and the off-screen pause are client code.
+ * The top of the home page: a game-style loading screen that resolves into SLOT1's title card,
+ * with a HUD that shows real numbers, then the live directory. Server-rendered (the artwork costs
+ * no JavaScript); only the directory search, the link opener and the playback control are client
+ * code. The sequence is in components/home/intro.css.
  */
 export function OnAirView({ directory, capabilities }: { directory: DirectoryResponse; capabilities: Capabilities | null }) {
   const listed = directory.channels;
@@ -20,51 +24,47 @@ export function OnAirView({ directory, capabilities }: { directory: DirectoryRes
 
   return (
     <>
-      <section data-scene data-mode={mode} aria-labelledby="intro-title" className="sk-hero flex flex-col">
-        <div className="mx-auto w-full max-w-[1600px] px-4 pb-12 pt-7 sm:px-6 lg:px-10 lg:pb-16 lg:pt-[clamp(2.75rem,8vh,6.5rem)]">
-          <div>
-            <h1
-              id="intro-title"
-              className={`poster-title sk-title max-w-[64rem] leading-[0.86] ${
-                mode === "empty" ? "text-[clamp(3rem,12.4vw,4.6rem)] lg:text-[clamp(4.2rem,5.5vw,6.2rem)]" : "text-[clamp(2.7rem,11vw,4rem)] lg:text-[clamp(3.6rem,4.6vw,5.1rem)]"
-              }`}
-            >
-              <span className="sk-line">
-                <span className="sk-rise" style={{ animationDelay: "60ms" }}>
-                  The AI that watches
-                </span>
-              </span>{" "}
-              <span className="sk-line">
-                <span className="sk-rise" style={{ animationDelay: "170ms" }}>
-                  GTA streams with you.
-                </span>
+      <section data-scene data-mode={mode} aria-labelledby="intro-title" className="gx-hero">
+        <div className="gx-copy">
+          <h1 id="intro-title" className="max-w-[48rem]">
+            <span className="gx-mark" aria-hidden>
+              <span className="gx-mark-slot">SLOT</span>
+              <span className="gx-mark-one">
+                <span>1</span>
               </span>
-            </h1>
-            <p className="sk-reveal mt-5 max-w-[34rem] text-[1.05rem] leading-relaxed text-ivory-2 sm:text-[1.15rem] lg:mt-7" style={{ animationDelay: "520ms" }}>
-              SLOT1 sits beside a GTA broadcast, logs what it actually sees and links every line to the frames it came from. Streams sent to SLOT1 also get live
-              video, instant replays and clips.
-            </p>
-            <div className="sk-reveal mt-8 flex flex-wrap gap-3" style={{ animationDelay: "680ms" }}>
-              <Link href="/demo" className="btn btn-coral h-11 px-5 text-[1.08rem]">
-                Watch the live demo
+            </span>
+            <span className="sr-only">SLOT1: </span>
+            <span className="gx-tagline">
+              <span>The AI that watches GTA streams with you.</span>
+            </span>
+          </h1>
+          <p className="gx-help gx-reveal mt-5" style={{ animationDelay: "2.7s" }}>
+            SLOT1 sits beside a GTA broadcast, logs what it actually sees and links every line to the frames it came from. Streams sent to SLOT1 also get
+            live video, instant replays and clips.
+          </p>
+          <div className="gx-reveal mt-5 flex flex-wrap gap-3" style={{ animationDelay: "2.85s" }}>
+            <Link href="/demo" className="btn btn-coral h-12 px-5 text-[1.12rem]">
+              Watch the live demo
+            </Link>
+            {twitchReady ? (
+              <Link href="/studio" className="btn btn-ghost h-12 bg-[rgb(10_5_14/0.78)] px-5 text-[1.12rem]">
+                Connect my Twitch
               </Link>
-              {twitchReady ? (
-                <Link href="/studio" className="btn btn-ghost h-11 bg-graphite/40 px-5 text-[1.08rem]">
-                  Connect my Twitch
-                </Link>
-              ) : (
-                <Link href="/setup" className="btn btn-ghost h-11 bg-graphite/40 px-5 text-[1.08rem]">
-                  How creators connect
-                </Link>
-              )}
-            </div>
-            <div className="sk-reveal mt-8" style={{ animationDelay: "820ms" }}>
-              {mode === "empty" ? <EmptyStatus /> : <LiveStatus live={live} listed={listed.length} />}
-            </div>
+            ) : (
+              <Link href="/setup" className="btn btn-ghost h-12 bg-[rgb(10_5_14/0.78)] px-5 text-[1.12rem]">
+                How creators connect
+              </Link>
+            )}
+          </div>
+          <div className="gx-reveal mt-5" style={{ animationDelay: "3s" }}>
+            {mode === "empty" ? <EmptyStatus /> : <LiveStatus live={live} listed={listed.length} />}
           </div>
         </div>
-        <div className="sk-hero-art order-first lg:order-none">
+        <IntroTips />
+        <div className="gx-art">
           <SkylineArt animated intro evidence idPrefix="skh" className="h-full w-full" />
+          <IntroHudCounter live={live.length} />
+          <IntroRadar live={live.length} />
         </div>
         <ScenePlayback />
       </section>
@@ -76,10 +76,10 @@ export function OnAirView({ directory, capabilities }: { directory: DirectoryRes
 
 function EmptyStatus() {
   return (
-    <p className="flex max-w-[40rem] items-start gap-2.5 text-[0.98rem] text-ivory-2">
-      <span className="stale-dot mt-[0.45rem] text-ivory-3" aria-hidden />
+    <p className="gx-sub">
+      <span className="stale-dot shrink-0 self-center text-ivory-3" aria-hidden />
       <span>
-        <span className="font-display text-[1.08rem] font-semibold text-ivory">Nothing on air yet.</span> Channels appear here the moment their creator goes live.
+        <span className="font-display text-[1.06rem] font-semibold text-ivory">Nothing on air yet.</span> Channels appear here the moment their creator goes live.
       </span>
     </p>
   );
@@ -89,14 +89,14 @@ function LiveStatus({ live, listed }: { live: ChannelCard[]; listed: number }) {
   const n = live.length;
   return (
     <div>
-      <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.98rem] text-ivory-2">
+      <p className="gx-sub">
         {n > 0 ? (
-          <span className="flex items-center gap-2 font-display text-[1.12rem] font-semibold text-coral">
+          <span className="flex items-center gap-2 font-display text-[1.1rem] font-semibold text-coral">
             <span className="live-dot live-dot-pulse" aria-hidden />
             {n === 1 ? "1 channel live now" : `${n} channels live now`}
           </span>
         ) : (
-          <span className="flex items-center gap-2 font-display text-[1.12rem] font-semibold text-ivory">
+          <span className="flex items-center gap-2 font-display text-[1.1rem] font-semibold text-ivory">
             <span className="stale-dot text-ivory-3" aria-hidden />
             No one is live right now
           </span>
@@ -106,12 +106,12 @@ function LiveStatus({ live, listed }: { live: ChannelCard[]; listed: number }) {
         </a>
       </p>
       {n > 0 && (
-        <ul className="mt-4 flex flex-wrap gap-2" aria-label="Live now">
+        <ul className="mt-3 flex flex-wrap gap-2" aria-label="Live now">
           {live.slice(0, 3).map((c) => (
             <li key={c.broadcasterId}>
               <Link
                 href={`/watch/${c.login}`}
-                className="flex h-11 items-center gap-2.5 rounded-[2px] border border-line-strong bg-graphite/60 pl-1.5 pr-3.5 backdrop-blur-sm transition-colors hover:border-ivory-2"
+                className="flex h-11 items-center gap-2.5 rounded-[2px] border border-line-strong bg-[rgb(10_5_14/0.8)] pl-1.5 pr-3.5 transition-colors hover:border-ivory-2"
               >
                 <ChannelAvatar c={c} size={30} />
                 <span className="max-w-[11rem] truncate font-display text-[1.05rem] font-semibold">{c.displayName}</span>
