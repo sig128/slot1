@@ -16,7 +16,7 @@
 }
 .su-art {
   position: relative;
-  height: clamp(150px, 22vw, 270px);
+  height: clamp(140px, 19vw, 230px);
 }
 .su-art::after {
   /* the game is paused: the scene sinks back behind the menu */
@@ -51,7 +51,7 @@
 .su-title {
   font-family: "Passion One", "Barlow Condensed", Impact, sans-serif;
   font-weight: 900;
-  font-size: clamp(2.3rem, 6.4vw, 3.3rem);
+  font-size: clamp(2.1rem, 5.6vw, 2.8rem);
   line-height: 0.9;
   letter-spacing: 0.005em;
   color: #fbf4ea;
@@ -262,7 +262,30 @@
   margin-top: 10px;
 }
 
-/* --- brief --- */
+/* --- brief: the map beside the four setup steps on wide screens --- */
+.su-brief-top {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+}
+.su-brief-side {
+  padding-top: 2px;
+}
+.su-brief-top > .su-map {
+  margin-top: 0;
+}
+.su-brief-side {
+  min-width: 0;
+}
+@media (min-width: 1280px) {
+  .su-brief-top {
+    grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr);
+    align-items: start;
+  }
+  .su-brief-side .su-objectives {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 @media (min-width: 1024px) {
   .su-brief {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
@@ -784,8 +807,7 @@
   height: 16px;
   margin-top: -8px;
   background:
-    linear-gradient(45deg, transparent 42%, #ff4f87 42% 58%, transparent 58%),
-    linear-gradient(-45deg, transparent 42%, #ff4f87 42% 58%, transparent 58%);
+    linear-gradient(45deg, transparent 42%, #ff4f87 42% 58%, transparent 58%), linear-gradient(-45deg, transparent 42%, #ff4f87 42% 58%, transparent 58%);
 }
 
 /* --- the closing strip --- */

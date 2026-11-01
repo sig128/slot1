@@ -59,10 +59,26 @@ export interface Permission {
 
 /** What Connect my Twitch asks for (docs/TWITCH_SCOPES.md). */
 export const PERMISSIONS: Permission[] = [
-  { scope: "channel:bot", when: "Always", what: "Lets the SLOT1 bot account into your chat." },
-  { scope: "clips:edit", when: "Always", what: "Creates a clip when you, or the chat users you allow, ask for one." },
-  { scope: "channel:manage:clips", when: "Optional", what: "Downloads your clips so SLOT1 can analyze them. Add it later in Studio." },
-  { scope: "channel:read:stream_key", when: "Optional", what: "Forwards your stream to Twitch. Only when you choose it in Studio → Stream setup." },
+  {
+    scope: "channel:bot",
+    when: "Always",
+    what: "Lets the SLOT1 bot account into your chat.",
+  },
+  {
+    scope: "clips:edit",
+    when: "Always",
+    what: "Creates a clip when you, or the chat users you allow, ask for one.",
+  },
+  {
+    scope: "channel:manage:clips",
+    when: "Optional",
+    what: "Downloads your clips so SLOT1 can analyze them. Add it later in Studio.",
+  },
+  {
+    scope: "channel:read:stream_key",
+    when: "Optional",
+    what: "Forwards your stream to Twitch. Only when you choose it in Studio → Stream setup.",
+  },
 ];
 
 export interface Command {
@@ -73,22 +89,70 @@ export interface Command {
 }
 
 export const COMMANDS: Command[] = [
-  { cmd: "!slot1 help", copy: "!slot1 help", does: "The commands, and whether SLOT1 can see gameplay right now." },
-  { cmd: "!slot1 now", copy: "!slot1 now", does: "What it saw in the last couple of minutes, or why it can’t say." },
-  { cmd: "!slot1 recap", copy: "!slot1 recap", does: "The last 10 minutes, with how much of it was analyzed." },
-  { cmd: "!slot1 find <thing>", copy: "!slot1 find ", does: "Searches what it has seen and links the best moment." },
-  { cmd: "!slot1 ask <question>", copy: "!slot1 ask ", does: "Answers only from what it observed." },
-  { cmd: "!slot1 clip", copy: "!slot1 clip", does: "Posts the clip link once Twitch confirms it. The creator decides who may clip." },
-  { cmd: "!slot1 status", copy: "!slot1 status", does: "Live or not, what it can see, and the commentary setting." },
+  {
+    cmd: "!slot1 help",
+    copy: "!slot1 help",
+    does: "The commands, and whether SLOT1 can see gameplay right now.",
+  },
+  {
+    cmd: "!slot1 now",
+    copy: "!slot1 now",
+    does: "What it saw in the last couple of minutes, or why it can’t say.",
+  },
+  {
+    cmd: "!slot1 recap",
+    copy: "!slot1 recap",
+    does: "The last 10 minutes, with how much of it was analyzed.",
+  },
+  {
+    cmd: "!slot1 find <thing>",
+    copy: "!slot1 find ",
+    does: "Searches what it has seen and links the best moment.",
+  },
+  {
+    cmd: "!slot1 ask <question>",
+    copy: "!slot1 ask ",
+    does: "Answers only from what it observed.",
+  },
+  {
+    cmd: "!slot1 clip",
+    copy: "!slot1 clip",
+    does: "Posts the clip link once Twitch confirms it. The creator decides who may clip.",
+  },
+  {
+    cmd: "!slot1 status",
+    copy: "!slot1 status",
+    does: "Live or not, what it can see, and the commentary setting.",
+  },
 ];
 
 /** The creator and the moderators they approve. */
 export const CREATOR_COMMANDS: Command[] = [
-  { cmd: "!slot1 pause / resume", copy: "!slot1 pause", does: "Stops and restarts the analysis." },
-  { cmd: "!slot1 mute / unmute", copy: "!slot1 mute", does: "Silences automatic commentary. Commands keep working." },
-  { cmd: "!slot1 record on / off", copy: "!slot1 record on", does: "Saves the stream to your SLOT1 library. The first time, it asks for your OK in Studio." },
-  { cmd: "!slot1 autoclip on / off", copy: "!slot1 autoclip on", does: "Clips MISSION PASSED, WASTED and BUSTED moments automatically." },
-  { cmd: "!slot1 relay", copy: "!slot1 relay", does: "Where SLOT1 is forwarding your stream right now. Never any addresses or keys." },
+  {
+    cmd: "!slot1 pause / resume",
+    copy: "!slot1 pause",
+    does: "Stops and restarts the analysis.",
+  },
+  {
+    cmd: "!slot1 mute / unmute",
+    copy: "!slot1 mute",
+    does: "Silences automatic commentary. Commands keep working.",
+  },
+  {
+    cmd: "!slot1 record on / off",
+    copy: "!slot1 record on",
+    does: "Saves the stream to your SLOT1 library. The first time, it asks for your OK in Studio.",
+  },
+  {
+    cmd: "!slot1 autoclip on / off",
+    copy: "!slot1 autoclip on",
+    does: "Clips MISSION PASSED, WASTED and BUSTED moments automatically.",
+  },
+  {
+    cmd: "!slot1 relay",
+    copy: "!slot1 relay",
+    does: "Where SLOT1 is forwarding your stream right now. Never any addresses or keys.",
+  },
 ];
 
 export const CONSOLE_TEST = [

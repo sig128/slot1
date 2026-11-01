@@ -7,7 +7,21 @@
 
 const INK = "#140715";
 
-function Label({ x, y, children, size = 17, anchor = "middle", tone = "#f4ede2" }: { x: number; y: number; children: React.ReactNode; size?: number; anchor?: "start" | "middle" | "end"; tone?: string }) {
+function Label({
+  x,
+  y,
+  children,
+  size = 17,
+  anchor = "middle",
+  tone = "#f4ede2",
+}: {
+  x: number;
+  y: number;
+  children: React.ReactNode;
+  size?: number;
+  anchor?: "start" | "middle" | "end";
+  tone?: string;
+}) {
   return (
     <text x={x} y={y} textAnchor={anchor} className="su-map-label" fontSize={size} fill={tone}>
       {children}
@@ -77,8 +91,8 @@ export function RouteMap() {
       <svg viewBox="0 0 1000 480" className="su-map-svg" role="img" aria-labelledby="su-map-title su-map-desc">
         <title id="su-map-title">How the video travels</title>
         <desc id="su-map-desc">
-          Console only: the PS5 broadcasts to Twitch, and SLOT1’s watch page shows Twitch’s own player, so SLOT1 sees nothing. With a capture card and OBS:
-          your video goes to SLOT1, which analyzes it, plays it live to viewers with the AI log, and can forward the same stream to Twitch, YouTube and Kick.
+          Console only: the PS5 broadcasts to Twitch, and SLOT1’s watch page shows Twitch’s own player, so SLOT1 sees nothing. With a capture card and OBS: your
+          video goes to SLOT1, which analyzes it, plays it live to viewers with the AI log, and can forward the same stream to Twitch, YouTube and Kick.
         </desc>
         {/* the map */}
         <rect width="1000" height="480" fill="#221f2a" />
@@ -100,7 +114,15 @@ export function RouteMap() {
         <Chip x={162} y={42} w={196} tone="#b8b0a4">
           SLOT1 SEES: NOTHING
         </Chip>
-        <path d="M137 120H443M497 120H823" stroke="#8a847b" strokeWidth="5" strokeDasharray="2 12" strokeLinecap="round" fill="none" className="su-route-faint" />
+        <path
+          d="M137 120H443M497 120H823"
+          stroke="#8a847b"
+          strokeWidth="5"
+          strokeDasharray="2 12"
+          strokeLinecap="round"
+          fill="none"
+          className="su-route-faint"
+        />
         <Label x={290} y={108} size={16} tone="#d9d1c5">
           built-in broadcast
         </Label>
@@ -116,9 +138,15 @@ export function RouteMap() {
         <Blip x={850} y={120} fill="#8a847b">
           {EyeOff}
         </Blip>
-        <Label x={110} y={170}>PS5</Label>
-        <Label x={470} y={170}>Twitch</Label>
-        <Label x={850} y={170}>SLOT1 watch page</Label>
+        <Label x={110} y={170}>
+          PS5
+        </Label>
+        <Label x={470} y={84}>
+          Twitch
+        </Label>
+        <Label x={850} y={170}>
+          SLOT1 watch page
+        </Label>
 
         {/* lane 2: capture card + OBS */}
         <Label x={40} y={255} anchor="start" size={20} tone="#f4ede2">
@@ -140,7 +168,7 @@ export function RouteMap() {
         <Label x={484} y={232} anchor="start" size={16} tone="#ffd3b0">
           forwarded to Twitch
         </Label>
-        <Label x={656} y={404} anchor="start" size={16} tone="#ffd3b0">
+        <Label x={584} y={393} anchor="start" size={16} tone="#ffd3b0">
           forwarded, not re-encoded
         </Label>
         <Blip x={110} y={330} fill="#d9d1c5">
@@ -169,11 +197,15 @@ export function RouteMap() {
         <Blip x={560} y={440} fill="#d9d1c5">
           {Play}
         </Blip>
-        <Label x={110} y={380}>PC + OBS</Label>
-        <Label x={410} y={385} anchor="end">
+        <Label x={110} y={380}>
+          PC + OBS
+        </Label>
+        <Label x={502} y={296} anchor="start" tone="#ffe2a0">
           SLOT1
         </Label>
-        <Label x={850} y={380}>Viewers on SLOT1</Label>
+        <Label x={850} y={380}>
+          Viewers on SLOT1
+        </Label>
         <Label x={340} y={447} anchor="end">
           YouTube
         </Label>

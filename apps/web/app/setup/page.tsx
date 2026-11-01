@@ -42,8 +42,8 @@ export default function SetupPage() {
           <div>
             <h1 className="su-title">How SLOT1 works</h1>
             <p className="su-lede">
-              SLOT1 is a website and a Twitch chat bot. <strong>Nothing is installed on your PS5.</strong> Watching a broadcast and analyzing gameplay
-              are separate things, and SLOT1 always tells you which one you’re getting.
+              SLOT1 is a website and a Twitch chat bot. <strong>Nothing is installed on your PS5.</strong> Watching a broadcast and analyzing gameplay are
+              separate things, and SLOT1 always tells you which one you’re getting.
             </p>
           </div>
           <div className="su-head-cta">
@@ -65,43 +65,46 @@ export default function SetupPage() {
             What SLOT1 sees depends on the route
           </h2>
           <p className="su-intro">A console sends its broadcast to Twitch only. SLOT1 analyzes gameplay only when it gets its own copy of the video.</p>
-          <RouteMap />
-
-          <h3 className="su-panel-title mt-8">Your setup, in four steps</h3>
-          <ol className="su-objectives">
-            <li className="su-objective">
-              <b>Connect Twitch</b>
-              <span>
-                <Link href="/studio">Studio</Link> → Connect my Twitch, with the account you broadcast from.
-              </span>
-            </li>
-            <li className="su-objective">
-              <b>Turn on the bot</b>
-              <span>Its replies stay off until you switch them on in Studio → Bot and chat.</span>
-            </li>
-            <li className="su-objective">
-              <b>Send your video</b>
-              <span>Optional. A capture card and OBS, set up in one click. Needed for live analysis.</span>
-            </li>
-            <li className="su-objective">
-              <b>Go live everywhere</b>
-              <span>Optional. SLOT1 passes the same stream on to Twitch, YouTube and Kick.</span>
-            </li>
-          </ol>
+          <div className="su-brief-top">
+            <RouteMap />
+            <div className="su-brief-side">
+              <h3 className="su-panel-title">Your setup, in four steps</h3>
+              <ol className="su-objectives">
+                <li className="su-objective">
+                  <b>Connect Twitch</b>
+                  <span>
+                    <Link href="/studio">Studio</Link> → Connect my Twitch, with the account you broadcast from.
+                  </span>
+                </li>
+                <li className="su-objective">
+                  <b>Turn on the bot</b>
+                  <span>Its replies stay off until you switch them on in Studio → Bot and chat.</span>
+                </li>
+                <li className="su-objective">
+                  <b>Send your video</b>
+                  <span>Optional. A capture card and OBS, set up in one click. Needed for live analysis.</span>
+                </li>
+                <li className="su-objective">
+                  <b>Go live everywhere</b>
+                  <span>Optional. SLOT1 passes the same stream on to Twitch, YouTube and Kick.</span>
+                </li>
+              </ol>
+            </div>
+          </div>
 
           <div id="ps5" className="su-grid su-brief" style={{ scrollMarginTop: "8.25rem" }}>
             <div className="su-panel">
               <h3 className="su-panel-title">PS5 broadcasting stays on the PS5</h3>
               <p className="mt-2">
-                A stock PS5 broadcasts with its built-in feature: press the Create button, choose Broadcast, pick Twitch and go live. Viewers watch on
-                Twitch, or on SLOT1, which shows Twitch’s own player.
+                A stock PS5 broadcasts with its built-in feature: press the Create button, choose Broadcast, pick Twitch and go live. Viewers watch on Twitch,
+                or on SLOT1, which shows Twitch’s own player.
               </p>
             </div>
             <div className="su-panel">
               <h3 className="su-panel-title">One stream, to Twitch</h3>
               <p className="mt-2">
-                The PS5 sends one stream, to Twitch. It doesn’t send a second copy to SLOT1, and there’s no setting on the console where you could enter a
-                SLOT1 address. That’s why SLOT1 can show the broadcast without being able to see the gameplay.
+                The PS5 sends one stream, to Twitch. It doesn’t send a second copy to SLOT1, and there’s no setting on the console where you could enter a SLOT1
+                address. That’s why SLOT1 can show the broadcast without being able to see the gameplay.
               </p>
             </div>
             <div className="su-panel">
@@ -109,8 +112,8 @@ export default function SetupPage() {
                 Chat on your TV <span className="su-tag su-gold">Unconfirmed</span>
               </h3>
               <p className="mt-2">
-                SLOT1’s replies are ordinary Twitch chat messages. If you turn on the PS5’s chat overlay, they may show on your TV with other chat. That
-                hasn’t been verified on a console yet, so treat it as unconfirmed.
+                SLOT1’s replies are ordinary Twitch chat messages. If you turn on the PS5’s chat overlay, they may show on your TV with other chat. That hasn’t
+                been verified on a console yet, so treat it as unconfirmed.
               </p>
             </div>
           </div>
@@ -150,6 +153,10 @@ export default function SetupPage() {
           <p className="su-note">
             The Twitch player and SLOT1’s analysis travel on different paths and can be several seconds apart. Times shown as estimated are estimates.
           </p>
+          <p className="su-note">
+            Frames include your webcam and overlays. To hide your camera from the AI, use Studio → Stream setup → “Hide your camera from the AI”; viewers still
+            see the full stream.
+          </p>
         </section>
 
         <section id="twitch" className="su-section" aria-labelledby="twitch-h">
@@ -179,9 +186,7 @@ export default function SetupPage() {
               </div>
               <div className="su-panel">
                 <h3 className="su-panel-title">Running your own SLOT1?</h3>
-                <p className="mt-2">
-                  The README covers registering a Twitch app, redirect URLs, the public HTTPS address EventSub needs, and embed hostnames.
-                </p>
+                <p className="mt-2">The README covers registering a Twitch app, redirect URLs, the public HTTPS address EventSub needs, and embed hostnames.</p>
               </div>
             </div>
           </div>
@@ -218,8 +223,8 @@ export default function SetupPage() {
                 <li>Automatic commentary is off until the creator turns it on.</li>
                 <li>The creator can stop the bot instantly from Studio.</li>
                 <li>
-                  Chat announcements (“SLOT1 is watching”, a link when an auto-clip is ready) are off until the creator turns them on in Studio → Bot and
-                  chat, and there are never more than three in five minutes.
+                  Chat announcements (“SLOT1 is watching”, a link when an auto-clip is ready) are off until the creator turns them on in Studio → Bot and chat,
+                  and there are never more than three in five minutes.
                 </li>
                 <li>The creator decides who may use !slot1 clip.</li>
               </ul>
@@ -237,8 +242,8 @@ export default function SetupPage() {
                 Live analysis <span className="su-tag su-gold">Capture card + OBS</span>
               </h3>
               <p className="mt-2">
-                For continuous analysis, SLOT1 needs its own copy of the gameplay video. The common way is a capture card between the PS5 and your TV, with
-                OBS on a computer sending to the SLOT1 ingest address from Studio, and to Twitch, or SLOT1 forwards it there for you.
+                For continuous analysis, SLOT1 needs its own copy of the gameplay video. The common way is a capture card between the PS5 and your TV, with OBS
+                on a computer sending to the SLOT1 ingest address from Studio, and to Twitch, or SLOT1 forwards it there for you.
               </p>
               <p>Each source has its own stream key, which you can revoke at any time.</p>
             </div>
@@ -265,13 +270,12 @@ export default function SetupPage() {
             </li>
             <li className="su-step">
               <b>Paste the password</b>
-              Paste the server password into Studio. SLOT1 puts its one Server and Stream Key into OBS. The password stays in your browser and is never
-              saved.
+              Paste the server password into Studio. SLOT1 puts its one Server and Stream Key into OBS. The password stays in your browser and is never saved.
             </li>
             <li className="su-step">
               <b>Pick where to go live</b>
-              Twitch needs no key: allow SLOT1 to forward once and it reads your stream key itself. For YouTube or Kick, paste that platform’s stream key
-              (and Kick’s Stream URL).
+              Twitch needs no key: allow SLOT1 to forward once and it reads your stream key itself. For YouTube or Kick, paste that platform’s stream key (and
+              Kick’s Stream URL).
             </li>
             <li className="su-step">
               <b>Go live in OBS</b>
@@ -287,8 +291,8 @@ export default function SetupPage() {
             <div className="su-panel">
               <h3 className="su-panel-title">The trade-off</h3>
               <p className="mt-2">
-                Everything runs through SLOT1, so if SLOT1 has a problem, every platform goes quiet until it’s back. Platforms have their own rules on
-                streaming to several places at once; check them before you go live everywhere.
+                Everything runs through SLOT1, so if SLOT1 has a problem, every platform goes quiet until it’s back. Platforms have their own rules on streaming
+                to several places at once; check them before you go live everywhere.
               </p>
             </div>
           </div>
@@ -311,8 +315,8 @@ export default function SetupPage() {
             <div className="su-panel">
               <h3 className="su-panel-title">Without one</h3>
               <p className="mt-2">
-                SLOT1 still reads on-screen text locally and measures the video itself (cuts, black screens, coverage), and it says AI isn’t configured
-                rather than guessing.
+                SLOT1 still reads on-screen text locally and measures the video itself (cuts, black screens, coverage), and it says AI isn’t configured rather
+                than guessing.
               </p>
             </div>
             <div className="su-panel">

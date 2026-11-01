@@ -34,7 +34,10 @@ export function SetupTabs() {
     const tab = ul?.querySelector<HTMLElement>(`[data-tab="${active}"]`);
     if (!ul || !tab || ul.scrollWidth <= ul.clientWidth) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    ul.scrollTo({ left: tab.offsetLeft - ul.clientWidth / 2 + tab.clientWidth / 2, behavior: reduce ? "auto" : "smooth" });
+    ul.scrollTo({
+      left: tab.offsetLeft - ul.clientWidth / 2 + tab.clientWidth / 2,
+      behavior: reduce ? "auto" : "smooth",
+    });
   }, [active]);
 
   return (
@@ -42,13 +45,7 @@ export function SetupTabs() {
       <ul ref={bar} className="su-tab-list">
         {SECTIONS.map((s) => (
           <li key={s.id}>
-            <a
-              href={`#${s.id}`}
-              data-tab={s.id}
-              aria-current={active === s.id ? "location" : undefined}
-              className="su-tab"
-              onClick={() => setActive(s.id)}
-            >
+            <a href={`#${s.id}`} data-tab={s.id} aria-current={active === s.id ? "location" : undefined} className="su-tab" onClick={() => setActive(s.id)}>
               {s.label}
             </a>
           </li>
