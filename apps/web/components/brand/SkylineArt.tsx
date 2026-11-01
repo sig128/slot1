@@ -262,7 +262,7 @@ function FrontLayer({ id }: { id: string }) {
       <path d="M-10 810V724C300 704 700 734 1000 716C1300 700 1500 720 1610 708V810Z" fill="#13061a" />
       <path d="M-10 810V724C300 704 700 734 1000 716C1300 700 1500 720 1610 708V810Z" fill={`url(#${id}-dots2)`} />
       <path d="M-10 724C300 704 700 734 1000 716C1300 700 1500 720 1610 708" fill="none" stroke={INK} strokeWidth="4" />
-      <Coupe x={600} y={692} />
+      <Coupe x={560} y={672} />
     </svg>
   );
 }
@@ -270,15 +270,17 @@ function FrontLayer({ id }: { id: string }) {
 /** A low two-door coupe parked in the lot, side on, nose to the right (original design). */
 function Coupe({ x, y }: { x: number; y: number }) {
   return (
-    <g transform={`translate(${x} ${y})`} strokeLinejoin="round">
+    <g transform={`translate(${x} ${y}) scale(1.3)`} strokeLinejoin="round">
       <ellipse cx="112" cy="70" rx="122" ry="7" fill="#000" opacity="0.4" />
       <path
         d="M4 52L8 38Q22 31 46 29L76 14Q92 7 116 8L150 23Q182 25 208 32L220 42Q224 52 216 58H8Q2 58 4 52Z"
-        fill="#2b1236"
+        fill="#9a2f62"
         stroke={INK}
         strokeWidth="4"
       />
-      <path d="M48 31L77 17Q92 11 112 12L140 26Z" fill="#6c3b6e" stroke={INK} strokeWidth="3" />
+      <path d="M8 46H216V54Q216 58 210 58H10Q4 58 6 52Z" fill="#5e1b47" />
+      <path d="M48 31L77 17Q92 11 112 12L140 26Z" fill="#3a1d4a" stroke={INK} strokeWidth="3" />
+      <path d="M84 16L92 13L104 25H92Z" fill="#ffb067" opacity="0.55" />
       <path d="M96 12V27" stroke={INK} strokeWidth="3" />
       <path d="M10 37Q24 31 46 29M150 23Q182 25 208 32" fill="none" stroke="#ffb067" strokeWidth="3" />
       <path d="M8 45H216" stroke="#ff9a52" strokeWidth="2" opacity="0.6" />

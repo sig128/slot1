@@ -11,13 +11,19 @@
   background: #2a0d37;
   --sk-focus: 0.5;
 }
+/* Covers its box. In short wide bands (Setup, Studio) the stage is taller than the box: it then
+   drops by up to 17% of its height, trimming the foreground before the sky so the hill sign,
+   the sun and the city stay in view. */
 .sk-stage {
   position: absolute;
   bottom: 0;
   left: 50%;
   width: max(100cqw, calc(100cqh * 2));
   aspect-ratio: 2 / 1;
-  transform: translateX(calc(var(--sk-focus) * -100%));
+  transform: translate(
+    calc(var(--sk-focus) * -100%),
+    min(max(calc(50cqw - 100cqh), 0px), calc(max(50cqw, 100cqh) * 0.17))
+  );
 }
 .sk-zoom {
   position: absolute;
