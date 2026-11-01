@@ -12,7 +12,6 @@ import {
   type OverlayItem,
 } from "./clipper";
 import { SessionKind, SourceLabel } from "./enums";
-import { formatMediaTime } from "./presentation";
 import { StudioAssetKind } from "./studio-assets";
 
 /**

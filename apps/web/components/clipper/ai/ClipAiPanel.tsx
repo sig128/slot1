@@ -115,7 +115,7 @@ export function ClipAiPanel({ project, edl, onApplyEdl }: ClipAiPanelProps) {
     };
   }, []);
 
-  const current = tab ?? "edit";
+  const current = tab;
   const ai = status?.textModel ?? null;
 
   const onTabKey = (e: KeyboardEvent<HTMLButtonElement>) => {
@@ -156,7 +156,7 @@ export function ClipAiPanel({ project, edl, onApplyEdl }: ClipAiPanelProps) {
             id={`${base}-tab-${id}`}
             aria-selected={current === id}
             aria-controls={`${base}-panel-${id}`}
-            tabIndex={current === id ? 0 : -1}
+            tabIndex={current === id || (current === null && id === TABS[0]![0]) ? 0 : -1}
             className="ca-tab"
             onClick={() => setTab(id)}
             onKeyDown={onTabKey}
@@ -170,14 +170,19 @@ export function ClipAiPanel({ project, edl, onApplyEdl }: ClipAiPanelProps) {
           {statusError}
         </p>
       )}
-      {TABS.map(([id]) => (
-        <div key={id} role="tabpanel" id={`${base}-panel-${id}`} aria-labelledby={`${base}-tab-${id}`} hidden={current !== id} className="p-4">
-          {id === "edit" && <EditForMe edl={edl} status={status} onApplyEdl={onApplyEdl} />}
-          {id === "polish" && <Polish edl={edl} status={status} onApplyEdl={onApplyEdl} />}
-          {id === "boring" && <Boring edl={edl} onApplyEdl={onApplyEdl} />}
-          {id === "post" && <WritePost edl={edl} status={status} projectTitle={project.title} />}
-        </div>
-      ))}
+      {current === null ? (
+        <p className="p-4 text-sm text-ivory-3">Loading the AI tools…</p>
+      ) : (
+        TABS.map(([id]) => (
+          // Every tab stays mounted, so a running request or a result survives switching tabs.
+          <div key={id} role="tabpanel" id={`${base}-panel-${id}`} aria-labelledby={`${base}-tab-${id}`} hidden={current !== id} className="p-4">
+            {id === "edit" && <EditForMe edl={edl} status={status} onApplyEdl={onApplyEdl} />}
+            {id === "polish" && <Polish edl={edl} status={status} onApplyEdl={onApplyEdl} />}
+            {id === "boring" && <Boring edl={edl} onApplyEdl={onApplyEdl} />}
+            {id === "post" && <WritePost edl={edl} status={status} projectTitle={project.title} />}
+          </div>
+        ))
+      )}
     </section>
   );
 }
@@ -352,8 +357,18 @@ function ProposalActions({
   );
 }
 
-/** After applying: say so, and offer to put the previous edit back. */
-function Applied({ previous, onApplyEdl, onClear, text }: { previous: Edl; onApplyEdl: (next: Edl) => void; onClear: () => void; text: string }) {
+interface AppliedEdit {
+  previous: Edl;
+  next: Edl;
+}
+
+/**
+ * After applying: say so, and offer to put the previous edit back. Once the creator edits again
+ * the offer goes away (the editor's own undo covers it), so it can never discard newer work.
+ */
+function Applied({ applied, edl, onApplyEdl, onClear, text }: { applied: AppliedEdit; edl: Edl; onApplyEdl: (next: Edl) => void; onClear: () => void; text: string }) {
+  if (!sameEdl(applied.next, edl)) return null;
+  const previous = applied.previous;
   return (
     <div className="mt-3 flex flex-wrap items-center gap-3 text-sm" role="status">
       <span>{text}</span>
@@ -383,7 +398,7 @@ function EditForMe({ edl, status, onApplyEdl }: { edl: Edl; status: ClipAiStatus
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Failure | null>(null);
   const [result, setResult] = useState<{ r: EditForMeResponse; basedOn: Edl } | null>(null);
-  const [applied, setApplied] = useState<Edl | null>(null);
+  const [applied, setApplied] = useState<AppliedEdit | null>(null);
   const elapsed = useElapsed(busy);
   const ai = status?.textModel;
   const prices = ai?.pricePerMTok ?? null;
@@ -453,7 +468,7 @@ function EditForMe({ edl, status, onApplyEdl }: { edl: Edl; status: ClipAiStatus
       </div>
       <Problem f={error} />
 
-      {applied && <Applied previous={applied} onApplyEdl={onApplyEdl} onClear={() => setApplied(null)} text="Applied to your edit." />}
+      {applied && <Applied applied={applied} edl={edl} onApplyEdl={onApplyEdl} onClear={() => setApplied(null)} text="Applied to your edit." />}
 
       {result && (
         <div className="mt-5 border-t hairline pt-4" aria-live="polite">
@@ -477,7 +492,7 @@ function EditForMe({ edl, status, onApplyEdl }: { edl: Edl; status: ClipAiStatus
               basedOn={result.basedOn}
               edl={edl}
               onApplyEdl={(next) => {
-                setApplied(edl);
+                setApplied({ previous: edl, next });
                 onApplyEdl(next);
               }}
               onDone={() => setResult(null)}
@@ -503,7 +518,7 @@ function Polish({ edl, status, onApplyEdl }: { edl: Edl; status: ClipAiStatusRes
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Failure | null>(null);
   const [result, setResult] = useState<{ r: PolishResponse; basedOn: Edl } | null>(null);
-  const [applied, setApplied] = useState<Edl | null>(null);
+  const [applied, setApplied] = useState<AppliedEdit | null>(null);
   const aiOn = status?.textModel.available ?? false;
 
   const run = async () => {
@@ -558,7 +573,7 @@ function Polish({ edl, status, onApplyEdl }: { edl: Edl; status: ClipAiStatusRes
         </button>
       </div>
       <Problem f={error} />
-      {applied && <Applied previous={applied} onApplyEdl={onApplyEdl} onClear={() => setApplied(null)} text="Added to your edit." />}
+      {applied && <Applied applied={applied} edl={edl} onApplyEdl={onApplyEdl} onClear={() => setApplied(null)} text="Added to your edit." />}
       {result && (
         <div className="mt-5 border-t hairline pt-4" aria-live="polite">
           {result.r.usedAi && <span className="ca-ai-label">Sounds chosen by AI</span>}
@@ -577,7 +592,7 @@ function Polish({ edl, status, onApplyEdl }: { edl: Edl; status: ClipAiStatusRes
               edl={edl}
               applyLabel="Add to my edit"
               onApplyEdl={(next) => {
-                setApplied(edl);
+                setApplied({ previous: edl, next });
                 onApplyEdl(next);
               }}
               onDone={() => setResult(null)}
@@ -601,7 +616,7 @@ function Boring({ edl, onApplyEdl }: { edl: Edl; onApplyEdl: (next: Edl) => void
   const [error, setError] = useState<Failure | null>(null);
   const [result, setResult] = useState<{ r: BoringResponse; basedOn: Edl } | null>(null);
   const [skip, setSkip] = useState<Set<string>>(new Set());
-  const [applied, setApplied] = useState<Edl | null>(null);
+  const [applied, setApplied] = useState<AppliedEdit | null>(null);
   const [measuring, setMeasuring] = useState(false);
 
   const find = useCallback(
@@ -675,7 +690,7 @@ function Boring({ edl, onApplyEdl }: { edl: Edl; onApplyEdl: (next: Edl) => void
         </button>
       </div>
       <Problem f={error} />
-      {applied && <Applied previous={applied} onApplyEdl={onApplyEdl} onClear={() => setApplied(null)} text="Cut from your edit." />}
+      {applied && <Applied applied={applied} edl={edl} onApplyEdl={onApplyEdl} onClear={() => setApplied(null)} text="Cut from your edit." />}
 
       {result && (
         <div className="mt-5 border-t hairline pt-4" aria-live="polite">
@@ -748,7 +763,7 @@ function Boring({ edl, onApplyEdl }: { edl: Edl; onApplyEdl: (next: Edl) => void
                   disabled={!cut?.edl || stale}
                   onClick={() => {
                     if (!cut?.edl) return;
-                    setApplied(edl);
+                    setApplied({ previous: edl, next: cut.edl });
                     onApplyEdl(cut.edl);
                     setResult(null);
                   }}

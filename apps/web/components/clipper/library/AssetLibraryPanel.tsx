@@ -396,7 +396,7 @@ export function AssetLibraryPanel({ kinds, onPick, mode = "pick" }: AssetLibrary
 
 const FLAT_PEAKS: number[] = Array.from({ length: 48 }, () => 0.12);
 const BAR_STEP = 4.6;
-const BAR_W = 3;
+const BAR_W = 2.6;
 const WAVE_H = 28;
 
 function Waveform({ peaks, playing, style }: { peaks: number[] | undefined; playing: boolean; style: CSSProperties }) {

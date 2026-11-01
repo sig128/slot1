@@ -475,12 +475,15 @@
     overflow: visible;
   }
   .alib-row {
-    grid-template-columns: 2.5rem minmax(0, 1fr) minmax(7rem, 15rem) 3.75rem auto auto;
+    grid-template-columns: 2.5rem minmax(7rem, 16rem) minmax(6rem, 1fr) 3.75rem auto auto;
     grid-template-areas: "play text wave dur fav add";
   }
   .alib[data-mode="browse"] .alib-row {
-    grid-template-columns: 2.5rem minmax(0, 1fr) minmax(7rem, 16rem) 3.75rem auto;
+    grid-template-columns: 2.5rem minmax(7rem, 16rem) minmax(6rem, 1fr) 3.75rem auto;
     grid-template-areas: "play text wave dur fav";
+  }
+  .alib-wave {
+    max-width: 30rem;
   }
   .alib-grid {
     grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
