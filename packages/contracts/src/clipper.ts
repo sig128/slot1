@@ -47,7 +47,19 @@ export const ASPECT_SIZE: Record<EdlAspect, { width: number; height: number; lab
 
 /** Speeds the editor offers; any value from 0.25× to 4× is valid. */
 export const EDL_SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4] as const;
-export const EDL_MAX_MS = 10 * 60_000;
+/** Longest finished edit (one sequence). */
+export const EDL_MAX_MS = 30 * 60_000;
+/** Size limits of one edit (one sequence). */
+export const EDL_LIMITS = {
+  segments: 100,
+  segmentMs: 30 * 60_000,
+  overlayTracks: 8,
+  overlayItems: 120,
+  audioTracks: 8,
+  audioClips: 200,
+  effects: 60,
+  markers: 200,
+} as const;
 /** A speed ramp is rendered as this many short steps of constant speed. */
 export const RAMP_STEPS = 8;
 
@@ -106,7 +118,7 @@ export const EdlSegment = z
     transitionIn: EdlTransition.default({ kind: "cut", durationMs: 0 }).describe("Transition from the previous segment. Ignored on the first."),
   })
   .refine((s) => s.outMs - s.inMs >= 300, { message: "A segment must be at least 0.3 s long", path: ["outMs"] })
-  .refine((s) => s.outMs - s.inMs <= 5 * 60_000, { message: "A segment can be at most 5 minutes long", path: ["outMs"] })
+  .refine((s) => s.outMs - s.inMs <= EDL_LIMITS.segmentMs, { message: `A segment can be at most ${EDL_LIMITS.segmentMs / 60_000} minutes long`, path: ["outMs"] })
   .refine((s) => s.keys.every((k) => k.atMs >= s.inMs && k.atMs <= s.outMs), { message: "Keyframes must sit inside their segment", path: ["keys"] })
   .describe("One clip on the main video track.");
 export type EdlSegment = z.infer<typeof EdlSegment>;
@@ -211,9 +223,10 @@ export const OverlayTrack = z
   .object({
     id: Id,
     name: z.string().trim().min(1).max(40).default("Overlay"),
+    kind: z.enum(["video", "text"]).optional().describe("How the editor labels the track: video (V2 and up; the default) or text (T1 and up). Any item may sit on either."),
     hidden: z.boolean().default(false).describe("Hidden tracks are left out of the preview and the render."),
     locked: z.boolean().default(false).describe("Locked tracks can't be edited by hand."),
-    items: z.array(OverlayItem).max(40).default([]),
+    items: z.array(OverlayItem).max(EDL_LIMITS.overlayItems).default([]),
   })
   .describe("A track of overlays. Higher tracks in the list draw on top.");
 export type OverlayTrack = z.infer<typeof OverlayTrack>;
@@ -252,7 +265,7 @@ export const AudioTrack = z
       .boolean()
       .default(false)
       .describe("Lower this track while the source audio has voice-band sound. The source is one mixed stream, so loud game sound in that band ducks it too."),
-    clips: z.array(AudioClip).max(60).default([]),
+    clips: z.array(AudioClip).max(EDL_LIMITS.audioClips).default([]),
   })
   .describe("An audio track (music, sound effects or voice).");
 export type AudioTrack = z.infer<typeof AudioTrack>;
@@ -289,6 +302,7 @@ export const EdlEffect = z
     endMs: z.number().int().min(1),
     text: z.string().trim().max(60).default("").describe("Banner text for wasted and passed (empty: WASTED / MISSION PASSED)."),
     amount: Unit.default(0.5).describe("Strength: punch zoom, shake size, glitch offset."),
+    enabled: z.boolean().optional().describe("false: kept in the edit but left out of the preview and the render (default on)."),
   })
   .refine((f) => f.endMs > f.startMs, { message: "An effect must end after it starts", path: ["endMs"] })
   .describe("An effect over a stretch of the finished edit.");
@@ -318,6 +332,22 @@ export const EdlCaptionTrack = z
   .describe("Caption track on the finished edit's timeline.");
 export type EdlCaptionTrack = z.infer<typeof EdlCaptionTrack>;
 
+/* ------------------------------------------ markers -------------------------------------- */
+
+export const MarkerColor = z.enum(["red", "gold", "blue", "green", "violet"]);
+export type MarkerColor = z.infer<typeof MarkerColor>;
+
+export const EdlMarker = z
+  .object({
+    id: Id,
+    atMs: OutMs.describe("Output-timeline time of the marker."),
+    durationMs: z.number().int().min(0).max(EDL_MAX_MS).default(0).describe("0 for a point marker, otherwise a range."),
+    label: z.string().trim().max(80).default(""),
+    color: MarkerColor.default("red"),
+  })
+  .describe("A marker the creator placed on the edit's timeline. Markers are notes: they are never rendered.");
+export type EdlMarker = z.infer<typeof EdlMarker>;
+
 /* -------------------------------------------- the edit ------------------------------------- */
 
 export const EdlLayout = z.enum(["crop", "fit", "split"]).describe("crop: fill the frame (reframe applies). fit: whole frame over a blurred backdrop. split: facecam panel and gameplay stacked (vertical only).");
@@ -336,7 +366,7 @@ export const Edl = z
       })
       .default({ cam: { x: 0.73, y: 0.02, w: 0.26, h: 0.3 }, camShare: 0.38, camOnTop: true })
       .describe("Facecam + gameplay layout settings."),
-    segments: z.array(EdlSegment).min(1).max(20).describe("The main video track, played in order."),
+    segments: z.array(EdlSegment).min(1).max(EDL_LIMITS.segments).describe("The main video track (V1), played in order."),
     texts: z.array(EdlText).max(20).default([]),
     /** Burn in transcript lines when the sessions have transcripts. */
     captions: z.boolean().default(false).describe("Burn in the session transcript's lines (older option; the caption track is the new way)."),
@@ -356,16 +386,17 @@ export const Edl = z
       })
       .default({ muted: false, solo: false, denoise: false, voiceBoost: false, envelope: [] })
       .describe("The main video track's audio."),
-    overlays: z.array(OverlayTrack).max(4).default([]).describe("Overlay tracks, bottom to top."),
-    audioTracks: z.array(AudioTrack).max(4).default([]).describe("Audio tracks mixed with the source audio."),
-    effects: z.array(EdlEffect).max(30).default([]),
+    overlays: z.array(OverlayTrack).max(EDL_LIMITS.overlayTracks).default([]).describe("Overlay tracks, bottom to top."),
+    audioTracks: z.array(AudioTrack).max(EDL_LIMITS.audioTracks).default([]).describe("Audio tracks mixed with the source audio."),
+    effects: z.array(EdlEffect).max(EDL_LIMITS.effects).default([]),
     grade: EdlGrade.default({ preset: "none", brightness: 0, contrast: 1, saturation: 1, vignette: 0, grain: 0 }),
     captionTrack: EdlCaptionTrack.default({ style: "karaoke", position: "bottom", hidden: false, cues: [] }),
     normalize: z.boolean().default(false).describe("Normalize loudness to about −14 LUFS, a common platform target."),
+    markers: z.array(EdlMarker).max(EDL_LIMITS.markers).default([]).describe("Timeline markers (notes for the editor; not rendered)."),
   })
   .superRefine((e, ctx) => {
     const total = edlDurationMs(e);
-    if (total > EDL_MAX_MS) ctx.addIssue({ code: "custom", message: "An edit can be at most 10 minutes long", path: ["segments"] });
+    if (total > EDL_MAX_MS) ctx.addIssue({ code: "custom", message: `An edit can be at most ${EDL_MAX_MS / 60_000} minutes long`, path: ["segments"] });
     if (total < 300) ctx.addIssue({ code: "custom", message: "The edit is too short", path: ["segments"] });
     e.texts.forEach((t, i) => {
       if (t.startMs >= total) ctx.addIssue({ code: "custom", message: "Text starts after the edit ends", path: ["texts", i, "startMs"] });
@@ -530,6 +561,68 @@ export const ExportPresetIdSchema = z.enum(Object.keys(EXPORT_PRESETS) as [Expor
 export const ExportFormat = z.enum(["mp4", "gif", "audio"]).describe("mp4 video, animated GIF (no sound, at most 30 s), or audio only (AAC).");
 export type ExportFormat = z.infer<typeof ExportFormat>;
 
+/* ------------------------------------------ sequences ------------------------------------- */
+/*
+ * A project can hold several timelines ("sequences"), for example a 9:16 cut and a 16:9 cut of
+ * the same moments. The main sequence is the project's own `edl` (so every older project is a
+ * one-sequence project); the others live next to it, each a complete edit of its own.
+ */
+
+export const MAIN_SEQUENCE_ID = "main";
+export const MAX_SEQUENCES = 8;
+export const SequenceId = z.string().regex(/^[A-Za-z0-9_-]{1,40}$/).describe("A sequence id; \"main\" is the project's own edit.");
+
+export const ProjectSequence = z
+  .object({
+    id: SequenceId.refine((id) => id !== MAIN_SEQUENCE_ID, { message: "\"main\" is the project's own sequence" }),
+    name: z.string().trim().min(1).max(40),
+    edl: Edl,
+  })
+  .describe("Another timeline of the same project.");
+export type ProjectSequence = z.infer<typeof ProjectSequence>;
+
+export const ProjectSequences = z
+  .object({
+    mainName: z.string().trim().min(1).max(40).default("Main"),
+    extra: z.array(ProjectSequence).max(MAX_SEQUENCES - 1).default([]),
+  })
+  .superRefine((v, ctx) => {
+    const ids = new Set<string>();
+    v.extra.forEach((s, i) => {
+      if (ids.has(s.id)) ctx.addIssue({ code: "custom", message: "Sequence ids must be unique", path: ["extra", i, "id"] });
+      ids.add(s.id);
+    });
+  })
+  .describe("The project's timelines besides the main one.");
+export type ProjectSequences = z.infer<typeof ProjectSequences>;
+export const NO_EXTRA_SEQUENCES: ProjectSequences = { mainName: "Main", extra: [] };
+
+/** Stored sequences, keeping every timeline that still parses (older projects store `{}`). */
+export function readSequences(raw: unknown): ProjectSequences {
+  const whole = ProjectSequences.safeParse(raw ?? {});
+  if (whole.success) return whole.data;
+  const r = (raw && typeof raw === "object" ? raw : {}) as { mainName?: unknown; extra?: unknown };
+  const name = z.string().trim().min(1).max(40).safeParse(r.mainName);
+  const seen = new Set<string>();
+  const extra = (Array.isArray(r.extra) ? r.extra : []).flatMap((x) => {
+    const one = ProjectSequence.safeParse(x);
+    if (!one.success || seen.has(one.data.id)) return [];
+    seen.add(one.data.id);
+    return [one.data];
+  });
+  return { mainName: name.success ? name.data : "Main", extra: extra.slice(0, MAX_SEQUENCES - 1) };
+}
+
+/** The edit of one sequence, or null when the project has no such sequence. */
+export function sequenceEdl(main: Edl, sequences: ProjectSequences, id: string | undefined): Edl | null {
+  if (!id || id === MAIN_SEQUENCE_ID) return main;
+  return sequences.extra.find((s) => s.id === id)?.edl ?? null;
+}
+export function sequenceName(sequences: ProjectSequences, id: string | undefined): string | null {
+  if (!id || id === MAIN_SEQUENCE_ID) return sequences.mainName;
+  return sequences.extra.find((s) => s.id === id)?.name ?? null;
+}
+
 export const RenderOptions = z
   .object({
     presets: z.array(ExportPresetIdSchema).min(1).max(6).default(["original"]).describe("One render per preset."),
@@ -537,9 +630,21 @@ export const RenderOptions = z
     height: z.union([z.literal(720), z.literal(1080)]).default(1080).describe("Resolution of the shorter side: 720 or 1080."),
     fps: z.union([z.literal(24), z.literal(30), z.literal(60)]).default(30),
     quality: z.enum(["high", "standard", "small"]).default("high").describe("high: largest file, best picture. small: for slow uploads."),
+    sequences: z.array(SequenceId).min(1).max(MAX_SEQUENCES).optional().describe("Timelines to render (default: the main one). One render per timeline and preset."),
   })
   .strict();
 export type RenderOptions = z.infer<typeof RenderOptions>;
+/** The options one queued render keeps (on its library item). */
+export const StoredRenderOptions = z
+  .object({
+    format: ExportFormat,
+    height: z.union([z.literal(720), z.literal(1080)]),
+    fps: z.union([z.literal(24), z.literal(30), z.literal(60)]),
+    quality: z.enum(["high", "standard", "small"]),
+    sequenceId: SequenceId,
+  })
+  .partial();
+export type StoredRenderOptions = z.infer<typeof StoredRenderOptions>;
 export const GIF_MAX_MS = 30_000;
 
 /** Output size for an aspect at a resolution (the shorter side), kept even. */
@@ -655,6 +760,8 @@ export const ProjectView = z.object({
   title: z.string(),
   origin: z.enum(["manual", "auto"]),
   edl: Edl,
+  /** Timelines besides the main one (`edl`). */
+  sequences: ProjectSequences,
   updatedAt: z.string(),
   sources: z.array(ProjectSourceView),
   renders: z.array(LibraryItemView),
@@ -683,6 +790,7 @@ export const ThumbnailInput = z
     subtext: z.string().trim().max(80).default(""),
     style: z.enum(["poster", "mission", "wasted", "title-card", "banner"]).default("poster"),
     position: z.enum(["top", "center", "bottom"]).default("bottom"),
+    sequenceId: SequenceId.optional().describe("Timeline the time is on (default: the main one)."),
   })
   .strict();
 export type ThumbnailInput = z.infer<typeof ThumbnailInput>;
@@ -691,15 +799,44 @@ export type ThumbnailInput = z.infer<typeof ThumbnailInput>;
 export const WaveformView = z.object({ status: z.enum(["ready", "pending", "unavailable"]), peaks: z.array(z.number()), durationMs: z.number().nullable() });
 export type WaveformView = z.infer<typeof WaveformView>;
 
+/**
+ * Timeline filmstrips: a session's video as JPEG sprite sheets of small frames, one set per
+ * zoom tier, built once on the server and cached next to the session's other files.
+ */
+export const SPRITE_TIERS = [2000, 10_000, 60_000] as const;
+export const SPRITE_TILE = { width: 128, height: 72, cols: 10, rows: 10 } as const;
+export const SpriteSheetView = z.object({
+  status: z.enum(["ready", "pending", "unavailable"]),
+  tier: z.number().int().min(0).max(SPRITE_TIERS.length - 1),
+  /** Media time between two frames. Frame k shows media time k × intervalMs. */
+  intervalMs: z.number(),
+  tileWidth: z.number(),
+  tileHeight: z.number(),
+  cols: z.number(),
+  rows: z.number(),
+  durationMs: z.number().nullable(),
+  /** Sheets in order; sheet n holds frames n × cols × rows onwards. */
+  sheets: z.array(z.object({ url: z.string(), frames: z.number() })),
+});
+export type SpriteSheetView = z.infer<typeof SpriteSheetView>;
+
+/** GET /api/editor/sources: the creator's stored videos, for the editor's media bin. */
+export const EditorSourceView = ProjectSourceView.extend({ kind: z.enum(["upload", "recording"]), createdAt: z.string() });
+export type EditorSourceView = z.infer<typeof EditorSourceView>;
+export const EditorSourcesResponse = z.object({ sources: z.array(EditorSourceView) });
+export type EditorSourcesResponse = z.infer<typeof EditorSourcesResponse>;
+
 /** Captions generated from an edit's audio by the configured transcription provider. */
 export const GeneratedCaptionsView = z.object({
   status: z.enum(["none", "pending", "ready", "failed"]),
   error: z.string().nullable(),
   cues: z.array(CaptionCue),
+  /** The timeline the cues were timed on. */
+  sequenceId: SequenceId.default(MAIN_SEQUENCE_ID),
 });
 export type GeneratedCaptionsView = z.infer<typeof GeneratedCaptionsView>;
 
-export const ProjectPatch = z.object({ title: z.string().trim().min(1).max(120).optional(), edl: Edl.optional() }).strict();
+export const ProjectPatch = z.object({ title: z.string().trim().min(1).max(120).optional(), edl: Edl.optional(), sequences: ProjectSequences.optional() }).strict();
 export type ProjectPatch = z.infer<typeof ProjectPatch>;
 
 export const ProfileResponse = z.object({

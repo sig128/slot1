@@ -1,5 +1,5 @@
 import { announce } from "../live/announce";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { UnrecoverableError } from "bullmq";
@@ -22,7 +22,7 @@ import {
   type EdlSegmentMedia,
   type ResolvedRef,
 } from "@slot1/analysis";
-import { Edl, edlDurationMs, edlLocate, EXPORT_PRESETS, presetProblem, RenderOptions, ThumbnailInput, type CaptionCue, type ExportPresetId } from "@slot1/contracts";
+import { Edl, edlDurationMs, edlLocate, EXPORT_PRESETS, presetProblem, readSequences, sequenceEdl, SPRITE_TILE, SPRITE_TIERS, StoredRenderOptions, ThumbnailInput, type CaptionCue, type ExportPresetId } from "@slot1/contracts";
 import {
   createRecordingSource,
   getAsset,
@@ -51,7 +51,7 @@ import {
   type RecordingRun,
 } from "@slot1/db";
 import { sanitizeErrorMessage, storageKeys, type StorageDriver } from "@slot1/platform";
-import { projectCaptionsKey, sessionWaveformKey, type ServerContext } from "@slot1/services";
+import { projectCaptionsKey, sessionSpriteSheetKey, sessionSpritesKey, sessionWaveformKey, type ServerContext } from "@slot1/services";
 
 /* ------------------------------------------------------------------------------------------ */
 /* Stored media                                                                               */
@@ -211,17 +211,22 @@ export async function finalizeRecording(ctx: ServerContext, data: { recordingId:
     const rebasedUntil = await rebaseOntoRecording(ctx, rec, session.id, offsets, durationMs);
     // Live auto clips cut before finalization now point into the file.
     for (const p of await listProjectsReferencingSession(ctx.db, b, session.id)) {
-      const edl = Edl.parse(p.edl);
       let changed = false;
-      const segments = edl.segments.map((s) => {
-        if (s.sessionId !== session.id || !s.runId) return s;
-        const o = offsets.find((x) => x.runId === s.runId);
-        if (!o) return s;
-        changed = true;
-        const map = (t: number) => Math.max(0, Math.min(durationMs, Math.round(o.offsetMs + (t - o.firstMs))));
-        return { ...s, runId: null, inMs: map(s.inMs), outMs: Math.max(map(s.inMs) + 300, map(s.outMs)) };
+      const rebase = (edl: Edl): Edl => ({
+        ...edl,
+        segments: edl.segments.map((s) => {
+          if (s.sessionId !== session.id || !s.runId) return s;
+          const o = offsets.find((x) => x.runId === s.runId);
+          if (!o) return s;
+          changed = true;
+          const map = (t: number) => Math.max(0, Math.min(durationMs, Math.round(o.offsetMs + (t - o.firstMs))));
+          return { ...s, runId: null, inMs: map(s.inMs), outMs: Math.max(map(s.inMs) + 300, map(s.outMs)) };
+        }),
       });
-      if (changed) await updateProject(ctx.db, p.id, { edl: { ...edl, segments } });
+      const edl = rebase(Edl.parse(p.edl));
+      const seqs = readSequences(p.sequences);
+      const sequences = { ...seqs, extra: seqs.extra.map((x) => ({ ...x, edl: rebase(x.edl) })) };
+      if (changed) await updateProject(ctx.db, p.id, { edl, ...(seqs.extra.length ? { sequences } : {}) });
     }
 
     const settings = await getSettings(ctx.db, b);
@@ -375,7 +380,10 @@ export async function renderProject(ctx: ServerContext, data: { itemId: string; 
   const work = await mkdtemp(path.join(tmpdir(), "slot1-render-"));
   try {
     await updateJobRun(ctx.db, data.jobRunId, { state: "running", step: "Preparing media", progress: 0 });
-    const edl = Edl.parse(project.edl);
+    // Options chosen for this render (older renders have none: the main timeline, as edited).
+    const ro = StoredRenderOptions.parse(item.render_options ?? {});
+    const edl = sequenceEdl(Edl.parse(project.edl), readSequences(project.sequences), ro.sequenceId);
+    if (!edl) throw new UnrecoverableError("The sequence this render was for was deleted from the edit");
     const media: EdlSegmentMedia[] = [];
     const stored = new Map<string, StoredMedia | null>();
     for (const s of edl.segments) {
@@ -431,7 +439,6 @@ export async function renderProject(ctx: ServerContext, data: { itemId: string; 
     const format: "mp4" | "gif" | "audio" = item.format === "gif" || item.format === "audio" ? item.format : "mp4";
     const problem = presetProblem(preset, format, edlDurationMs(edl));
     if (problem) throw new UnrecoverableError(problem);
-    const ro = RenderOptions.omit({ presets: true }).partial().parse(item.render_options ?? {});
     const p = EXPORT_PRESETS[preset];
     const options =
       item.preset || item.render_options
@@ -442,7 +449,8 @@ export async function renderProject(ctx: ServerContext, data: { itemId: string; 
     const plan = buildEdlRender({ edl, media, output: out, workDir: work, fonts: findRenderFonts(), fontsDir: findRenderFontsDir(), captions, encoder: ctx.config.env.FFMPEG_ENCODER, options, refs, pips });
     for (const f of plan.textFiles) await writeFile(f.path, f.content);
     await updateJobRun(ctx.db, data.jobRunId, { step: "Rendering", progress: 0.02 });
-    await runWithProgress(ctx.tools.ffmpeg, plan.args, plan.durationMs, (p) => void updateJobRun(ctx.db, data.jobRunId, { progress: p }), ctx.tools.timeoutMs);
+    // Long edits get longer than the default limit: up to four times their length.
+    await runWithProgress(ctx.tools.ffmpeg, plan.args, plan.durationMs, (p) => void updateJobRun(ctx.db, data.jobRunId, { progress: p }), Math.max(ctx.tools.timeoutMs, plan.durationMs * 4));
     const poster = path.join(work, "poster.jpg");
     if (plan.container === "mp4") await extractFrameAt(ctx.tools, out, "mov", Math.min(plan.durationMs - 1, edl.coverMs ?? Math.min(1000, Math.floor(plan.durationMs / 3))), poster, 1920).catch(() => undefined);
     const probe = await probeFile(ctx.tools, out);
@@ -510,7 +518,8 @@ export async function renderThumbnail(ctx: ServerContext, data: { itemId: string
   try {
     await updateJobRun(ctx.db, data.jobRunId, { state: "running", step: "Rendering thumbnail", progress: 0.1 });
     const input = ThumbnailInput.parse(data.input);
-    const edl = Edl.parse(project.edl);
+    const edl = sequenceEdl(Edl.parse(project.edl), readSequences(project.sequences), input.sequenceId);
+    if (!edl) throw new UnrecoverableError("The sequence this thumbnail was for was deleted from the edit");
     const { index, sourceMs } = edlLocate(edl, input.atMs);
     const seg = edl.segments[index]!;
     if (seg.runId) throw new UnrecoverableError("Thumbnails need the finalized recording; try again after the stream ends");
@@ -587,18 +596,76 @@ export async function buildWaveform(ctx: ServerContext, data: { sessionId: strin
   await ctx.storage.putBuffer(sessionWaveformKey(session.broadcaster_id, session.id), Buffer.from(JSON.stringify({ peaks, durationMs, unavailable })), "application/json");
 }
 
+/**
+ * Timeline filmstrips: small frames of a session's video every `intervalMs`, tiled into JPEG
+ * sprite sheets. Only keyframes are decoded, so this stays quick on long recordings; a frame
+ * shows the nearest keyframe at or before its time. The index records the file it was made
+ * from, so a newer file (a recording finalized later) gets new sheets.
+ */
+export async function buildSprites(ctx: ServerContext, data: { sessionId: string; tier: number }) {
+  const session = await getSession(ctx.db, data.sessionId);
+  if (!session) return;
+  const tier = Math.max(0, Math.min(SPRITE_TIERS.length - 1, Math.floor(data.tier)));
+  const intervalMs = SPRITE_TIERS[tier]!;
+  const b = session.broadcaster_id;
+  const sources = await listSources(ctx.db, b);
+  const src = sources.find((x) => x.session_id === session.id && (x.kind === "upload" || x.kind === "recording") && x.original_asset_id && x.probe);
+  const media = await storedMediaFor(ctx, session.id).catch(() => null);
+  const durationMs = media?.probe.durationMs ?? null;
+  const index = sessionSpritesKey(b, session.id, tier);
+  const write = (v: { unavailable: boolean; sheets: { key: string; frames: number }[] }) =>
+    ctx.storage.putBuffer(index, Buffer.from(JSON.stringify({ ...v, tier, intervalMs, durationMs, assetId: src?.original_asset_id ?? null })), "application/json");
+  if (!media || !src || !durationMs || !media.probe.width) {
+    await write({ unavailable: true, sheets: [] });
+    return;
+  }
+  const work = await mkdtemp(path.join(tmpdir(), "slot1-sprites-"));
+  try {
+    const { width: tw, height: th, cols, rows } = SPRITE_TILE;
+    const remote = /^https?:\/\//.test(media.input);
+    await runChecked(
+      ctx.tools.ffmpeg,
+      [
+        "-hide_banner", "-nostdin", "-v", "error",
+        "-protocol_whitelist", remote ? "file,http,https,tcp,tls,crypto" : "file",
+        "-skip_frame", "nokey", "-i", media.input, "-an", "-sn", "-dn",
+        "-vf", `fps=1000/${intervalMs},scale=${tw}:${th}:force_original_aspect_ratio=decrease,pad=${tw}:${th}:(ow-iw)/2:(oh-ih)/2:color=black,tile=${cols}x${rows}`,
+        "-q:v", "6", path.join(work, "sheet-%03d.jpg"),
+      ],
+      { timeoutMs: ctx.tools.timeoutMs },
+    );
+    const files = (await readdir(work)).filter((f) => /^sheet-\d{3}\.jpg$/.test(f)).sort();
+    const total = Math.max(1, Math.ceil(durationMs / intervalMs));
+    const per = cols * rows;
+    const sheets: { key: string; frames: number }[] = [];
+    for (const [n, f] of files.entries()) {
+      const key = sessionSpriteSheetKey(b, session.id, tier, n);
+      await ctx.storage.putFile(key, path.join(work, f), "image/jpeg");
+      sheets.push({ key, frames: Math.max(0, Math.min(per, total - n * per)) || per });
+    }
+    await write({ unavailable: sheets.length === 0, sheets });
+  } catch {
+    // The editor shows plain clips instead of waiting forever.
+    await write({ unavailable: true, sheets: [] }).catch(() => undefined);
+  } finally {
+    await rm(work, { recursive: true, force: true });
+  }
+}
+
 /** Transcribe an edit's audio with the configured provider; the editor applies the cues. */
-export async function generateProjectCaptions(ctx: ServerContext, data: { projectId: string; jobRunId: string }) {
+export async function generateProjectCaptions(ctx: ServerContext, data: { projectId: string; jobRunId: string; sequenceId?: string }) {
   const project = await getProject(ctx.db, data.projectId);
   if (!project) return;
   const key = projectCaptionsKey(project.broadcaster_id, project.id);
-  const save = (v: { status: "ready" | "failed"; error: string | null; cues: CaptionCue[] }) => ctx.storage.putBuffer(key, Buffer.from(JSON.stringify(v)), "application/json");
+  const sequenceId = data.sequenceId ?? "main";
+  const save = (v: { status: "ready" | "failed"; error: string | null; cues: CaptionCue[] }) => ctx.storage.putBuffer(key, Buffer.from(JSON.stringify({ ...v, sequenceId })), "application/json");
   const work = await mkdtemp(path.join(tmpdir(), "slot1-captions-"));
   try {
     await updateJobRun(ctx.db, data.jobRunId, { state: "running", step: "Extracting the edit's audio", progress: 0.1 });
     const provider = createTranscriptionProvider(ctx.config.env);
     if (!provider) throw new UnrecoverableError("Transcription isn't configured: set TRANSCRIPTION_PROVIDER, TRANSCRIPTION_MODEL and its API key");
-    const edl = Edl.parse(project.edl);
+    const edl = sequenceEdl(Edl.parse(project.edl), readSequences(project.sequences), sequenceId);
+    if (!edl) throw new UnrecoverableError("That sequence was deleted from the edit");
     const media: EdlSegmentMedia[] = [];
     for (const s of edl.segments) {
       if (s.runId) throw new UnrecoverableError("Captions need the finalized recording; try again after the stream ends");

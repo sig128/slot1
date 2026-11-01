@@ -75,6 +75,10 @@ export function momentEdl(sessionId: string, inMs: number, outMs: number, opts: 
 /** Where a session's waveform peaks are cached (removed with the session's files). */
 export const sessionWaveformKey = (broadcasterId: string, sessionId: string) => `${storageKeys.sessionPrefix(broadcasterId, sessionId)}/waveform.json`;
 /** Where an edit's generated captions wait until the creator applies them (removed with the edit). */
+/** Filmstrip sprite sheets of a session's video, per zoom tier (index JSON plus JPEG sheets). */
+export const sessionSpritesKey = (broadcasterId: string, sessionId: string, tier: number) => `${storageKeys.sessionPrefix(broadcasterId, sessionId)}/sprites/t${tier}.json`;
+export const sessionSpriteSheetKey = (broadcasterId: string, sessionId: string, tier: number, sheet: number) =>
+  `${storageKeys.sessionPrefix(broadcasterId, sessionId)}/sprites/t${tier}-${String(sheet).padStart(3, "0")}.jpg`;
 export const projectCaptionsKey = (broadcasterId: string, projectId: string) => storageKeys.library(broadcasterId, projectId, "generated-captions.json");
 
 /**

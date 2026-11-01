@@ -2,6 +2,7 @@ import {
   edlDurationMs,
   edlLocate,
   edlOutputTime,
+  EDL_LIMITS,
   EDL_MAX_MS,
   interpolateKeys,
   segmentOutputMs,
@@ -224,7 +225,7 @@ export function speedAt(s: EdlSegment, sourceMs: number): number {
 
 /** Split the segment under output time `atMs` in two (cut at the playhead). */
 export function splitSegmentAt(edl: Edl, atMs: number): { edl: Edl; leftId: string; rightId: string } | null {
-  if (edl.segments.length >= 20) return null;
+  if (edl.segments.length >= EDL_LIMITS.segments) return null;
   const { index, sourceMs } = edlLocate(edl, atMs);
   const s = edl.segments[index]!;
   if (sourceMs - s.inMs < 300 || s.outMs - sourceMs < 300) return null;
@@ -308,7 +309,7 @@ export function rollEdit(edl: Edl, index: number, deltaOutMs: number, maxSourceM
 
 /** Insert a segment after `afterIndex`; later items move by the time it adds (ripple insert). */
 export function insertSegment(edl: Edl, seg: EdlSegment, afterIndex: number): Edl | null {
-  if (edl.segments.length >= 20) return null;
+  if (edl.segments.length >= EDL_LIMITS.segments) return null;
   const at = Math.max(-1, Math.min(edl.segments.length - 1, afterIndex));
   return withSegments(edl, [...edl.segments.slice(0, at + 1), seg, ...edl.segments.slice(at + 1)]);
 }
@@ -325,7 +326,7 @@ export function instantReplay(edl: Edl, atMs: number, lengthMs = 2500, speed = 0
   const s = base.segments[index]!;
   const sourceMs = split ? s.outMs : edlLocate(base, atMs).sourceMs;
   const inMs = Math.max(0, sourceMs - lengthMs);
-  if (sourceMs - inMs < 600 || base.segments.length >= 20) return null;
+  if (sourceMs - inMs < 600 || base.segments.length >= EDL_LIMITS.segments) return null;
   const replay: EdlSegment = { ...s, id: edlId("r"), inMs, outMs: sourceMs, speed, rampTo: null, keys: keysWithin(s, inMs, sourceMs).filter((k) => k.atMs >= inMs && k.atMs <= sourceMs), transitionIn: { kind: "flash", durationMs: 250 } };
   let next = insertSegment(base, replay, index);
   if (!next) return null;
@@ -354,7 +355,7 @@ export function addOverlayItem(edl: Edl, item: OverlayItem, trackId?: string, ne
   const explicit = trackId ? edl.overlays.find((t) => t.id === trackId && !t.locked && t.items.length < 40) : undefined;
   const id = explicit?.id ?? pickOverlayTrack(edl, item);
   if (id) return { ...edl, overlays: edl.overlays.map((t) => (t.id === id ? { ...t, items: [...t.items, item] } : t)) };
-  if (edl.overlays.length >= 4) return edl;
+  if (edl.overlays.length >= EDL_LIMITS.overlayTracks) return edl;
   const track: OverlayTrack = { id: newTrackId ?? edlId("ov"), name: `Overlay ${edl.overlays.length + 1}`, hidden: false, locked: false, items: [item] };
   return { ...edl, overlays: [...edl.overlays, track] };
 }
@@ -363,7 +364,7 @@ export function addOverlayItem(edl: Edl, item: OverlayItem, trackId?: string, ne
 export function addAudioClip(edl: Edl, clip: AudioClip, kind: "music" | "sfx" | "voice", trackId?: string): Edl {
   const target = trackId ? edl.audioTracks.find((t) => t.id === trackId && !t.locked) : edl.audioTracks.find((t) => t.kind === kind && !t.locked && t.clips.length < 60);
   if (target) return { ...edl, audioTracks: edl.audioTracks.map((t) => (t.id === target.id ? { ...t, clips: [...t.clips, clip] } : t)) };
-  if (edl.audioTracks.length >= 4) return edl;
+  if (edl.audioTracks.length >= EDL_LIMITS.audioTracks) return edl;
   const name = kind === "music" ? "Music" : kind === "voice" ? "Voice" : "Sound effects";
   return { ...edl, audioTracks: [...edl.audioTracks, { id: edlId("au"), name, kind, muted: false, solo: false, locked: false, volume: 1, duck: kind === "music", clips: [clip] }] };
 }
@@ -433,7 +434,7 @@ export function splitAt(edl: Edl, atMs: number, ref?: TimelineRef): { edl: Edl; 
   if (ref.kind === "audio") {
     const tr = edl.audioTracks.find((t) => t.id === ref.trackId);
     const c = tr?.clips.find((x) => x.id === ref.id);
-    if (!c || !tr || atMs - c.startMs < 100 || c.startMs + c.durationMs - atMs < 100 || tr.clips.length >= 60) return null;
+    if (!c || !tr || atMs - c.startMs < 100 || c.startMs + c.durationMs - atMs < 100 || tr.clips.length >= EDL_LIMITS.audioClips) return null;
     const leftDur = atMs - c.startMs;
     const left: AudioClip = { ...c, durationMs: leftDur, fadeOutMs: 0, fadeInMs: Math.min(c.fadeInMs, leftDur) };
     const right: AudioClip = { ...c, id: edlId("c"), startMs: atMs, offsetMs: c.offsetMs + leftDur, durationMs: c.durationMs - leftDur, fadeInMs: 0, fadeOutMs: Math.min(c.fadeOutMs, c.durationMs - leftDur) };
@@ -623,7 +624,7 @@ export function applyEdlTemplate(id: EdlTemplateId, edl: Edl, ctx: TemplateConte
       .filter((t): t is number => t !== null && t + 400 < total)
       .slice(0, 6);
     for (const t of punches) {
-      if (next.effects.length >= 30) break;
+      if (next.effects.length >= EDL_LIMITS.effects) break;
       next = { ...next, effects: [...next.effects, { id: edlId("e"), kind: "punch", startMs: t, endMs: Math.min(total, t + 700), text: "", amount: 0.45 }] };
     }
     const bits = [ctx.cameraBox ? "facecam on top from your camera box" : "whole picture over a blurred backdrop (set your camera box under Stream setup for a facecam split)", "title card", punches.length ? `${punches.length} punch-in${punches.length === 1 ? "" : "s"} on AI moments` : "no AI moments inside the edit for punch-ins", "loudness normalized"];

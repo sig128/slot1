@@ -327,7 +327,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, W: number, H: number, d
   ctx.fillRect(0, 0, W, H);
   const { index, sourceMs } = edlLocate(edl, t);
   const seg = edl.segments[index]!;
-  const active = edl.effects.filter((f) => t >= f.startMs && t < f.endMs);
+  const active = edl.effects.filter((f) => f.enabled !== false && t >= f.startMs && t < f.endMs);
   const wasted = active.find((f) => f.kind === "wasted");
   const punch = active.find((f) => f.kind === "punch");
   const shake = active.find((f) => f.kind === "shake");

@@ -437,7 +437,7 @@ function usesMultiTrack(edl: Edl): boolean {
     edl.grade.saturation !== 1 ||
     edl.grade.vignette > 0 ||
     edl.grade.grain > 0 ||
-    edl.effects.length > 0 ||
+    edl.effects.some((f) => f.enabled !== false) ||
     edl.overlays.some((t) => !t.hidden && t.items.length > 0) ||
     (!edl.captionTrack.hidden && edl.captionTrack.cues.length > 0) ||
     edl.audioTracks.some((t) => t.clips.length > 0) ||
@@ -663,6 +663,7 @@ export function buildEdlRender(input: {
     if (grade.length) chain(grade.join(","));
     const banners: string[] = [];
     for (const f of edl.effects) {
+      if (f.enabled === false) continue;
       const a = f.startMs / 1000;
       const b = Math.min(f.endMs, total) / 1000;
       const win = `enable='between(t,${num(a)},${num(b)})'`;

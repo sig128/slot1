@@ -8,6 +8,11 @@ import {
   edlDurationMs,
   edlLocate,
   EXPORT_PRESETS,
+  MAIN_SEQUENCE_ID,
+  readSequences,
+  sequenceEdl,
+  sequenceName,
+  type EditorSourcesResponse,
   presetProblem,
   RenderOptions,
   ThumbnailInput,
@@ -53,6 +58,7 @@ import {
   updateProject,
   type BroadcasterRow,
   type LibraryItemRow,
+  type MediaSourceRow,
   type StreamSessionRow,
 } from "@slot1/db";
 import { formatMediaTime } from "@slot1/contracts";
@@ -91,7 +97,8 @@ export async function deleteWholeLibrary(ctx: ServerContext, broadcasterId: stri
 async function assertEdlOwned(ctx: ServerContext, b: BroadcasterRow, edl: Edl) {
   for (const s of edl.segments) await ownedSession(ctx, b, s.sessionId);
   const needs = edlMediaNeeds(edl);
-  for (const p of needs.pips) await ownedSession(ctx, b, p.sessionId);
+  // Hidden tracks too: they come back into the render as soon as they're shown.
+  for (const t of edl.overlays) for (const it of t.items) if (it.type === "pip") await ownedSession(ctx, b, it.sessionId);
   for (const r of needs.refs) {
     if (r.kind !== "upload") continue;
     const m = await getProjectMedia(ctx.db, r.assetId);
@@ -166,44 +173,58 @@ async function playbackFor(ctx: ServerContext, session: StreamSessionRow) {
   };
 }
 
+/** One stored video as the editor sees it. `markers: false` skips SLOT1's moments (bin listings). */
+async function sourceView(ctx: ServerContext, session: StreamSessionRow, all: MediaSourceRow[], opts: { markers: boolean }): Promise<ProjectSourceView> {
+  const pb = await playbackFor(ctx, session);
+  const markers = !opts.markers
+    ? []
+    : (await listObservations(ctx.db, session.id, { limit: 1000, includeRejected: false }))
+        .filter((o) => o.mediaStartMs !== null && o.origin !== "twitch" && !["session_coverage", "media_facts", "source_gap"].includes(o.type))
+        .map((o) => {
+          const big = bigMoment(o);
+          return { ms: o.mediaStartMs!, label: big ? big.text : o.description.slice(0, 80), kind: big ? ("big" as const) : o.rawText ? ("text" as const) : ("event" as const) };
+        });
+  const captionLines = Number((await ctx.db.query<{ n: string }>(`SELECT count(*)::text AS n FROM transcripts WHERE session_id = $1`, [session.id])).rows[0]?.n ?? 0);
+  // "Hide your camera from the AI" boxes on the creator's live sources prefill the facecam split.
+  const masked = all.filter((x) => x.kind === "live_ingest" && (x.camera_mask?.length ?? 0) > 0);
+  const mask = (masked.find((x) => x.session_id === session.id) ?? masked[0])?.camera_mask[0] ?? null;
+  return {
+    sessionId: session.id,
+    title: session.title ?? "Untitled session",
+    playbackUrl: pb?.url ?? null,
+    posterUrl: pb?.posterUrl ?? null,
+    durationMs: pb?.durationMs ?? null,
+    width: pb?.width ?? null,
+    height: pb?.height ?? null,
+    markers,
+    captionLines,
+    cameraBox: mask ? { x: mask.x, y: mask.y, w: mask.w, h: mask.h } : null,
+  };
+}
+
 async function projectView(ctx: ServerContext, req: FastifyRequest, id: string): Promise<ProjectView> {
   const b = requireBroadcaster(req);
   const p = await getProject(ctx.db, id);
   if (!p || p.broadcaster_id !== b.id) throw notFound("Edit not found");
   const edl = Edl.parse(p.edl);
+  const sequences = readSequences(p.sequences);
+  // Every video any timeline plays: main-track segments and picture-in-picture, on all sequences.
+  const ids = new Set<string>();
+  for (const e of [edl, ...sequences.extra.map((x) => x.edl)]) {
+    for (const s of e.segments) ids.add(s.sessionId);
+    for (const t of e.overlays) for (const it of t.items) if (it.type === "pip") ids.add(it.sessionId);
+  }
+  const all = await listSources(ctx.db, b.id);
   const sources: ProjectSourceView[] = [];
-  for (const sessionId of [...new Set(edl.segments.map((s) => s.sessionId))]) {
+  for (const sessionId of ids) {
     const session = await getSession(ctx.db, sessionId);
     if (!session || session.broadcaster_id !== b.id) continue;
-    const pb = await playbackFor(ctx, session);
-    const obs = await listObservations(ctx.db, session.id, { limit: 1000, includeRejected: false });
-    const markers = obs
-      .filter((o) => o.mediaStartMs !== null && o.origin !== "twitch" && !["session_coverage", "media_facts", "source_gap"].includes(o.type))
-      .map((o) => {
-        const big = bigMoment(o);
-        return { ms: o.mediaStartMs!, label: big ? big.text : o.description.slice(0, 80), kind: big ? ("big" as const) : o.rawText ? ("text" as const) : ("event" as const) };
-      });
-    const captionLines = Number((await ctx.db.query<{ n: string }>(`SELECT count(*)::text AS n FROM transcripts WHERE session_id = $1`, [session.id])).rows[0]?.n ?? 0);
-    // "Hide your camera from the AI" boxes on the creator's live sources prefill the facecam split.
-    const masked = (await listSources(ctx.db, b.id)).filter((x) => x.kind === "live_ingest" && (x.camera_mask?.length ?? 0) > 0);
-    const mask = (masked.find((x) => x.session_id === session.id) ?? masked[0])?.camera_mask[0] ?? null;
-    sources.push({
-      sessionId: session.id,
-      title: session.title ?? "Untitled session",
-      playbackUrl: pb?.url ?? null,
-      posterUrl: pb?.posterUrl ?? null,
-      durationMs: pb?.durationMs ?? null,
-      width: pb?.width ?? null,
-      height: pb?.height ?? null,
-      markers,
-      captionLines,
-      cameraBox: mask ? { x: mask.x, y: mask.y, w: mask.w, h: mask.h } : null,
-    });
+    sources.push(await sourceView(ctx, session, all, { markers: true }));
   }
   const renders = await Promise.all(
     (await listLibraryItems(ctx.db, b.id, { projectId: p.id, limit: 10 })).map((r) => libraryItemView(ctx, r, { canView: true, canEdit: true })),
   );
-  return { id: p.id, title: p.title, origin: p.origin, edl, updatedAt: iso(p.updated_at)!, sources, renders };
+  return { id: p.id, title: p.title, origin: p.origin, edl, sequences, updatedAt: iso(p.updated_at)!, sources, renders };
 }
 
 /** Copy an existing stored image (evidence or latest live frame) into the library. */
@@ -344,6 +365,26 @@ export const libraryRoutes =
 
     app.get("/api/projects/:id", async (req): Promise<ProjectView> => projectView(ctx, req, IdParam.parse(req.params).id));
 
+    /** The creator's stored videos (uploads and finished recordings), newest first, for the editor's media bin. */
+    app.get("/api/editor/sources", async (req): Promise<EditorSourcesResponse> => {
+      const b = requireBroadcaster(req);
+      const all = await listSources(ctx.db, b.id);
+      const stored = all
+        .filter((s): s is MediaSourceRow & { session_id: string } => (s.kind === "upload" || s.kind === "recording") && Boolean(s.playback_asset_id) && s.session_id !== null)
+        .sort((a, z) => z.created_at.getTime() - a.created_at.getTime());
+      const seen = new Set<string>();
+      const out: EditorSourcesResponse["sources"] = [];
+      for (const src of stored) {
+        if (seen.has(src.session_id) || out.length >= 60) continue;
+        seen.add(src.session_id);
+        const session = await getSession(ctx.db, src.session_id);
+        if (!session || session.broadcaster_id !== b.id || session.delete_requested_at) continue;
+        const v = await sourceView(ctx, session, all, { markers: false });
+        if (v.playbackUrl) out.push({ ...v, kind: src.kind === "upload" ? "upload" : "recording", createdAt: iso(src.created_at)! });
+      }
+      return { sources: out };
+    });
+
     app.patch("/api/projects/:id", async (req): Promise<ProjectView> => {
       const b = requireBroadcaster(req);
       const { id } = IdParam.parse(req.params);
@@ -351,6 +392,7 @@ export const libraryRoutes =
       const p = await getProject(ctx.db, id);
       if (!p || p.broadcaster_id !== b.id) throw notFound("Edit not found");
       if (patch.edl) await assertEdlOwned(ctx, b, patch.edl);
+      if (patch.sequences) for (const x of patch.sequences.extra) await assertEdlOwned(ctx, b, x.edl);
       await updateProject(ctx.db, id, patch);
       return projectView(ctx, req, id);
     });
@@ -374,37 +416,50 @@ export const libraryRoutes =
       const { id } = IdParam.parse(req.params);
       const p = await getProject(ctx.db, id);
       if (!p || p.broadcaster_id !== b.id) throw notFound("Edit not found");
-      const edl = Edl.parse(p.edl);
-      await assertRenderable(ctx, b, edl);
+      const main = Edl.parse(p.edl);
+      const sequences = readSequences(p.sequences);
+      // Which timelines: the main one unless the request names others.
+      const seqIds = [...new Set(opts.sequences ?? [MAIN_SEQUENCE_ID])];
+      const timelines = seqIds.map((sid) => {
+        const edl = sequenceEdl(main, sequences, sid);
+        if (!edl) throw notFound("That sequence isn't in this edit. Save the edit, then export again");
+        return { id: sid, edl, name: sequenceName(sequences, sid)! };
+      });
       const presets = [...new Set(opts.presets)];
-      for (const preset of presets) {
-        const problem = presetProblem(preset, opts.format, edlDurationMs(edl));
-        if (problem) throw conflict(problem, "Trim the edit or pick another preset");
+      for (const t of timelines) {
+        await assertRenderable(ctx, b, t.edl);
+        for (const preset of presets) {
+          const problem = presetProblem(preset, opts.format, edlDurationMs(t.edl));
+          if (problem) throw conflict(timelines.length > 1 ? `${t.name}: ${problem}` : problem, "Trim the edit or pick another preset");
+        }
       }
+      const count = presets.length * timelines.length;
       const active = Number((await ctx.db.query<{ n: string }>(`SELECT count(*)::text AS n FROM library_items WHERE broadcaster_id = $1 AND status = 'processing' AND kind = 'render'`, [b.id])).rows[0]?.n ?? 0);
-      if (presets.length === 1 && active >= limit.one) throw conflict("Four renders are already running. Wait for one to finish");
-      if (presets.length > 1 && active + presets.length > limit.batch) throw conflict(`Exporting ${presets.length} versions would run more than ${limit.batch} renders at once. Wait for some to finish`);
-      // A request without options keeps the original behaviour exactly (no preset, no options).
-      const plain = presets.length === 1 && presets[0] === "original" && opts.format === "mp4" && opts.height === 1080 && opts.fps === 30 && opts.quality === "high";
+      if (count === 1 && active >= limit.one) throw conflict("Four renders are already running. Wait for one to finish");
+      if (count > 1 && active + count > limit.batch) throw conflict(`Exporting ${count} versions would run more than ${limit.batch} renders at once. Wait for some to finish`);
       const items = [];
-      for (const preset of presets) {
-        const item = await queueRender(ctx, {
-          broadcasterId: b.id,
-          projectId: p.id,
-          title: presetTitle(p.title, preset, opts.format),
-          sessionId: edl.segments[0]!.sessionId,
-          preset: plain ? null : preset,
-          format: opts.format,
-          renderOptions: plain ? null : { format: opts.format, height: opts.height, fps: opts.fps, quality: opts.quality },
-        });
-        items.push(await libraryItemView(ctx, item, { canView: true, canEdit: true }));
+      for (const t of timelines) {
+        // A request without options keeps the original behaviour exactly (no preset, no options).
+        const plain = t.id === MAIN_SEQUENCE_ID && presets.length === 1 && presets[0] === "original" && opts.format === "mp4" && opts.height === 1080 && opts.fps === 30 && opts.quality === "high";
+        for (const preset of presets) {
+          const item = await queueRender(ctx, {
+            broadcasterId: b.id,
+            projectId: p.id,
+            title: presetTitle(t.id === MAIN_SEQUENCE_ID && sequences.extra.length === 0 ? p.title : `${p.title} · ${t.name}`, preset, opts.format),
+            sessionId: t.edl.segments[0]!.sessionId,
+            preset: plain ? null : preset,
+            format: opts.format,
+            renderOptions: plain ? null : { format: opts.format, height: opts.height, fps: opts.fps, quality: opts.quality, ...(t.id === MAIN_SEQUENCE_ID ? {} : { sequenceId: t.id }) },
+          });
+          items.push(await libraryItemView(ctx, item, { canView: true, canEdit: true }));
+        }
       }
       return items;
     };
 
     app.post("/api/projects/:id/render", { config: { rateLimit: { max: 30, timeWindow: "1 hour" } } }, async (req): Promise<LibraryItemView> => {
       const opts = RenderOptions.parse(req.body ?? {});
-      if (opts.presets.length > 1) throw badRequest("One preset per render. Use /exports for several at once");
+      if (opts.presets.length > 1 || (opts.sequences?.length ?? 1) > 1) throw badRequest("One preset and one sequence per render. Use /exports for several at once");
       return (await startRenders(req, opts, { one: 4, batch: 8 }))[0]!;
     });
 
@@ -421,7 +476,8 @@ export const libraryRoutes =
       const p = await getProject(ctx.db, id);
       if (!p || p.broadcaster_id !== b.id) throw notFound("Edit not found");
       const input = ThumbnailInput.parse(req.body);
-      const edl = Edl.parse(p.edl);
+      const edl = sequenceEdl(Edl.parse(p.edl), readSequences(p.sequences), input.sequenceId);
+      if (!edl) throw notFound("That sequence isn't in this edit. Save the edit, then try again");
       if (input.atMs >= edlDurationMs(edl)) throw badRequest("That time is past the end of the edit");
       const seg = edl.segments[edlLocate(edl, input.atMs).index]!;
       if (seg.runId) throw conflict("Thumbnails need the finished recording", "Try again after the stream ends");

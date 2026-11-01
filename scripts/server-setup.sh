@@ -544,7 +544,10 @@ cmd_status() {
   printf '\n'
 }
 
-usage() { sed -n '2,20p' "${BASH_SOURCE[0]:-/dev/null}" 2>/dev/null | sed 's/^# \{0,1\}//' || true; }
+usage() {
+  # The comment block at the top of this file, without the leading "# ".
+  sed -n '2,/^set -euo/p' "${BASH_SOURCE[0]:-/dev/null}" 2>/dev/null | sed '$d' | sed 's/^# \{0,1\}//' || true
+}
 
 main() {
   local cmd="${1:-install}"

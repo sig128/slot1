@@ -120,6 +120,8 @@ export interface EditProjectRow {
   origin: "manual" | "auto";
   auto_key: string | null;
   edl: Edl;
+  /** ProjectSequences as stored (the other timelines); `{}` for one-sequence projects. */
+  sequences: Record<string, unknown>;
   source_observation_id: string | null;
   created_by_user_id: string | null;
   created_at: Date;
@@ -150,10 +152,10 @@ export async function listProjects(db: Queryable, broadcasterId: string, limit =
   return rows;
 }
 
-export async function updateProject(db: Queryable, id: string, patch: { title?: string; edl?: Edl }): Promise<EditProjectRow | null> {
+export async function updateProject(db: Queryable, id: string, patch: { title?: string; edl?: Edl; sequences?: unknown }): Promise<EditProjectRow | null> {
   const { rows } = await db.query<EditProjectRow>(
-    `UPDATE edit_projects SET title = COALESCE($2, title), edl = COALESCE($3::jsonb, edl), updated_at = now() WHERE id = $1 RETURNING *`,
-    [id, patch.title ?? null, patch.edl ? JSON.stringify(patch.edl) : null],
+    `UPDATE edit_projects SET title = COALESCE($2, title), edl = COALESCE($3::jsonb, edl), sequences = COALESCE($4::jsonb, sequences), updated_at = now() WHERE id = $1 RETURNING *`,
+    [id, patch.title ?? null, patch.edl ? JSON.stringify(patch.edl) : null, patch.sequences ? JSON.stringify(patch.sequences) : null],
   );
   return rows[0] ?? null;
 }
@@ -186,8 +188,8 @@ export async function findOverlappingAutoProject(
 /** Projects whose segments point into a recording's per-run timeline (live auto clips). */
 export async function listProjectsReferencingSession(db: Queryable, broadcasterId: string, sessionId: string): Promise<EditProjectRow[]> {
   const { rows } = await db.query<EditProjectRow>(
-    `SELECT * FROM edit_projects WHERE broadcaster_id = $1 AND edl->'segments' @> $2::jsonb`,
-    [broadcasterId, JSON.stringify([{ sessionId }])],
+    `SELECT * FROM edit_projects WHERE broadcaster_id = $1 AND (edl->'segments' @> $2::jsonb OR sequences @> $3::jsonb)`,
+    [broadcasterId, JSON.stringify([{ sessionId }]), JSON.stringify({ extra: [{ edl: { segments: [{ sessionId }] } }] })],
   );
   return rows;
 }
