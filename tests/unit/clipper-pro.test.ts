@@ -402,6 +402,17 @@ describe("ffmpeg filtergraph for every feature", () => {
     expect(g).toContain("alimiter=limit=0.97");
   });
 
+  it("loops a known-length music file as trimmed copies joined click-free", () => {
+    const e = edlOf({ audioTracks: [{ id: "m", kind: "music", clips: [{ id: "c1", source: { kind: "upload", assetId: UP }, startMs: 0, durationMs: 9000, loop: true }] }] });
+    const p = plan(e, { refs: { [refKey({ kind: "upload", assetId: UP })]: { path: "/up/bed.m4a", kind: "audio", durationMs: 4000 } } });
+    expect(p.args).not.toContain("-stream_loop");
+    const g = graphOf(p.args);
+    expect(g).toContain("asplit=4[lp0_0_0]");
+    expect(g).toContain("[lp0_0_1]atrim=duration=4.000,asetpts=PTS-STARTPTS[lc0_0_1]");
+    expect(g).toContain("[lc0_0_0][lc0_0_1]acrossfade=d=0.015:c1=qsin:c2=qsin[lj0_0_1]");
+    expect(g).toContain("[lj0_0_3]atrim=start=0.000:duration=9.000");
+  });
+
   it("honours export presets, GIF and audio-only output", () => {
     const e = edlOf({ aspect: "16:9", normalize: true });
     const yt = plan(e, { options: { aspect: "9:16", height: 720, fps: 60, quality: "small", maxrateKbps: 8000 } });

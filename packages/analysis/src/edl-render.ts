@@ -523,7 +523,6 @@ export function buildEdlRender(input: {
         pre = `[sp${i}]null`;
       }
       const tail = `setsar=1,fps=${fps},format=yuv420p,trim=duration=${sec(outDur)}[v${i}]`;
-      const target = { width: W, height: split ? H - evenSize(H * edl.split.camShare) : H };
       const reframe = (label: string, out: string, tw: number, th: number) => {
         // Static crop, or keyframed pan and zoom (t = seconds into this segment's output).
         if (s.keys.length === 0) {
@@ -845,8 +844,28 @@ export function buildEdlRender(input: {
         const r = need(c.source);
         const ix = inputIndex++;
         const dur = Math.min(c.durationMs, total - c.startMs);
-        // A looping input is limited too: an endless input would keep ffmpeg reading forever.
-        if (c.loop) args.push("-stream_loop", "-1", "-t", sec(c.offsetMs + dur), "-i", r.path);
+        // Loops: copies of the whole file, each trimmed to the file's length and joined with a
+        // 15 ms equal-power crossfade (click-free). Unknown length: a bounded stream loop.
+        const fileMs = r.durationMs ?? null;
+        const copies = c.loop && fileMs && fileMs > 200 ? Math.min(64, Math.ceil((c.offsetMs + dur) / (fileMs - 15)) + 1) : 0;
+        let src = `[${ix}:a]`;
+        if (copies > 1) {
+          args.push("-i", r.path);
+          const names = Array.from({ length: copies }, (_, k) => `[lp${ti}_${ci}_${k}]`);
+          filters.push(`[${ix}:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,asplit=${copies}${names.join("")}`);
+          let acc = "";
+          names.forEach((n, k) => {
+            const cut = `[lc${ti}_${ci}_${k}]`;
+            filters.push(`${n}atrim=duration=${sec(fileMs!)},asetpts=PTS-STARTPTS${cut}`);
+            if (k === 0) acc = cut;
+            else {
+              const out = `[lj${ti}_${ci}_${k}]`;
+              filters.push(`${acc}${cut}acrossfade=d=0.015:c1=qsin:c2=qsin${out}`);
+              acc = out;
+            }
+          });
+          src = acc;
+        } else if (c.loop) args.push("-stream_loop", "-1", "-t", sec(c.offsetMs + dur), "-i", r.path);
         else args.push("-ss", sec(c.offsetMs), "-t", sec(dur), "-i", r.path);
         const parts = [
           ...(c.loop ? [`atrim=start=${sec(c.offsetMs)}:duration=${sec(dur)}`] : []),
@@ -859,7 +878,7 @@ export function buildEdlRender(input: {
           `adelay=${Math.round(c.startMs)}:all=1`,
           ...(c.envelope.length ? [`volume='${envExpr(c.envelope)}':eval=frame`] : []),
         ];
-        filters.push(`[${ix}:a]${parts.join(",")}[c${ti}_${ci}]`);
+        filters.push(`${src}${parts.join(",")}[c${ti}_${ci}]`);
         clipLabels.push(`[c${ti}_${ci}]`);
       });
       if (!clipLabels.length) return;

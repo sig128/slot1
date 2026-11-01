@@ -32,8 +32,12 @@ const ASPECTS: EdlAspect[] = ["9:16", "16:9", "1:1"];
 /* ------------------------------------------ placing media ---------------------------------- */
 
 /** Put a Studio library item or an upload at the playhead on a suitable track. */
-export function placeMedia(ctx: Pick<EditorCtx, "apply" | "playheadMs" | "total" | "select" | "announce" | "edl">, item: { ref: MediaRef; name: string; kind: "audio" | "image"; audioKind?: "music" | "sfx"; durationMs: number | null; visual?: StudioAsset["kind"] }) {
-  const at = Math.max(0, Math.min(Math.round(ctx.playheadMs), ctx.total - 200));
+export function placeMedia(
+  ctx: Pick<EditorCtx, "apply" | "playheadMs" | "total" | "select" | "announce" | "edl">,
+  item: { ref: MediaRef; name: string; kind: "audio" | "image"; audioKind?: "music" | "sfx"; durationMs: number | null; visual?: StudioAsset["kind"] },
+  atMs?: number,
+) {
+  const at = Math.max(0, Math.min(Math.round(atMs ?? ctx.playheadMs), ctx.total - 200));
   const room = ctx.total - at;
   if (item.kind === "audio") {
     const id = edlId("c");

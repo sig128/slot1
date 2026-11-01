@@ -17,6 +17,8 @@ import {
   type TimelineRef,
 } from "@slot1/contracts";
 import { editTime } from "@/lib/clipper";
+import { isAssetDrag, readAssetDrag } from "./library/studio-assets-client";
+import type { StudioAsset } from "@slot1/contracts";
 
 export interface TimelineMarker {
   ms: number;
@@ -42,6 +44,8 @@ interface Props {
   onSeek: (ms: number) => void;
   onSelect: (refs: TimelineRef[], additive: boolean) => void;
   onEdit: (fn: (e: Edl) => Edl, label: string, coalesce?: string) => void;
+  /** A Studio library item was dropped on the timeline at this time. */
+  onDropAsset?: (asset: StudioAsset, atMs: number) => void;
 }
 
 const MARKER_COLOR: Record<TimelineMarker["kind"], string> = { big: "bg-gold", text: "bg-apricot", event: "bg-signal" };
@@ -438,7 +442,23 @@ export function EditorTimeline(p: Props) {
             </div>
           ))}
         </div>
-        <div ref={scroller} className="relative min-w-0 flex-1 overflow-x-auto overflow-y-hidden" aria-label="Edit timeline" role="group">
+        <div
+          ref={scroller}
+          className="relative min-w-0 flex-1 overflow-x-auto overflow-y-hidden"
+          aria-label="Edit timeline"
+          role="group"
+          onDragOver={(e) => {
+            if (!p.onDropAsset || !isAssetDrag(e.dataTransfer)) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "copy";
+          }}
+          onDrop={(e) => {
+            const asset = p.onDropAsset ? readAssetDrag(e.dataTransfer) : null;
+            if (!asset) return;
+            e.preventDefault();
+            p.onDropAsset!(asset, Math.min(total, msAt(e.clientX)));
+          }}
+        >
           <div className="relative" style={{ width: contentW }}>
             <div
               role="slider"

@@ -29,6 +29,7 @@ import {
 import { api, ApiError } from "@/lib/api";
 import { editTime } from "@/lib/clipper";
 import { AssetLibraryPanel } from "./library/AssetLibraryPanel";
+import { loadStudioAssets, studioAssetUrl } from "./library/studio-assets-client";
 import { ClipAiPanel } from "./ai/ClipAiPanel";
 import { EditorTimeline, type TimelineMarker } from "./EditorTimeline";
 import { EditorContext, type EditorCtx } from "./editor/context";
@@ -207,7 +208,7 @@ export function ClipEditor({ initial }: { initial: ProjectView }) {
     api<{ media: ProjectMediaView[] }>("/api/editor/media")
       .then((r) => setUploads(r.media))
       .catch(() => undefined);
-    api<StudioAssetsResponse>("/api/studio/assets")
+    loadStudioAssets()
       .then(setLibrary)
       .catch(() => undefined);
   }, []);
@@ -241,7 +242,7 @@ export function ClipEditor({ initial }: { initial: ProjectView }) {
       if (ref.kind === "library") {
         const a = assetOf(ref.assetId);
         if (!a) return null;
-        const url = `/api/studio/assets/file/${a.id}${library ? `?v=${encodeURIComponent(library.rev)}` : ""}`;
+        const url = studioAssetUrl(a, library?.rev);
         const kind = AUDIO_KINDS.includes(a.kind) ? "audio" : /\.(webm|mp4|mov)$/i.test(a.file) ? "video" : "image";
         return { url, kind, name: a.name };
       }
@@ -483,15 +484,19 @@ export function ClipEditor({ initial }: { initial: ProjectView }) {
     saveNow,
   };
 
-  const pickAsset = (a: StudioAsset) =>
-    placeMedia(ctx, {
-      ref: { kind: "library", assetId: a.id },
-      name: a.name,
-      kind: AUDIO_KINDS.includes(a.kind) ? "audio" : "image",
-      audioKind: a.kind === "music" || a.kind === "ambience" ? "music" : "sfx",
-      durationMs: a.durationMs ?? null,
-      visual: a.kind,
-    });
+  const pickAsset = (a: StudioAsset, atMs?: number) =>
+    placeMedia(
+      ctx,
+      {
+        ref: { kind: "library", assetId: a.id },
+        name: a.name,
+        kind: AUDIO_KINDS.includes(a.kind) ? "audio" : "image",
+        audioKind: a.kind === "music" || a.kind === "ambience" ? "music" : "sfx",
+        durationMs: a.durationMs ?? null,
+        visual: a.kind,
+      },
+      atMs,
+    );
 
   return (
     <EditorContext.Provider value={ctx}>
@@ -739,6 +744,7 @@ export function ClipEditor({ initial }: { initial: ProjectView }) {
                   if (next.length) setTab("clip");
                 }}
                 onEdit={apply}
+                onDropAsset={(a, ms) => pickAsset(a, ms)}
               />
               <p className="mt-1.5 text-[0.72rem] text-ivory-3">
                 Drag blocks to move, their edges to trim (Shift: no snapping). {allRefs(edl).length} items · press ? for shortcuts.
@@ -747,7 +753,7 @@ export function ClipEditor({ initial }: { initial: ProjectView }) {
           </div>
 
           <div className="min-w-0">
-            <div role="tablist" aria-label="Editor panels" className="flex gap-1 overflow-x-auto border-b hairline pb-1 [scrollbar-width:thin]">
+            <div role="tablist" aria-label="Editor panels" className="flex gap-1 overflow-x-auto border-b hairline pb-1 [scrollbar-width:thin] sm:flex-wrap sm:overflow-visible">
               {TABS.map(([id, label]) => (
                 <button
                   key={id}
@@ -779,7 +785,8 @@ export function ClipEditor({ initial }: { initial: ProjectView }) {
                 <>
                   <section aria-label="Studio library" className="min-w-0">
                     <h2 className="mb-3 border-b hairline pb-2 font-display text-xl font-bold">Studio library</h2>
-                    <AssetLibraryPanel onPick={pickAsset} />
+                    <AssetLibraryPanel onPick={(a) => pickAsset(a)} />
+                    <p className="mt-2 text-[0.75rem] text-ivory-3">Click to add at the playhead, or drag onto the timeline.</p>
                     {!library && <p className="text-sm text-ivory-3">The sound and element library isn&apos;t available right now.</p>}
                   </section>
                   <UploadsPanel />

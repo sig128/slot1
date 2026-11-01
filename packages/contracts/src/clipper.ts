@@ -646,7 +646,7 @@ export const ProjectSourceView = z.object({
   /** Transcript lines (media timeline), for burned-in captions. */
   captionLines: z.number(),
   /** The creator's webcam box from "Hide your camera from the AI", when set: prefills the facecam split. */
-  cameraBox: EdlBox.nullable().default(null),
+  cameraBox: EdlBox.nullable().optional(),
 });
 export type ProjectSourceView = z.infer<typeof ProjectSourceView>;
 

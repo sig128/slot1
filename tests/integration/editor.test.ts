@@ -93,7 +93,6 @@ describe("pro clip editor", () => {
     projectId = created.json<{ id: string }>().id;
   }, LONG);
   afterAll(async () => {
-    // eslint-disable-next-line no-console
     console.log("editor render timings (ms)", timings);
     await h?.close();
     rmSync(tmp, { recursive: true, force: true });
