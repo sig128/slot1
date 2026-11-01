@@ -5,7 +5,17 @@ import { Queue } from "bullmq";
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import type { Redis } from "ioredis";
 import { z } from "zod";
-import { AdminMessageUpdate, ContactMessageStatus, type AdminHealth, type AdminMessagesResponse, type AdminOverview, type AdminQueue, type AdminUsage } from "@slot1/contracts";
+import {
+  AdminLoginInput,
+  AdminMessageUpdate,
+  ContactMessageStatus,
+  type AdminHealth,
+  type AdminLoginStatus,
+  type AdminMessagesResponse,
+  type AdminOverview,
+  type AdminQueue,
+  type AdminUsage,
+} from "@slot1/contracts";
 import {
   activeModels,
   aiUsageSince,
@@ -25,8 +35,18 @@ import {
 } from "@slot1/db";
 import { createBullConnection, QUEUES } from "@slot1/platform";
 import type { ServerContext } from "@slot1/services";
-import { consumeLink, endAdminSession, hasAdminSession, linkUnused, readLinkToken, startAdminSession } from "../lib/admin-session";
-import { notFound } from "../lib/errors";
+import {
+  adminLoginStats,
+  adminPasswordConfigured,
+  beginLoginAttempt,
+  LOGIN_FAILURE_MIN_MS,
+  loginAddressKey,
+  recordLoginFailure,
+  recordLoginSuccess,
+  verifyAdminPassword,
+} from "../lib/admin-password";
+import { consumeLink, endAdminSession, linkUnused, readAdminSession, readLinkToken, startAdminSession, trackAdminPasswordHash } from "../lib/admin-session";
+import { ApiProblem, conflict, notFound } from "../lib/errors";
 import { ONLINE_WINDOW_SEC, readPresence } from "../lib/visitors";
 
 type Access = AdminOverview["access"];
@@ -190,10 +210,23 @@ const MessagesQuery = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 
+/** "3 minutes", "a minute", "40 seconds". */
+function inAbout(sec: number): string {
+  if (sec < 60) return sec === 1 ? "1 second" : `${sec} seconds`;
+  const min = Math.ceil(sec / 60);
+  return min === 1 ? "a minute" : `${min} minutes`;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Password sign-ins handled at once by this process; more are turned away before they count. */
+const LOGIN_MAX_IN_FLIGHT = 32;
+
 /**
  * The operator dashboard API. Only operators (Twitch accounts listed in
- * SLOT1_OPERATOR_TWITCH_LOGINS) and holders of an admin-link session get in; everyone else,
- * signed in or not, gets the same 404 as for a page that doesn't exist.
+ * SLOT1_OPERATOR_TWITCH_LOGINS) and holders of an admin session (admin password or one-time
+ * link) get in; everyone else, signed in or not, gets the same 404 as for a page that doesn't
+ * exist. The /admin page itself shows the password form to them.
  */
 export const adminRoutes =
   (ctx: ServerContext): FastifyPluginAsync =>
@@ -201,6 +234,10 @@ export const adminRoutes =
     app.addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string", bodyLimit: 4096 }, (_req, body, done) => {
       done(null, Object.fromEntries(new URLSearchParams(body as string)));
     });
+
+    // Admin sessions are checked against the password configured now (lib/admin-session.ts).
+    trackAdminPasswordHash(ctx.redis, () => ctx.config.env.SLOT1_ADMIN_PASSWORD_HASH);
+    let loginsInFlight = 0;
 
     let bull: { conn: Redis; queues: Queue[] } | null = null;
     const queues = () => {
@@ -218,7 +255,8 @@ export const adminRoutes =
 
     async function access(req: FastifyRequest): Promise<Access | null> {
       if (req.auth.user?.is_operator) return "operator";
-      if (await hasAdminSession(ctx.redis, req)) return "admin_link";
+      const session = await readAdminSession(ctx.redis, req);
+      if (session) return session.via === "password" ? "admin_password" : "admin_link";
       return null;
     }
     async function requireAdmin(req: FastifyRequest, reply: FastifyReply): Promise<Access> {
@@ -260,7 +298,7 @@ export const adminRoutes =
     app.get("/api/admin/overview", async (req, reply): Promise<AdminOverview> => {
       const who = await requireAdmin(req, reply);
       const range = (req.query as { range?: string }).range === "7" ? 7 : 30;
-      const [agg, presence, live, q, inference, gateway, redis, disk, messages] = await Promise.all([
+      const [agg, presence, live, q, inference, gateway, redis, disk, messages, logins] = await Promise.all([
         aggregates(ctx, range),
         readPresence(ctx.redis).catch(() => ({ online: 0, byPath: [] })),
         liveSessionsNow(ctx.db),
@@ -270,6 +308,7 @@ export const adminRoutes =
         redisInfo(ctx.redis),
         diskInfo(ctx),
         contactCounts(ctx.db),
+        adminLoginStats(ctx.redis),
       ]);
       const watching = new Map<string, number>();
       for (const p of presence.byPath) {
@@ -344,6 +383,7 @@ export const adminRoutes =
           gateway,
           failedJobs24h: agg.failures.count,
           recentFailures: agg.failures.items.map((f) => ({ at: f.at.toISOString(), where: f.place, message: f.message })),
+          adminLogin: { passwordSet: adminPasswordConfigured(ctx.config.env.SLOT1_ADMIN_PASSWORD_HASH), ...logins },
         },
         messages: { open: messages.open, total: messages.open + messages.closed },
       };
@@ -370,6 +410,61 @@ export const adminRoutes =
       const { id } = z.object({ id: z.uuid() }).parse(req.params);
       if (!(await deleteContactMessage(ctx.db, id))) throw notFound("That message no longer exists");
       return reply.status(204).send();
+    });
+
+    /* Admin password (docs/ADMIN.md) -------------------------------------------------------- */
+
+    // Public: the /admin page asks this to choose between the password form and "no password set",
+    // and (from the browser) whether it has a session the page request didn't carry (SameSite=Strict).
+    app.get("/api/admin/login", { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } }, async (req, reply): Promise<AdminLoginStatus> => {
+      reply.header("cache-control", "no-store").header("x-robots-tag", "noindex, nofollow");
+      return { passwordSet: adminPasswordConfigured(ctx.config.env.SLOT1_ADMIN_PASSWORD_HASH), signedIn: (await access(req)) !== null };
+    });
+
+    // CSRF-protected like every other mutation: the page sends the session's token header.
+    // logLevel "warn" keeps Fastify's per-request lines (with the client address) out of the log
+    // for this route; the events below are logged without addresses or passwords.
+    app.post("/api/admin/login", { logLevel: "warn", config: { rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (req, reply) => {
+      reply.header("cache-control", "no-store").header("x-robots-tag", "noindex, nofollow");
+      const hash = ctx.config.env.SLOT1_ADMIN_PASSWORD_HASH;
+      if (!adminPasswordConfigured(hash)) throw conflict("No admin password is set on this server yet.");
+      const { password } = AdminLoginInput.parse(req.body);
+      if (loginsInFlight >= LOGIN_MAX_IN_FLIGHT) {
+        reply.header("retry-after", "5");
+        throw new ApiProblem(429, "login_busy", "Too many sign-in attempts at once. Try again in a moment.");
+      }
+      loginsInFlight += 1;
+      try {
+        // Attempts are counted under an HMAC of the address; the address itself is never stored.
+        const addressKey = loginAddressKey(ctx.config.sessionSecret, req.ip);
+        const block = await beginLoginAttempt(ctx.redis, addressKey);
+        if (block) {
+          ctx.log.warn({ adminLogin: "blocked", scope: block.scope }, "admin password sign-in refused by the attempt limits");
+          reply.header("retry-after", String(block.retryAfterSec));
+          throw new ApiProblem(
+            429,
+            "login_paused",
+            block.scope === "address"
+              ? `Too many wrong passwords from this connection. Try again in ${inAbout(block.retryAfterSec)}.`
+              : `Password sign-in is paused for everyone for ${inAbout(block.retryAfterSec)} after many wrong passwords.`,
+          );
+        }
+        const started = Date.now();
+        if (await verifyAdminPassword(password, hash)) {
+          await recordLoginSuccess(ctx.redis, addressKey);
+          await startAdminSession(ctx, reply, "password");
+          ctx.log.info({ adminLogin: "ok" }, "admin session started with the admin password");
+          return { ok: true, redirect: "/admin" };
+        }
+        await recordLoginFailure(ctx.redis);
+        ctx.log.warn({ adminLogin: "failed" }, "admin password sign-in failed");
+        // Every failure takes at least as long, whatever made it fail.
+        const rest = LOGIN_FAILURE_MIN_MS - (Date.now() - started);
+        if (rest > 0) await sleep(rest);
+        throw new ApiProblem(401, "wrong_password", "That didn't work. Check the password and try again.");
+      } finally {
+        loginsInFlight -= 1;
+      }
     });
 
     /* One-time admin link ---------------------------------------------------------------- */

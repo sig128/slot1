@@ -137,7 +137,8 @@ It writes `.env` with fresh secrets, builds and starts the stack, and prints the
 - `slot1 twitch` turns on sign-in.
 - `slot1 ai` turns on the AI.
 - `slot1 update` deploys the latest code.
-- `slot1 admin-link` prints a one-time link to the `/admin` dashboard.
+- `slot1 admin-password` sets the password for the `/admin` dashboard; `slot1 admin-link` prints a one-time sign-in link instead.
+- `slot1 admins NAME` makes a Twitch account a SLOT1 admin (needed to link the chat bot).
 
 Firewall ports, the other `slot1` commands (`demo`, `legal`, `seo`, `domain`, `status`, `logs`) and details are in [docs/DEPLOY_HETZNER.md](docs/DEPLOY_HETZNER.md).
 

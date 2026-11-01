@@ -59,6 +59,8 @@ The `slot1` command is installed on the server:
 | `slot1 status` | Shows running containers and whether the API and the HTTPS site answer. |
 | `slot1 logs api` | Follows a service's logs. Services: `api`, `worker`, `web`, `inference`, `mediamtx`, `caddy`, `postgres`, `redis`. |
 | `slot1 domain NAME` | Moves to your own domain. |
+| `slot1 admin-password` | Sets or changes the `/admin` password. It asks twice, hidden; the server stores only a scrypt hash, and changing it signs out every admin session. |
+| `slot1 admins NAMES` | Sets which Twitch accounts are SLOT1 admins (comma-separated). They can open `/admin` when signed in with Twitch and link the chat bot. |
 | `slot1 admin-link` | Prints a one-time link (valid 15 minutes, single use) that signs you in to the `/admin` dashboard. Works before Twitch is set up. |
 | `slot1 demo on` / `slot1 demo off` | Starts or removes the live demo stream at `/demo`. It's a synthetic test video sent through the real pipeline. |
 | `slot1 legal` | Sets the business name, address, contact email and governing law shown on the Privacy Policy, Terms and Contact pages. |

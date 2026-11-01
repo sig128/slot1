@@ -9,6 +9,7 @@ import { ingestAvailable, startLiveCreator, type LiveCreator } from "./support/l
 /**
  * /contact and /admin in a real browser at desktop and 390 px, against the dev stack:
  * - a message sent through the contact form lands in the admin inbox, is closed and deleted;
+ * - non-admins get the password form at /admin (tests/e2e/admin-password.spec.ts signs in);
  * - the one-time admin link (printed by the real CLI) opens the dashboard;
  * - visits counted by the real collector, one TEST stream really published, and a viewer on its
  *   watch page show up under "Right now" and "Visitors".
@@ -151,10 +152,13 @@ test.describe("Contact and admin", () => {
     await expect(sent).toBeFocused();
   });
 
-  test("a non-admin gets the normal 404 page at /admin", async ({ page }) => {
+  test("a non-admin gets the admin password form at /admin, never the dashboard", async ({ page }) => {
     const res = await page.goto("/admin");
-    expect(res?.status()).toBe(404);
-    await expect(page.getByRole("heading", { name: "Off the map." })).toBeVisible();
+    expect(res?.status()).toBe(200);
+    await expect(page.getByRole("heading", { name: "Staff only.", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Control room" })).toHaveCount(0);
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    expect((await req.get("/api/admin/overview")).status()).toBe(404);
   });
 
   test("the one-time link opens the dashboard with real counts, and the inbox works", async ({ page, baseURL }, info) => {

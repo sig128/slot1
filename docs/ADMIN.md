@@ -7,7 +7,7 @@
 - **Platform:** accounts, creators, the chat bot, video sources, sessions, observations, library, stored files and forwarding.
 - **AI:** vision, OCR, speech-to-text and GTA model status, plus provider calls and estimated cost.
 - **Messages:** what people sent through `/contact`.
-- **System:** version, uptime, database, Redis, free disk, job queues and recent failures.
+- **System:** version, uptime, database, Redis, free disk, admin sign-ins, job queues and recent failures.
 
 Every number is counted from the database, Redis or the running services. Where something isn't measured, the page says so. It refreshes every 10 seconds while the tab is visible.
 
@@ -15,15 +15,42 @@ Every number is counted from the database, Redis or the running services. Where 
 
 | Who | How | Can do |
 |---|---|---|
+| Admins | The admin password, entered at `/admin` (below) | `/admin` and `/api/admin/*` only |
 | Operators | Sign in with Twitch with a login listed in `SLOT1_OPERATOR_TWITCH_LOGINS` | `/admin`, plus operator tasks elsewhere (linking the bot account, the model registry) |
 | Admin-link holders | A one-time link made on the server (below) | `/admin` and `/api/admin/*` only |
-| Everyone else, signed in or not | | Nothing. `/admin` and `/api/admin/*` answer with the normal 404, the same as a page that doesn't exist. |
+| Everyone else, signed in or not | | Nothing. `/admin` shows the password form; `/api/admin/*` answers with the normal 404, the same as a page that doesn't exist. |
 
 The pages and API answers are `noindex` and never cached.
 
+### Admin password
+
+The usual way in: `/admin` shows a sign-in form with one password field to anyone without access.
+
+**Setting or changing it**, on the server:
+
+```sh
+slot1 admin-password
+# asks for the new password twice without showing it, then pipes it on stdin into:
+docker compose exec -T api node dist/admin-password.js
+```
+
+- The password needs at least 12 characters, counted the way people count them (an emoji is one). The command reads it from stdin only, never from the command line, so it can't end up in shell history or a process list.
+- It prints `SLOT1_ADMIN_PASSWORD_HASH=scrypt$32768$8$1$<salt>$<hash>` as its last line: scrypt with N = 2^15, r = 8, p = 1 and a random 16-byte salt, base64. Only this hash is stored. The server script writes it to `.env` in single quotes, `SLOT1_ADMIN_PASSWORD_HASH='scrypt$…'`, because Docker Compose would otherwise read each `$…` as a variable. Then it recreates the api container, which reads the hash at start.
+- **Changing the password signs out every admin session**, one-time-link sessions included. Setting the first password does too. Each session carries a tag of the hash it started under; a session with an old tag is deleted the next time it's used.
+- With no hash set, or a malformed one, `/admin` says "No admin password is set on this server yet" and shows the command. One-time links keep working.
+
+**Signing in:**
+- The form sends `POST /api/admin/login` `{password}` with the usual CSRF token and `Origin` check. A correct password starts the same 12-hour admin session as a one-time link (below), and the page shows the dashboard. "Sign out" on the dashboard ends it.
+- The password is checked with `timingSafeEqual` on the scrypt output. Every wrong password gets the same answer, "That didn't work. Check the password and try again.", and never sooner than 0.75 s.
+- **5 wrong passwords per address in 15 minutes.** After that, the address waits out the 15 minutes, even with the right password. Each attempt is counted before the password is checked, so parallel requests can't slip past the limit. A correct password clears that address's count.
+- **Pause for everyone (soft lockout):** after 20 wrong passwords within 15 minutes, from anywhere, password sign-in pauses for everyone. The pause is 1 minute, doubling every 10 more failures, up to 15 minutes. One-time links and operator sign-in still work, so if an attack keeps the form paused, use `slot1 admin-link`.
+- **No addresses stored.** The counters live in Redis under an HMAC of the address, keyed with `SLOT1_SESSION_SECRET`. At most two password checks run at once and at most 32 sign-ins are handled at a time, so a burst can't starve the rest of the API.
+- **What is recorded:** sign-ins, wrong passwords and attempts refused by the limits, counted per UTC day in Redis for 9 days, plus the time of the last sign-in and the last wrong password. System → Admin sign-ins shows today and 7 days, and any pause in force. Passwords and addresses are never recorded; the API log notes each event without them.
+- **SameSite=Strict:** the admin cookie is never sent on a request that starts on another site. Following a link to `/admin` from elsewhere first renders the form. The page then asks the API from the site itself and shows the dashboard if this browser is signed in already.
+
 ### One-time admin link
 
-Use it before Twitch sign-in is set up, or whenever you need to get in from a new browser. On the server:
+Use it before an admin password is set, when password sign-in is paused, or if the password is lost. On the server:
 
 ```sh
 slot1 admin-link
@@ -35,7 +62,7 @@ It prints a link like `https://<your domain>/api/admin/link?token=…` as its la
 
 - **Works once, within 15 minutes.** The token is HMAC-signed with `SLOT1_SESSION_SECRET` and carries a random nonce. The nonce is kept in Redis until the link is used, then deleted atomically, so a second use fails.
 - **Opening it shows a button** ("Open the admin") instead of signing in straight away. Chat apps and email scanners that preview links therefore can't use it up.
-- **Pressing the button** starts an admin session for 12 hours: a random `slot1_admin` cookie (HttpOnly, SameSite=Lax, Secure in production). Only its SHA-256 hash is kept in Redis. "Sign out" on the dashboard ends it.
+- **Pressing the button** starts an admin session for 12 hours: a random `slot1_admin` cookie (HttpOnly, SameSite=Strict, Secure in production). Only its SHA-256 hash is kept in Redis. "Sign out" on the dashboard ends it.
 - **An admin session isn't a user account.** It grants nothing outside `/admin`; bot linking and the model registry still need a Twitch operator account. It works with `NODE_ENV=production` and `SLOT1_ALLOW_LOCAL_LOGIN=false`.
 
 ## Visitor counting (cookieless)
@@ -109,6 +136,8 @@ A hidden honeypot field catches bots: a message with it filled in gets a normal 
 | `GET /api/admin/overview?range=7\|30` | operators and admin sessions |
 | `GET /api/admin/messages?status=open\|closed\|all&before=&limit=` | operators and admin sessions |
 | `PATCH /api/admin/messages/:id` `{status}`, `DELETE /api/admin/messages/:id` | operators and admin sessions, with CSRF |
+| `GET /api/admin/login` | anyone: `{passwordSet, signedIn}` for the form |
+| `POST /api/admin/login` `{password}` | anyone, with CSRF; the limits above. 200 starts an admin session; 401 wrong password; 409 no password set; 429 limited, with `Retry-After` |
 | `GET` and `POST /api/admin/link` | the one-time link page and its button |
 | `POST /api/admin/logout` | ends an admin session |
 
@@ -120,6 +149,7 @@ A hidden honeypot field catches bots: a message with it filled in gets a normal 
 | `SLOT1_ANALYTICS` | `true` | `false` stops visitor counting |
 | `SLOT1_CONTACT_EMAIL` | empty | Public contact address shown on `/contact` (web, read at request time) |
 | `SLOT1_VERSION` | empty | Version or commit shown under System. The server script can set it on each update. |
+| `SLOT1_ADMIN_PASSWORD_HASH` | empty | scrypt hash of the admin password (`slot1 admin-password`). Empty or malformed: no password sign-in. Changing it signs out every admin session. |
 
 ## Verified, and not
 
@@ -131,12 +161,19 @@ A hidden honeypot field catches bots: a message with it filled in gets a normal 
   - device, browser and referrer handling
   - 90-day retention with daily totals kept
   - presence and its expiry, and viewers per live stream
-  - 404 for anonymous visitors and non-operators
+  - `/api/admin/*` answers 404 to anonymous visitors and non-operators
   - the admin link: single use, expiry, tampering and cross-site refusal; the CLI in production mode with Secure cookies; an admin session can't reach operator-only routes
   - contact: validation, honeypot, hourly limit, inbox actions, pagination and 24-month retention
-- **End-to-end** (`tests/e2e/admin.spec.ts`), against the dev stack at desktop and 390 px:
+- **Admin password** (`tests/integration/admin-password.test.ts`, real API, SQL and Redis; `tests/unit/admin-password.test.ts`):
+  - the hash format and parameters, verification, Unicode normalization and malformed values; the CLI reading stdin only, its 12-character minimum and its output line
+  - right and wrong passwords, the generic answer and its minimum delay, and the session it starts (12 hours, HttpOnly, SameSite=Strict, Secure in production)
+  - 5 failures per address, also with parallel requests; the pause for everyone and its backoff; one-time links still working meanwhile
+  - CSRF token and `Origin` required, and refused requests not counted
+  - no address or password in Redis
+  - changing or first setting the password ending all admin sessions; no password or a malformed one
+- **End-to-end** (`tests/e2e/admin.spec.ts`, `tests/e2e/admin-password.spec.ts`), at desktop and 390 px:
   - the contact form
-  - the 404 for non-admins
+  - the password form for non-admins, signing in and out, a wrong password, a link from another site to `/admin` and the "no password set" page
   - the one-time link, using the real CLI
   - the dashboard with a really published test stream and visits counted by the real collector
   - the range switch and keyboard reading of the chart

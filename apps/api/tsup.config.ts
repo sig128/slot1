@@ -3,8 +3,9 @@ import { defineConfig } from "tsup";
 // Internal @slot1/* packages are TypeScript source, so they are bundled in; third-party
 // packages stay external and are installed as this app's own dependencies.
 export default defineConfig({
-  // admin-link.js prints a one-time admin sign-in link (docs/ADMIN.md).
-  entry: ["src/main.ts", "src/admin-link.ts"],
+  // admin-link.js prints a one-time admin sign-in link; admin-password.js hashes a new admin
+  // password read from stdin (docs/ADMIN.md).
+  entry: ["src/main.ts", "src/admin-link.ts", "src/admin-password.ts"],
   format: ["esm"],
   target: "node22",
   platform: "node",
