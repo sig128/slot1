@@ -228,7 +228,7 @@ export function SessionWorkspace(p: Props) {
               </div>
             </div>
           ) : (
-            <StatusPair broadcast={broadcastState} analysis={status} />
+            <StatusPair broadcast={broadcastState} analysis={status} platform={p.identity.twitchUrl || p.fixture ? "twitch" : "slot1"} />
           )}
           {p.mode === "live" && p.session?.label === "test" && <SourceLabelChip label="test" />}
           {!p.watchOnly && p.session && <ActionStars level={actionLevel(items, p.mode, position, now)} />}

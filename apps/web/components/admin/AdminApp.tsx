@@ -288,7 +288,7 @@ export function AdminApp({ initial, initialMessages }: { initial: AdminOverview;
             />
           </div>
           <div className="mt-8 overflow-x-auto">
-            <table className="w-full min-w-[34rem] border-collapse text-[0.9rem]">
+            <table className="w-full border-collapse text-[0.9rem]">
               <caption className="pb-3 text-left font-display text-[1.3rem] font-bold">Provider calls</caption>
               <thead>
                 <tr className="text-left text-[0.78rem] text-ivory-3">
@@ -301,10 +301,10 @@ export function AdminApp({ initial, initialMessages }: { initial: AdminOverview;
                   <th scope="col" className="pb-2 text-right font-normal">
                     Calls, 30 days
                   </th>
-                  <th scope="col" className="pb-2 text-right font-normal">
+                  <th scope="col" className="hidden pb-2 text-right font-normal sm:table-cell">
                     Frames, 30 days
                   </th>
-                  <th scope="col" className="pb-2 text-right font-normal">
+                  <th scope="col" className="hidden pb-2 text-right font-normal sm:table-cell">
                     Tokens in / out, 30 days
                   </th>
                 </tr>
@@ -320,8 +320,8 @@ export function AdminApp({ initial, initialMessages }: { initial: AdminOverview;
                       </th>
                       <td className="tnum py-2 text-right">{num(d?.calls ?? 0)}</td>
                       <td className="tnum py-2 text-right">{num(m?.calls ?? 0)}</td>
-                      <td className="tnum py-2 text-right">{num(m?.frames ?? 0)}</td>
-                      <td className="tnum py-2 text-right text-ivory-2">
+                      <td className="tnum hidden py-2 text-right sm:table-cell">{num(m?.frames ?? 0)}</td>
+                      <td className="tnum hidden py-2 text-right text-ivory-2 sm:table-cell">
                         {compact(m?.inputTokens ?? 0)} / {compact(m?.outputTokens ?? 0)}
                       </td>
                     </tr>
@@ -379,7 +379,7 @@ export function AdminApp({ initial, initialMessages }: { initial: AdminOverview;
           ) : null}
           <div className="mt-10 grid gap-12 lg:grid-cols-2">
             <div className="min-w-0 overflow-x-auto">
-              <table className="w-full min-w-[26rem] border-collapse text-[0.9rem]">
+              <table className="w-full min-w-[19rem] border-collapse text-[0.9rem]">
                 <caption className="pb-3 text-left font-display text-[1.3rem] font-bold">Job queues</caption>
                 <thead>
                   <tr className="text-left text-[0.78rem] text-ivory-3">

@@ -18,11 +18,15 @@ const H = 220;
 const AXIS = 28;
 const M = { top: 14, right: 92, left: 46 };
 
-function niceMax(v: number): number {
-  if (v <= 4) return 4;
-  const pow = 10 ** Math.floor(Math.log10(v));
-  for (const m of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * pow >= v) return m * pow;
-  return 10 * pow;
+/** Clean axis: about four steps of 1, 2 or 5 × 10ⁿ (whole numbers), and the top tick at or above the data. */
+function axis(v: number): { max: number; ticks: number[] } {
+  const raw = Math.max(1, v) / 4;
+  const pow = 10 ** Math.floor(Math.log10(raw));
+  const step = Math.max(1, ([1, 2, 5, 10].map((m) => m * pow).find((s) => s >= raw) ?? 10 * pow));
+  const max = Math.max(step, Math.ceil(Math.max(1, v) / step) * step);
+  const ticks: number[] = [];
+  for (let t = 0; t <= max; t += step) ticks.push(t);
+  return { max, ticks };
 }
 
 export function VisitorsChart({ days }: { days: AdminDay[] }) {
@@ -42,8 +46,7 @@ export function VisitorsChart({ days }: { days: AdminDay[] }) {
   const narrow = width < 520;
   const right = narrow ? 16 : M.right;
   const plotW = Math.max(10, width - M.left - right);
-  const max = useMemo(() => niceMax(Math.max(0, ...days.map((d) => d.views))), [days]);
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(max * f));
+  const { max, ticks } = useMemo(() => axis(Math.max(0, ...days.map((d) => d.views))), [days]);
   const x = (i: number) => M.left + (days.length <= 1 ? plotW / 2 : (i / (days.length - 1)) * plotW);
   const y = (v: number) => M.top + H - (v / max) * H;
   const pathFor = (k: "visitors" | "views") => days.map((d, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(d[k]).toFixed(1)}`).join("");

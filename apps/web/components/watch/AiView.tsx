@@ -107,23 +107,28 @@ function typeLabel(t: string): string {
   return OBSERVATION_TYPE_LABEL[t as ObservationType] ?? t.replace(/_/g, " ");
 }
 
-/** The analyzed frame, with the OCR regions outlined and every line it read boxed. */
-export function AnalyzedFrame({ snapshot, showRegions = true, className = "" }: { snapshot: AiViewSnapshot; showRegions?: boolean; className?: string }) {
-  const read = snapshot.ocr.regions.flatMap((r) => r.readings.map((x) => ({ ...x, region: r.label })));
+/**
+ * The analyzed frame. With `annotate`, the OCR regions are outlined with numbered keys (the list
+ * beside it uses the same numbers) and every line OCR read is boxed in gold.
+ */
+export function AnalyzedFrame({ snapshot, annotate = true, className = "" }: { snapshot: AiViewSnapshot; annotate?: boolean; className?: string }) {
+  const read = annotate ? snapshot.ocr.regions.flatMap((r) => r.readings) : [];
   return (
     <figure className={`relative m-0 overflow-hidden bg-black ${className}`} style={{ aspectRatio: `${snapshot.frame.width} / ${snapshot.frame.height}` }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={snapshot.frame.url} alt="The video frame SLOT1 analyzed" className="absolute inset-0 h-full w-full object-contain" />
-      {showRegions &&
-        snapshot.ocr.regions.map((r) => (
+      {annotate &&
+        snapshot.ocr.regions.map((r, i) => (
           <div
             key={r.id}
             className={`absolute border ${r.readings.length ? "border-signal" : "border-dashed border-ivory/45"}`}
             style={pctBox(r.box)}
             aria-hidden
           >
-            <span className={`absolute left-0 top-0 -translate-y-full px-1 text-[0.62rem] leading-4 sm:text-[0.7rem] ${r.readings.length ? "bg-signal text-graphite" : "bg-graphite-900/80 text-ivory-2"}`}>
-              {r.label}
+            <span
+              className={`absolute left-0 top-0 grid h-4 min-w-4 place-items-center px-0.5 font-display text-[0.7rem] font-bold leading-none ${r.readings.length ? "bg-signal text-graphite" : "bg-graphite-900/85 text-ivory-2"}`}
+            >
+              {i + 1}
             </span>
           </div>
         ))}
@@ -186,8 +191,14 @@ export function AiViewPanel({ sessionId, onSelect }: { sessionId: string; onSele
               <p>{s.ocr.note}</p>
             ) : (
               <ul className="space-y-1.5">
-                {s.ocr.regions.map((r) => (
+                {s.ocr.regions.map((r, i) => (
                   <li key={r.id}>
+                    <span
+                      className={`mr-1.5 inline-grid h-4 min-w-4 place-items-center px-0.5 align-[1px] font-display text-[0.7rem] font-bold leading-none ${r.readings.length ? "bg-signal text-graphite" : "border border-ivory/40 text-ivory-2"}`}
+                      aria-hidden
+                    >
+                      {i + 1}
+                    </span>
                     <span className="text-ivory-3">{r.label}: </span>
                     {r.readings.length === 0 ? (
                       <span>nothing legible</span>
@@ -277,7 +288,7 @@ export function AiFramePlayer({ sessionId, reason }: { sessionId: string; reason
   return (
     <div className="min-w-0">
       {shown ? (
-        <AnalyzedFrame snapshot={shown} showRegions={false} className="w-full" />
+        <AnalyzedFrame snapshot={shown} annotate={false} className="w-full" />
       ) : (
         <div className="grid aspect-video w-full place-items-center bg-graphite-800 p-6 text-center text-sm text-ivory-2">
           {response?.reason ?? "Waiting for the first analyzed frame"}

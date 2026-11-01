@@ -66,7 +66,7 @@ export function buildAiViewSnapshot(
   const v = i.vision;
   const findings = (v.result?.analysis.findings ?? []).slice(0, 8).map((f) => ({ type: f.type, description: f.description, confidence: f.confidence }));
   let visionNote = v.note;
-  if (!v.enabled) visionNote = c.demo ? "Paid AI vision is off for the demo stream (OCR and the local model only)" : "No AI vision provider is configured on this server";
+  if (!v.enabled) visionNote = c.demo ? "Paid AI vision is off for the demo stream: only OCR (and SLOT1's own model, once one is active) looks at it" : "No AI vision provider is configured on this server";
   else if (v.state === "batching") visionNote = `Waiting for ${v.batch.need - v.batch.have} more frame${v.batch.need - v.batch.have === 1 ? "" : "s"} to send a batch`;
 
   return AiViewSnapshot.parse({

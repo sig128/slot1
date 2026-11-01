@@ -31,7 +31,7 @@ const Env = z.object({
 });
 
 function log(level: "info" | "warn" | "error", msg: string, extra: Record<string, unknown> = {}) {
-  console.log(JSON.stringify({ level, time: new Date().toISOString(), service: "slot1-demo", msg, ...extra }));
+  process.stdout.write(`${JSON.stringify({ level, time: new Date().toISOString(), service: "slot1-demo", msg, ...extra })}\n`);
 }
 
 async function main() {
