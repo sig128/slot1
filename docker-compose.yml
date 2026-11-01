@@ -172,6 +172,16 @@ services:
       - "8890:8890/udp"      # SRT publish
     restart: unless-stopped
 
+  # Demo broadcast (docs/DEMO.md): SLOT1's own synthetic test video, published to this server's
+  # ingest gateway like OBS would. Runs with the `demo` profile and SLOT1_DEMO=true (`slot1 demo on`).
+  demo:
+    logging: *logging
+    build: { context: ., dockerfile: infra/docker/app.Dockerfile, target: worker }
+    profiles: [demo]
+    command: ["node", "dist/demo-broadcast.js"]
+    env_file: [.env]
+    restart: unless-stopped
+
   caddy:
     logging: *logging
     image: caddy:2

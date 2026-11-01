@@ -1,0 +1,121 @@
+/* Legal pages (privacy, terms): readable prose in the SLOT1 system, and a clean print layout. */
+
+.legal-prose {
+  color: var(--color-ivory-2);
+  font-size: 1rem;
+  line-height: 1.7;
+  max-width: 72ch;
+}
+.legal-prose > * + * {
+  margin-top: 1rem;
+}
+.legal-prose strong {
+  color: var(--color-ivory);
+  font-weight: 600;
+}
+.legal-prose a {
+  color: var(--color-ivory);
+  text-decoration: underline;
+  text-decoration-color: var(--color-line-strong);
+}
+.legal-prose a:hover {
+  text-decoration-color: var(--color-apricot);
+}
+.legal-prose ul,
+.legal-prose ol {
+  padding-left: 1.25rem;
+}
+.legal-prose ul {
+  list-style: disc;
+}
+.legal-prose ol {
+  list-style: decimal;
+}
+.legal-prose li + li {
+  margin-top: 0.4rem;
+}
+.legal-prose li::marker {
+  color: var(--color-ivory-3);
+}
+.legal-prose code {
+  color: var(--color-ivory);
+  font-size: 0.92em;
+}
+/* Groups inside a section ("If you sign in with Twitch"), then the items within them. */
+.legal-prose h3 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.45rem;
+  line-height: 1.1;
+  color: var(--color-apricot);
+  margin-top: 2.5rem;
+}
+.legal-prose > h3:first-child {
+  margin-top: 0.5rem;
+}
+.legal-prose h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.2rem;
+  line-height: 1.1;
+  color: var(--color-ivory);
+}
+
+/* One kind of information, as a small labeled block (reads well on phones and on paper). */
+.legal-item {
+  border-top: 1px solid var(--color-line);
+  padding-top: 1rem;
+}
+.legal-item h4 {
+  margin-top: 0;
+}
+.legal-item dl {
+  margin-top: 0.6rem;
+  display: grid;
+  gap: 0.45rem;
+}
+.legal-item dl > div {
+  display: grid;
+  grid-template-columns: 4rem 1fr;
+  gap: 0.75rem;
+}
+.legal-item dt {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--color-ivory-3);
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  body > header,
+  body > footer,
+  .legal-toc,
+  .legal button {
+    display: none !important;
+  }
+  .legal,
+  .legal * {
+    color: #000 !important;
+    text-shadow: none !important;
+    background: transparent !important;
+  }
+  .legal a {
+    text-decoration: underline;
+  }
+  .legal-section h2,
+  .legal-prose h3,
+  .legal-item h4 {
+    break-after: avoid;
+  }
+  .legal-item {
+    break-inside: avoid;
+    border-color: #ccc;
+  }
+  .legal .grid {
+    display: block !important;
+  }
+}

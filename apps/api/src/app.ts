@@ -22,9 +22,15 @@ import { liveRoutes } from "./routes/live";
 import { mediaRoutes } from "./routes/media";
 import { momentRoutes } from "./routes/moments";
 import { sessionRoutes } from "./routes/sessions";
+import { seoRoutes } from "./routes/seo";
 import { studioRoutes } from "./routes/studio";
 import { trainingRoutes } from "./routes/training";
 import { uploadRoutes } from "./routes/uploads";
+import { adminRoutes } from "./routes/admin";
+import { analyticsRoutes } from "./routes/analytics";
+import { contactRoutes } from "./routes/contact";
+import { aiViewRoutes } from "./routes/aiview";
+import { demoRoutes } from "./routes/demo";
 
 declare module "fastify" {
   interface FastifyContextConfig {
@@ -103,5 +109,11 @@ export async function buildApp({ ctx, hub }: AppDeps): Promise<FastifyInstance> 
   await app.register(relayRoutes(ctx));
   await app.register(instantRoutes(ctx));
   await app.register(nowRoutes(ctx));
+  await app.register(seoRoutes(ctx));
+  await app.register(analyticsRoutes(ctx));
+  await app.register(contactRoutes(ctx));
+  await app.register(adminRoutes(ctx));
+  await app.register(aiViewRoutes(ctx));
+  await app.register(demoRoutes(ctx));
   return app;
 }

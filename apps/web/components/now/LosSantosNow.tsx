@@ -201,7 +201,16 @@ function MainPlayer({ s, embedParents }: { s: NowStream; embedParents: string[] 
   );
   return (
     <div className="min-w-0" data-now-player={s.kind}>
-      {s.kind === "slot1" && s.sessionId ? <LivePlayerSwitch sessionId={s.sessionId} title={`Live video from ${s.displayName}`} twitch={twitch} /> : twitch}
+      {s.kind === "slot1" && s.sessionId ? (
+        <LivePlayerSwitch
+          sessionId={s.sessionId}
+          title={`Live video from ${s.displayName}`}
+          twitch={twitch}
+          fallback={s.twitchUrl ? undefined : { name: "Latest frame", note: "The latest frame SLOT1 received." }}
+        />
+      ) : (
+        twitch
+      )}
     </div>
   );
 }

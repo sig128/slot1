@@ -8,6 +8,8 @@ import {
   markAssetsDeleted,
   pruneDeliveries,
   getSessionIncludingDeleted,
+  pruneContactMessages,
+  rollupAndPruneAnalytics,
 } from "@slot1/db";
 import { storageKeys, type MaintenanceJobs } from "@slot1/platform";
 import { liveSnapshots, sweepInstantReplays, validateAllGrants, type ServerContext } from "@slot1/services";
@@ -49,6 +51,9 @@ export async function retentionSweep(ctx: ServerContext): Promise<{ assets: numb
   await expireOldClipLinks(ctx.db);
   await ctx.db.query(`DELETE FROM user_sessions WHERE expires_at < now()`);
   await ctx.db.query(`DELETE FROM oauth_states WHERE expires_at < now() - interval '1 hour'`);
+  // Visitor analytics keep daily totals and drop raw page views after 90 days; contact messages go after 24 months.
+  await rollupAndPruneAnalytics(ctx.db).catch((err: unknown) => ctx.log.warn({ err: (err as Error).message }, "analytics retention failed"));
+  await pruneContactMessages(ctx.db).catch((err: unknown) => ctx.log.warn({ err: (err as Error).message }, "contact retention failed"));
   return { assets: expired.length, sessions: sessions.length };
 }
 

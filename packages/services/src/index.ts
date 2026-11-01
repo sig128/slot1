@@ -10,3 +10,5 @@ export * from "./training";
 export * from "./library";
 export * from "./relay";
 export * from "./instant-replay";
+export * from "./ai-view";
+export * from "./demo";

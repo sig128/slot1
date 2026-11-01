@@ -148,8 +148,20 @@ const EnvSchema = z.object({
   INFERENCE_EXECUTION_PROVIDERS: z.string().default("cpu"),
   /** How often the service re-checks the model registry (activation also notifies it immediately). */
   INFERENCE_MODEL_POLL_MS: int(15_000),
+  /** Demo broadcast (docs/DEMO.md): a public channel fed by a synthetic test video. Off by default. */
+  SLOT1_DEMO: bool(false),
+  /** Publishing key the demo generator uses (random hex; the server script generates it). */
+  SLOT1_DEMO_STREAM_KEY: optStr,
+  /** Send demo frames to the paid vision provider too (strictly rate-capped). Off by default. */
+  SLOT1_DEMO_VISION: bool(false),
+  /** How often the worker samples the demo stream for analysis. */
+  SLOT1_DEMO_SAMPLE_MS: int(3000),
   BOT_GLOBAL_KILL: bool(false),
   BOT_GLOBAL_MESSAGES_PER_30S: int(60),
+  /** Cookieless visitor counting for /admin (docs/ADMIN.md). false = nothing is counted. */
+  SLOT1_ANALYTICS: bool(true),
+  /** Build or commit shown in /admin → System (the server script sets it on each update). */
+  SLOT1_VERSION: optStr,
 });
 
 export type Env = z.infer<typeof EnvSchema>;

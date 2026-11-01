@@ -1,8 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SkylineArt } from "@/components/brand/SkylineArt";
+import { pageMetadata } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Setup and help" };
+export function generateMetadata(): Metadata {
+  return pageMetadata({
+    title: "How SLOT1 works",
+    description:
+      "Set up SLOT1 for your GTA streams: what it can see, connecting Twitch, the chat bot, sending your stream from OBS, streaming everywhere, and how the AI analysis works.",
+    path: "/setup",
+  });
+}
 
 function H2({ id, children }: { id: string; children: React.ReactNode }) {
   return (

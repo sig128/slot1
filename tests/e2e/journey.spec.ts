@@ -127,9 +127,14 @@ test.describe("SLOT1 journey", () => {
     await expect(page).toHaveURL(/\/$/);
   });
 
-  test("the design demo is labeled as fixtures", async ({ page }) => {
+  test("the demo page says what it is, and says so when the demo is off", async ({ page }) => {
+    const info = (await (await page.request.get("/api/demo")).json()) as { enabled: boolean };
     await page.goto("/demo");
-    await expect(page.getByText(/fixture/i).first()).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Watch SLOT1 watch a stream" })).toBeVisible();
+    await expect(page.getByText("Synthetic test video", { exact: true })).toBeVisible();
+    await expect(page.getByRole("list", { name: "How a frame travels through SLOT1" }).getByRole("listitem")).toHaveCount(6);
+    // The full live demo is covered by tests/e2e/demo.spec.ts against a stack that runs it.
+    if (!info.enabled) await expect(page.getByText("The demo is off on this server")).toBeVisible();
     await noHorizontalOverflow(page);
     await shot(page, "demo");
   });

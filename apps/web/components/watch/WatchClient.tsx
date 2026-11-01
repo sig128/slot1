@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ClipView, ObservationPage, WatchChannelResponse } from "@slot1/contracts";
 import { clipEmbedUrl, EMBED_MIN_WIDTH } from "@slot1/twitch/url";
+import { AiFramePlayer } from "./AiView";
 import { LivePlayerSwitch } from "./LivePlayerSwitch";
 import { SessionWorkspace } from "./SessionWorkspace";
 import { TwitchPlayer } from "./TwitchPlayer";
@@ -14,6 +15,7 @@ export function WatchClient({
   embedParents,
   clipSlug,
   momentId = null,
+  aiViewOpen = false,
 }: {
   watch: WatchChannelResponse;
   page: ObservationPage | null;
@@ -22,9 +24,13 @@ export function WatchClient({
   clipSlug: string | null;
   /** `?moment=`: a moment of this live session to select and replay. */
   momentId?: string | null;
+  /** Open "What the AI sees" on load (the demo page). */
+  aiViewOpen?: boolean;
 }) {
   const c = watch.channel;
   const session = watch.session;
+  // SLOT1-only channels (the demo) have no Twitch channel, player or chat.
+  const onTwitch = Boolean(c.twitchUrl);
   const player = clipSlug ? (
     <div className="w-full" style={{ minWidth: 0 }}>
       <iframe
@@ -36,6 +42,14 @@ export function WatchClient({
         referrerPolicy="strict-origin-when-cross-origin"
       />
     </div>
+  ) : watch.authorized && session && session.kind !== "replay" && !onTwitch ? (
+    // No Twitch behind this channel: SLOT1's own video, or else the frames the AI analyzed.
+    <LivePlayerSwitch
+      sessionId={session.id}
+      title={`Live video from ${c.displayName}`}
+      twitch={<AiFramePlayer sessionId={session.id} />}
+      fallback={{ name: "Analyzed frames", note: "The frames the AI analyzed, refreshed as they arrive." }}
+    />
   ) : watch.authorized && session && session.kind !== "replay" ? (
     // SLOT1's own sub-second video when the creator sends it; otherwise Twitch's player.
     <LivePlayerSwitch
@@ -43,6 +57,10 @@ export function WatchClient({
       title={`Live video from ${c.displayName}`}
       twitch={<TwitchPlayer login={c.login} displayName={c.displayName} parents={embedParents} thumbnailUrl={c.broadcast.thumbnailUrl} twitchUrl={c.twitchUrl} />}
     />
+  ) : !onTwitch ? (
+    <div className="grid aspect-video w-full place-items-center bg-graphite-800 p-6 text-center text-sm text-ivory-2">
+      {c.displayName} isn’t sending video to SLOT1 right now.
+    </div>
   ) : (
     <TwitchPlayer login={c.login} displayName={c.displayName} parents={embedParents} thumbnailUrl={c.broadcast.thumbnailUrl} twitchUrl={c.twitchUrl} />
   );
@@ -89,7 +107,7 @@ export function WatchClient({
         avatarUrl: c.avatarUrl,
         title: c.broadcast.title,
         category: c.broadcast.category,
-        twitchUrl: c.twitchUrl,
+        twitchUrl: onTwitch ? c.twitchUrl : null,
       }}
       broadcast={c.broadcast.state}
       fallbackStatus={c.analysis}
@@ -97,11 +115,12 @@ export function WatchClient({
       isCreator={watch.viewer.isCreator}
       canAsk={watch.viewer.canAsk}
       askPolicy={watch.viewer.askPolicy}
-      chatLogin={c.login}
+      chatLogin={onTwitch ? c.login : null}
       embedParents={embedParents}
       emptyState={empty}
       watchOnly={!watch.authorized}
       initialMomentId={momentId}
+      aiViewOpen={aiViewOpen}
       notice={
         !watch.authorized ? (
           <p className="mt-5 border-l-2 border-apricot pl-3 text-sm text-ivory-2">

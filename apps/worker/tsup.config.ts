@@ -3,7 +3,8 @@ import { defineConfig } from "tsup";
 // Internal @slot1/* packages are TypeScript source, so they are bundled in; third-party
 // packages stay external and are installed as this app's own dependencies.
 export default defineConfig({
-  entry: ["src/main.ts"],
+  // dist/main.js: the worker. dist/demo-broadcast.js: the demo stream generator (docs/DEMO.md).
+  entry: { main: "src/main.ts", "demo-broadcast": "src/demo/broadcast.ts" },
   format: ["esm"],
   target: "node22",
   platform: "node",

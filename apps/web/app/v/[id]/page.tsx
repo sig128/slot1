@@ -5,12 +5,15 @@ import { jumpTarget, type LibraryItemView } from "@slot1/contracts";
 import { clipEmbedUrl, parseTwitchUrl } from "@slot1/twitch/url";
 import { MediaPlayer } from "@/components/clipper/PublicMedia";
 import { ShareFilePanel, ShareLinkButton } from "@/components/clipper/ShareClip";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { ServiceDown } from "@/components/ui/ServiceDown";
 import { editTime, itemKindLabel, VISIBILITY_TEXT } from "@/lib/clipper";
+import { clipVideo } from "@/lib/jsonld";
 import { publicOrigin } from "@/lib/origin";
 import { readJumpParams } from "@/lib/moments";
 import { canShareAsFile } from "@/lib/share";
 import { embedParents, serverApi } from "@/lib/server";
+import { pageMetadata } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -21,27 +24,29 @@ async function load(id: string) {
   return serverApi<ItemResponse>(`/api/library/${id}`);
 }
 
+function describe(item: LibraryItemView, channel: { displayName: string }): string {
+  const kind = itemKindLabel(item).toLowerCase();
+  return `A ${kind} by ${channel.displayName} on SLOT1${item.durationMs ? `, ${editTime(item.durationMs).replace(/\.\d$/, "")} long` : ""}.`;
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const r = await load(id);
   if (!r?.ok) return { title: "Not found", robots: { index: false } };
   const { item, channel } = r.data;
   const origin = await publicOrigin();
-  const url = `${origin}/v/${item.id}`;
-  const kind = itemKindLabel(item).toLowerCase();
-  const description = `A ${kind} by ${channel.displayName} on SLOT1${item.durationMs ? `, ${editTime(item.durationMs).replace(/\.\d$/, "")} long` : ""}.`;
   const hasPoster = Boolean(item.posterUrl) && item.visibility !== "private";
   const images = hasPoster ? [{ url: `${origin}/api/library/${item.id}/poster`, width: item.width ?? undefined, height: item.height ?? undefined, alt: item.title }] : [];
   const video = item.kind !== "screenshot" && item.kind !== "twitch_clip";
-  return {
+  return pageMetadata({
     title: `${item.title} by ${channel.displayName}`,
-    description,
+    description: describe(item, channel),
+    path: `/v/${item.id}`,
+    images,
+    type: video ? "video.other" : "website",
     // Unlisted items open for anyone with the link but stay out of search results.
-    robots: item.visibility === "public" ? { index: true, follow: true } : { index: false, follow: false },
-    alternates: { canonical: url },
-    openGraph: { type: video ? "video.other" : "website", title: item.title, description, url, siteName: "SLOT1", images },
-    twitter: { card: images.length ? "summary_large_image" : "summary", title: item.title, description, images: images.map((i) => i.url) },
-  };
+    noindex: item.visibility !== "public",
+  });
 }
 
 export default async function ItemPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ t?: string }> }) {
@@ -60,8 +65,29 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
   const canOpenSession = Boolean(session?.ok);
   const clip = item.kind === "twitch_clip" && item.externalUrl ? parseTwitchUrl(item.externalUrl) : null;
   const twitchEmbed = clip?.kind === "clip" ? clipEmbedUrl(clip.slug, embedParents()) : null;
+  // Public videos get VideoObject structured data, pointing at stable addresses only.
+  const ownVideo = item.kind === "recording" || item.kind === "render" || item.kind === "clip_export";
+  const origin = await publicOrigin();
+  const structured =
+    item.visibility === "public" && item.status === "ready" && (ownVideo || twitchEmbed)
+      ? {
+          ...clipVideo({
+            origin,
+            id: item.id,
+            title: item.title,
+            description: describe(item, channel),
+            createdAt: item.createdAt,
+            durationMs: item.durationMs,
+            posterUrl: item.posterUrl ? `${origin}/api/library/${item.id}/poster` : null,
+            channel,
+            contentPath: ownVideo ? `/api/seo/media/${item.id}` : null,
+          }),
+          ...(twitchEmbed ? { embedUrl: twitchEmbed } : {}),
+        }
+      : null;
   return (
     <div className="mx-auto max-w-[1280px] px-4 pb-24 pt-8 sm:px-6 lg:px-10">
+      {structured && <JsonLd data={structured} />}
       <Link href={`/c/${channel.login}`} className="text-sm text-ivory-2 hover:text-ivory">
         ← {channel.displayName}
       </Link>

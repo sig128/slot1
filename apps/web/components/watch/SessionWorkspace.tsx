@@ -19,6 +19,7 @@ import { ClipperActions } from "@/components/clipper/ClipperActions";
 import { BroadcastChip, SourceLabelChip, StatusPair } from "@/components/ui/StatusChips";
 import { api, ApiError, newIdempotencyKey } from "@/lib/api";
 import { pct } from "@/lib/format";
+import { AiViewPanel } from "./AiView";
 import { AskPanel } from "./AskPanel";
 import { EventRail, railItems } from "./EventRail";
 import { EvidencePanel } from "./EvidencePanel";
@@ -61,6 +62,8 @@ interface Props {
   initialSeekMs?: number | null;
   /** `?moment=`: select this observation; live, open its instant replay. */
   initialMomentId?: string | null;
+  /** Live: open the "What the AI sees" panel on load (the demo page does). */
+  aiViewOpen?: boolean;
 }
 
 export function SessionWorkspace(p: Props) {
@@ -90,6 +93,8 @@ export function SessionWorkspace(p: Props) {
   const [chatOpen, setChatOpen] = useState(false);
   const [position, setPosition] = useState<number | null>(null);
   const [panel, setPanel] = useState<null | "moment" | "clip">(null);
+  const aiViewAvailable = p.mode === "live" && Boolean(p.session) && !p.watchOnly && !p.fixture;
+  const [aiView, setAiView] = useState(Boolean(p.aiViewOpen));
   const video = useRef<HTMLVideoElement>(null);
   const evidenceRef = useRef<HTMLDivElement>(null);
 
@@ -303,11 +308,21 @@ export function SessionWorkspace(p: Props) {
                 )}
               </>
             )}
+            {aiViewAvailable && (
+              <button type="button" className="btn btn-ghost btn-sm" aria-expanded={aiView} aria-controls="ai-view-panel" onClick={() => setAiView((v) => !v)}>
+                {aiView ? "Hide what the AI sees" : "What the AI sees"}
+              </button>
+            )}
             <details className="group ml-auto text-sm">
               <summary className="btn btn-quiet btn-sm cursor-pointer list-none">Metrics</summary>
               <Metrics session={p.session} status={status} now={now} />
             </details>
           </div>
+          {aiViewAvailable && aiView && p.session && (
+            <div id="ai-view-panel">
+              <AiViewPanel sessionId={p.session.id} onSelect={select} />
+            </div>
+          )}
           {panel === "moment" && p.session && (
             <MomentForm
               key={selectedObs?.id ?? "none"}

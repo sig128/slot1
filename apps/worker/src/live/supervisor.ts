@@ -40,14 +40,21 @@ import {
   bufferReplay,
   BufferReplayResponder,
   createPipelineSink,
+  DEMO_LIMITS,
+  DEMO_PUBLISH_PATH,
+  DEMO_SESSION_TITLE,
+  demoClipFromBuffer,
+  demoHousekeeping,
   emitAnalysisStatus,
   emitSourceHealth,
+  isDemoBroadcaster,
   sourceHealthView,
   type BufferReplayReply,
   type BufferReplayRequest,
   type ServerContext,
 } from "@slot1/services";
 import { loadActiveGtaModel } from "../gta/onnx-model";
+import { publishAiView } from "./ai-view";
 import { announce } from "./announce";
 import { LiveRecorder } from "./recorder";
 
@@ -135,6 +142,11 @@ class LiveRunner {
   /** Full-stream recording of the current reader run (creator opt-in). */
   private recorder: LiveRecorder | null = null;
   private recordingId: string | null = null;
+  /** SLOT1's own demo channel (synthetic test video): bounded, never sent to paid AI by default. */
+  private demo = false;
+  private lastHousekeeping = 0;
+  /** Current reader run of the rolling buffer (demo clips are cut from it). */
+  private bufferRun: { startedAt: number; ringSize: number } | null = null;
 
   constructor(
     private readonly ctx: ServerContext,
@@ -166,7 +178,7 @@ class LiveRunner {
         this.ctx.db,
         this.source.broadcaster_id,
         this.source.label === "test" ? "test" : "live",
-        `${this.source.label === "test" ? "Test ingest" : "Live ingest"}: ${this.source.name}`,
+        this.demo ? DEMO_SESSION_TITLE : `${this.source.label === "test" ? "Test ingest" : "Live ingest"}: ${this.source.name}`,
         settings.visibility,
         settings.sampleIntervalMs,
       ));
@@ -179,6 +191,7 @@ class LiveRunner {
   async run() {
     const ctx = this.ctx;
     let settings = await getSettings(ctx.db, this.source.broadcaster_id);
+    this.demo = this.source.publish_path === DEMO_PUBLISH_PATH && isDemoBroadcaster(await getBroadcaster(ctx.db, this.source.broadcaster_id));
     this.session = await this.resolveSession(settings);
     this.healthTimer = setInterval(() => void this.healthTick().catch(() => undefined), 2000);
     const work = path.join(tmpdir(), `slot1-live-${this.source.id}`);
@@ -187,6 +200,13 @@ class LiveRunner {
       while (this.running) {
         if (!(await this.lease.renew(`source:${this.source.id}`, LEASE_TTL_MS))) break;
         settings = await getSettings(ctx.db, this.source.broadcaster_id);
+        if (this.demo && this.session && Date.now() - this.session.started_at.getTime() > DEMO_LIMITS.sessionMaxMs) {
+          // The demo runs for weeks: close its session hourly so nothing grows without bound.
+          await endSession(ctx.db, this.session.id);
+          await setSourceSession(ctx.db, this.source.id, null);
+          this.source = (await getSource(ctx.db, this.source.id)) ?? this.source;
+          this.session = await this.resolveSession(settings);
+        }
         const analyzing = settings.agentEnabled && !settings.analysisPaused;
         const buffer =
           settings.rollingBufferEnabled && settings.recordingConsent
@@ -226,6 +246,7 @@ class LiveRunner {
         // The buffer is rewritten from this reader start on; replays only cover this run.
         const readerStartedAt = Date.now();
         const bufferSeconds = settings.rollingBufferSeconds;
+        this.bufferRun = buffer ? { startedAt: readerStartedAt, ringSize: buffer.segments } : null;
         if (buffer) await this.replays?.serve(this.source.id, (req) => this.replayFromBuffer(req, readerStartedAt, bufferSeconds, buffer.segments));
         else await this.replays?.stop(this.source.id);
         await adapter.connect();
@@ -233,7 +254,8 @@ class LiveRunner {
           ? new ObservationPipeline({
               ocr: ctx.config.capabilities.ocr.available ? new TesseractOcr(ctx.config.env.TESSERACT_PATH, ctx.tools) : null,
               ocrVersion: "5",
-              vision: createVisionProvider(ctx.config.env),
+              // The demo never reaches a paid provider unless the operator opted in (rate-capped).
+              vision: this.demo && !ctx.config.env.SLOT1_DEMO_VISION ? null : createVisionProvider(ctx.config.env),
               gtaModel: await loadActiveGtaModel(ctx, { live: true, streamId: `live:${this.source.id}` }),
               profile: getProfile(settings.gameProfile),
               sourceLabel: this.source.label,
@@ -244,11 +266,27 @@ class LiveRunner {
                 session,
                 source: this.source,
                 settings,
-                retentionDays: settings.retentionDays,
-                onObservation: (o) => this.maybeComment(o),
+                retentionDays: this.demo ? DEMO_LIMITS.frameRetentionDays : settings.retentionDays,
+                onObservation: async (o) => {
+                  await this.maybeComment(o);
+                  if (this.demo) this.maybeDemoClip(o);
+                },
                 onFrameStored: async () => undefined,
                 autoClipRunId: () => this.recorder?.runId ?? null,
               }),
+              // "What the AI sees": a short-lived snapshot of each analyzed frame for viewers.
+              insight: (i) =>
+                publishAiView(
+                  ctx,
+                  {
+                    sessionId: session.id,
+                    label: this.source.label,
+                    demo: this.demo,
+                    intervalMs: settings.sampleIntervalMs,
+                    measuredCadenceMs: adapter.health().cadenceMs ?? null,
+                  },
+                  i,
+                ),
             })
           : null;
         let gotFrame = false;
@@ -269,6 +307,8 @@ class LiveRunner {
           const fresh = await getSettings(ctx.db, this.source.broadcaster_id);
           // Restart the reader when analysis or recording is switched on or off.
           if ((fresh.agentEnabled && !fresh.analysisPaused) !== analyzing || (fresh.recordingEnabled && fresh.recordingConsent) !== (settings.recordingEnabled && settings.recordingConsent)) break;
+          // The demo's hourly session change (handled at the top of the loop).
+          if (this.demo && Date.now() - session.started_at.getTime() > DEMO_LIMITS.sessionMaxMs) break;
         }
         await pipeline?.flush();
         await adapter.disconnect();
@@ -319,6 +359,12 @@ class LiveRunner {
     const ctx = this.ctx;
     if (!this.session) return;
     await this.recorder?.sync();
+    if (this.demo && Date.now() - this.lastHousekeeping > 5 * 60_000) {
+      this.lastHousekeeping = Date.now();
+      await demoHousekeeping(ctx, this.source.broadcaster_id).catch((err: unknown) =>
+        ctx.log.warn({ err: sanitizeErrorMessage((err as Error).message) }, "demo housekeeping failed"),
+      );
+    }
     const settings = await getSettings(ctx.db, this.source.broadcaster_id);
     const row = await getSession(ctx.db, this.session.id);
     if (!row) return;
@@ -356,6 +402,16 @@ class LiveRunner {
       if (view) await emitSourceHealth(ctx.db, ctx.publisher, row, view);
     }
     if (!(await this.lease.renew(`source:${this.source.id}`, LEASE_TTL_MS))) await this.stop("lease_lost");
+  }
+
+  /** Demo only: cut a short clip from the rolling buffer around a result screen (throttled). */
+  private maybeDemoClip(o: Observation) {
+    const run = this.bufferRun;
+    const session = this.session;
+    if (!run || !session || o.type !== "result_screen") return;
+    void demoClipFromBuffer(this.ctx, { session, sourceId: this.source.id, readerStartedAtMs: run.startedAt, ringSize: run.ringSize, observation: o }).catch((err: unknown) =>
+      this.ctx.log.warn({ err: sanitizeErrorMessage((err as Error).message) }, "demo clip failed"),
+    );
   }
 
   /** Automatic commentary: off by default, salient events only, never for TEST sources. */

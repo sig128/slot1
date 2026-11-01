@@ -42,6 +42,32 @@ export interface PipelineOptions {
   coverageMsPerFrame: number;
   workDir: string;
   sink: PipelineSink;
+  /**
+   * Called once per analyzed frame with what each analyzer actually did on it ("What the AI
+   * sees"). Optional; never allowed to break analysis.
+   */
+  insight?: (i: FrameInsight) => Promise<void>;
+}
+
+/** Everything the pipeline did with one frame, exactly as it happened. */
+export interface FrameInsight {
+  frame: SampledFrame;
+  ref: FrameRef;
+  profile: GameProfile;
+  ocr: { enabled: boolean; engine: string | null; lines: OcrLine[]; durationMs: number | null; error: string | null };
+  model: { enabled: boolean; label: string | null; prediction: FramePrediction | null; skipped: string | null; error: string | null };
+  vision: {
+    enabled: boolean;
+    provider: string | null;
+    model: string | null;
+    /** analyzed: this frame's batch went to the provider now; batching: waiting for more frames. */
+    state: "analyzed" | "batching" | "skipped" | "error" | "off";
+    result: VisionResult | null;
+    note: string | null;
+    batch: { have: number; need: number };
+  };
+  produced: { id: string; type: string; description: string; action: "new" | "extended" }[];
+  analyzedAt: Date;
 }
 
 /**
@@ -58,6 +84,9 @@ export class ObservationPipeline {
   private lastSummary: string | null = null;
   private visionBlockedReason: string | null = null;
   private gtaGate: GtaPredictionGate | null = null;
+  /** Observations created or extended while the current frame is being handled. */
+  private produced: FrameInsight["produced"] | null = null;
+  private lastVision: { state: "analyzed" | "skipped" | "error"; result: VisionResult | null; note: string | null } | null = null;
   readonly stats = { frames: 0, analyzedFrames: 0, visionFrames: 0, visionCalls: 0, observations: 0, visionErrors: 0, ocrLines: 0, modelFrames: 0, modelSkipped: 0 };
   readonly frameRefs: FrameRef[] = [];
 
@@ -85,18 +114,25 @@ export class ObservationPipeline {
     let hadResult = false;
     const nowIso = () => new Date().toISOString();
     let ocrLines: OcrLine[] = [];
+    this.produced = this.o.insight ? [] : null;
+    const ocrInfo: FrameInsight["ocr"] = { enabled: Boolean(this.o.ocr), engine: this.o.ocr?.name ?? null, lines: [], durationMs: null, error: null };
+    const modelInfo: FrameInsight["model"] = { enabled: Boolean(this.o.gtaModel), label: this.o.gtaModel?.label ?? null, prediction: null, skipped: null, error: null };
 
     if (this.o.ocr) {
       const dir = path.join(this.o.workDir, "ocr");
       await mkdir(dir, { recursive: true });
       const file = path.join(dir, `${frame.ptsMs}.jpg`);
       await writeFile(file, frame.jpeg);
+      const t0 = Date.now();
       try {
         const lines = await this.o.ocr.readFrame(file, this.o.profile, dir);
         ocrLines = lines;
+        ocrInfo.lines = lines;
+        ocrInfo.durationMs = Date.now() - t0;
         this.stats.ocrLines += lines.length;
         for (const c of ocrCandidates(lines, ref, this.o.ocrVersion, nowIso())) hadResult = (await this.fuse(c)) || hadResult;
       } catch (err) {
+        ocrInfo.error = (err as Error).message;
         await this.o.sink.problem("ocr", `OCR failed on a frame: ${(err as Error).message}`);
       } finally {
         await rm(file, { force: true });
@@ -107,6 +143,7 @@ export class ObservationPipeline {
     if (this.o.gtaModel && this.gtaGate) {
       try {
         prediction = await this.o.gtaModel.predict(frame.jpeg);
+        modelInfo.prediction = prediction;
         if (prediction) {
           this.stats.modelFrames += 1;
           for (const c of this.gtaGate.candidates(prediction, ref, nowIso())) hadResult = (await this.fuse(c)) || hadResult;
@@ -114,18 +151,24 @@ export class ObservationPipeline {
           // Skipped, not failed: nothing is published for this frame and the skip is counted.
           this.stats.modelSkipped += 1;
           const why = this.o.gtaModel.skipReason ?? "skipped";
+          modelInfo.skipped = why;
           await this.o.sink.modelFrameSkipped?.(ref, why);
           await this.o.sink.problem("gta-model", `GTA model skipped frames: ${why}`);
         }
       } catch (err) {
+        modelInfo.error = (err as Error).message;
         await this.o.sink.problem("gta-model", `GTA model failed on a frame: ${(err as Error).message}`);
       }
     }
 
+    let visionRan = false;
     if (this.o.vision) {
       this.batch.push(ref);
       this.batchJpegs.push(frame.jpeg);
-      if (this.batch.length >= this.o.visionBatchSize) hadResult = (await this.runVision()) || hadResult;
+      if (this.batch.length >= this.o.visionBatchSize) {
+        visionRan = true;
+        hadResult = (await this.runVision()) || hadResult;
+      }
     }
 
     if (this.o.sink.trainingFrame) {
@@ -144,6 +187,35 @@ export class ObservationPipeline {
       delayMs: Date.now() - frame.receivedAt.getTime(),
       hadResult,
     });
+
+    const produced = this.produced ?? [];
+    this.produced = null;
+    if (this.o.insight) {
+      const v = this.o.vision;
+      const last = visionRan ? this.lastVision : null;
+      try {
+        await this.o.insight({
+          frame,
+          ref,
+          profile: this.o.profile,
+          ocr: ocrInfo,
+          model: modelInfo,
+          vision: {
+            enabled: Boolean(v),
+            provider: v?.provider ?? null,
+            model: v?.model ?? null,
+            state: !v ? "off" : last ? last.state : "batching",
+            result: last?.result ?? null,
+            note: last?.note ?? null,
+            batch: { have: v ? this.batch.length : 0, need: v ? this.o.visionBatchSize : 0 },
+          },
+          produced,
+          analyzedAt: new Date(),
+        });
+      } catch {
+        // Showing what the AI saw must never interrupt the analysis itself.
+      }
+    }
   }
 
   /** Process any frames still waiting for a vision batch. */
@@ -164,6 +236,7 @@ export class ObservationPipeline {
     if (!this.o.vision || frames.length === 0) return false;
     const gate = await this.o.sink.allowVisionCall();
     if (!gate.allowed) {
+      this.lastVision = { state: "skipped", result: null, note: `Vision skipped: ${gate.reason ?? "budget reached"}` };
       if (this.visionBlockedReason !== gate.reason) {
         this.visionBlockedReason = gate.reason;
         await this.o.sink.problem("vision", `Vision skipped: ${gate.reason ?? "budget reached"}`);
@@ -178,6 +251,7 @@ export class ObservationPipeline {
       );
       this.stats.visionCalls += 1;
       this.stats.visionFrames += frames.length;
+      this.lastVision = { state: "analyzed", result, note: null };
       await this.o.sink.visionUsage(result, frames.length);
       this.lastSummary = result.analysis.scene.summary || null;
       let any = false;
@@ -186,6 +260,7 @@ export class ObservationPipeline {
     } catch (err) {
       this.stats.visionErrors += 1;
       const msg = err instanceof ProviderError ? err.message : `Vision analysis failed: ${(err as Error).message}`;
+      this.lastVision = { state: "error", result: null, note: msg };
       await this.o.sink.problem("vision", msg);
       return false;
     }
@@ -195,6 +270,9 @@ export class ObservationPipeline {
     const action = this.fusion.push(c);
     if (action.kind === "hold") return false;
     const id = await this.o.sink.persist(action);
+    if (id && this.produced && !this.produced.some((p) => p.id === id)) {
+      this.produced.push({ id, type: c.type, description: c.description, action: action.kind === "insert" ? "new" : "extended" });
+    }
     if (action.kind === "insert" && id) {
       this.fusion.markInserted(action.key, id);
       this.stats.observations += 1;

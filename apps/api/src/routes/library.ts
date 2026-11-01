@@ -47,7 +47,7 @@ import {
 } from "@slot1/db";
 import { formatMediaTime } from "@slot1/contracts";
 import { QUEUES, storageKeys } from "@slot1/platform";
-import { ANONYMOUS, canViewSession, isOwner, libraryItemView, momentEdl, playbackUrlTtl, queueRender, type ServerContext } from "@slot1/services";
+import { ANONYMOUS, canViewSession, hiddenDemo, isOwner, libraryItemView, momentEdl, playbackUrlTtl, queueRender, type ServerContext } from "@slot1/services";
 import { badRequest, conflict, notFound } from "../lib/errors";
 import { requireBroadcaster } from "../lib/session";
 
@@ -327,9 +327,9 @@ export const libraryRoutes =
     /* ------------------------------------ Profiles ----------------------------------------- */
 
     app.get("/api/profiles/:login", async (req): Promise<ProfileResponse> => {
-      const { login } = z.object({ login: z.string().regex(/^[A-Za-z0-9_]{2,40}$/) }).parse(req.params);
+      const { login } = z.object({ login: z.string().regex(/^[A-Za-z0-9_-]{2,40}$/) }).parse(req.params);
       const b = await getBroadcasterByLogin(ctx.db, login);
-      if (!b) throw notFound("Creator not found");
+      if (!b || hiddenDemo(ctx.config, b)) throw notFound("Creator not found");
       const settings = await getSettings(ctx.db, b.id);
       const owner = isOwner(req.auth.viewer, b.id);
       // A private channel has no public profile; its owner still sees a preview.

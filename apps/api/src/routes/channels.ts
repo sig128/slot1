@@ -6,6 +6,7 @@ import {
   getConnection,
   getCurrentLiveSession,
   getSettings,
+  getSourceByPublishPath,
   latestJobRunForSession,
   listDirectoryBroadcasters,
   listSessions,
@@ -19,10 +20,14 @@ import {
   liveSnapshots,
   sessionSummary,
   withAppToken,
+  DEMO_PUBLISH_PATH,
+  DEMO_SESSION_TITLE,
+  hiddenDemo,
+  isDemoBroadcaster,
   type ServerContext,
 } from "@slot1/services";
 import { channelUrl, parseTwitchUrl, sizeThumbnail } from "@slot1/twitch";
-import { badRequest } from "../lib/errors";
+import { badRequest, notFound } from "../lib/errors";
 
 const NO_SOURCE_STATUS = (visionConfigured: boolean) => ({
   state: "no_source" as const,
@@ -49,11 +54,17 @@ export async function channelCard(
     login: b.login,
     displayName: b.display_name,
     avatarUrl: b.avatar_url,
-    twitchUrl: channelUrl(b.login),
+    // SLOT1-only channels (the demo) have no Twitch channel: empty means "no Twitch link".
+    twitchUrl: b.kind === "twitch" ? channelUrl(b.login) : "",
     broadcast: snapshot,
     analysis: session ? analysisStatus(session, ctx.config) : NO_SOURCE_STATUS(ctx.config.capabilities.vision.available),
     publicAnalysis,
   };
+}
+
+async function demoSending(ctx: ServerContext): Promise<boolean> {
+  const src = await getSourceByPublishPath(ctx.db, DEMO_PUBLISH_PATH);
+  return Boolean(src && src.status === "publishing" && !src.revoked_at);
 }
 
 export const channelRoutes =
@@ -137,8 +148,11 @@ export const channelRoutes =
 
     /** Data for the WATCH page. Analysis is included only where the viewer is allowed to see it. */
     app.get("/api/channels/:login/watch", async (req): Promise<WatchChannelResponse> => {
-      const { login } = z.object({ login: z.string().min(2).max(25).regex(/^[a-zA-Z0-9_]+$/) }).parse(req.params);
+      // "-" only occurs in SLOT1's own demo login; Twitch logins never contain it.
+      const { login } = z.object({ login: z.string().min(2).max(25).regex(/^[a-zA-Z0-9_-]+$/) }).parse(req.params);
       const b = await getBroadcasterByLogin(ctx.db, login);
+      if (b && hiddenDemo(ctx.config, b)) throw notFound("The demo broadcast is off on this server");
+      if (!b && login.includes("-")) throw notFound("Channel not found");
       const viewer = req.auth.viewer;
       if (!b) {
         // Watch-only: a public Twitch channel that is not a SLOT1 channel.
@@ -194,6 +208,19 @@ export const channelRoutes =
       const snaps = await liveSnapshots(ctx, [b]);
       const session = await getCurrentLiveSession(ctx.db, b.id);
       const visibleSession = session && canViewSession(viewer, session, settings) ? session : null;
+      if (isDemoBroadcaster(b)) {
+        // No Twitch channel behind the demo: its "broadcast" is the generator sending to SLOT1.
+        const sending = visibleSession && !visibleSession.ended_at ? await demoSending(ctx) : false;
+        snaps.set(b.id, {
+          state: sending ? "live" : "offline",
+          title: DEMO_SESSION_TITLE,
+          category: "Demo (synthetic test video)",
+          thumbnailUrl: null,
+          viewerCount: null,
+          startedAt: sending && visibleSession ? visibleSession.started_at.toISOString() : null,
+          lastRefreshedAt: new Date().toISOString(),
+        });
+      }
       const summary = visibleSession
         ? await sessionSummary(ctx.db, ctx.storage, ctx.config, visibleSession, b, {
             playbackSource: null,

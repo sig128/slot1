@@ -6,11 +6,12 @@ import { MediaTile } from "@/components/clipper/PublicMedia";
 import { ServiceDown } from "@/components/ui/ServiceDown";
 import { publicOrigin } from "@/lib/origin";
 import { serverApi } from "@/lib/server";
+import { pageMetadata } from "@/lib/site";
 import { ShareLinkButton } from "@/components/clipper/ShareClip";
 
 export const dynamic = "force-dynamic";
 
-const LOGIN_RE = /^[A-Za-z0-9_]{2,40}$/;
+const LOGIN_RE = /^[A-Za-z0-9_-]{2,40}$/;
 
 async function load(login: string) {
   if (!LOGIN_RE.test(login)) return null;
@@ -27,7 +28,6 @@ export async function generateMetadata({ params }: { params: Promise<{ login: st
   if (!r?.ok) return { title: "Creator", robots: { index: false } };
   const p = r.data;
   const origin = await publicOrigin();
-  const url = `${origin}/c/${p.channel.login}`;
   const count = p.clips.length + p.recordings.length + p.screenshots.length;
   const description =
     count > 0
@@ -36,14 +36,8 @@ export async function generateMetadata({ params }: { params: Promise<{ login: st
   const cover = coverOf(p);
   // Stable poster URLs (not expiring media links) so share cards keep working.
   const images = cover ? [{ url: `${origin}/api/library/${cover.id}/poster`, alt: cover.title }] : [];
-  const title = `${p.channel.displayName} clips`;
-  return {
-    title,
-    description,
-    alternates: { canonical: url },
-    openGraph: { type: "profile", title: `${title} on SLOT1`, description, url, siteName: "SLOT1", images, username: p.channel.login },
-    twitter: { card: images.length ? "summary_large_image" : "summary", title: `${title} on SLOT1`, description, images: images.map((i) => i.url) },
-  };
+  // Only the owner sees a private channel's preview; it never belongs in search results.
+  return pageMetadata({ title: `${p.channel.displayName} clips`, description, path: `/c/${p.channel.login}`, images, type: "profile", noindex: !p.viewer.channelPublic });
 }
 
 export default async function ProfilePage({ params }: { params: Promise<{ login: string }> }) {

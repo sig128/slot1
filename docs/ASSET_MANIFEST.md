@@ -9,6 +9,7 @@ Everything visual or audible that ships with SLOT1, where it comes from, and its
 | Barlow Condensed 500, 600, 800, 900 by Jeremy Tribby | Display type: wordmark, headings, tabs, status chips | npm `@fontsource/barlow-condensed` 5.3.0 (self-hosted, no third-party font CDN) | SIL Open Font License 1.1 |
 | Inter (variable) by Rasmus Andersson | Body text, data, forms | npm `@fontsource-variable/inter` 5.3.0 (self-hosted) | SIL Open Font License 1.1 |
 | Passion One 700, 900 by Fontstage | Poster titles, wordmark, in-game-style moment banners | Files from npm `@fontsource/passion-one` 5.3.0, vendored in `apps/web/public/fonts/passion-one/` with `OFL.txt` | SIL Open Font License 1.1 |
+| Share-image fonts: Passion One 900, Barlow Condensed 600 and 800 (WOFF) | Open Graph cards and the home-screen icon, drawn on the server (`apps/web/lib/og.tsx`) | `apps/web/public/fonts/og/`: Passion One converted from `packages/analysis/fonts/PassionOne-Black.ttf` to WOFF without changes (fontTools), Barlow from npm `@fontsource/barlow-condensed`; licenses alongside | SIL Open Font License 1.1 |
 
 Considered and **not** shipped:
 

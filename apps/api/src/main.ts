@@ -1,7 +1,7 @@
 import { Queue } from "bullmq";
 import { createPool, runMigrations } from "@slot1/db";
 import { createBullConnection, createRedis, DEFAULT_JOB_OPTIONS, loadConfig, QUEUES, sanitizeErrorMessage } from "@slot1/platform";
-import { buildServerContext, type Enqueue } from "@slot1/services";
+import { buildServerContext, reconcileDemo, type Enqueue } from "@slot1/services";
 import { buildApp } from "./app";
 import { EventHub } from "./lib/hub";
 
@@ -23,6 +23,8 @@ async function main() {
   const applied = await runMigrations(db);
   if (applied.length) ctx.log.info({ applied }, "migrations applied");
   for (const p of config.problems) ctx.log.warn(p);
+  // Demo broadcast (docs/DEMO.md): create or hide its channel to match SLOT1_DEMO.
+  await reconcileDemo(ctx).then((r) => r.state !== "absent" && ctx.log.info(r, "demo channel reconciled")).catch((err: unknown) => ctx.log.error({ err: sanitizeErrorMessage((err as Error).message) }, "demo reconcile failed"));
   const hub = new EventHub(createRedis(env.REDIS_URL));
   const app = await buildApp({ ctx, hub });
   await app.listen({ port: env.SLOT1_API_PORT, host: env.SLOT1_API_HOST });
