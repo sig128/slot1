@@ -2,7 +2,7 @@
 
 SLOT1 is a broadcast companion for GTA streams on Twitch. Viewers watch through Twitch's official player beside a live log of what SLOT1 actually observed. Each entry carries its evidence: the frame it came from, the on-screen text it read, or the Twitch event that produced it. Creators get a Twitch chat bot, clips on request, saved moments, and a Studio that says exactly what is connected and what isn't.
 
-Creators who also send their stream to SLOT1, from OBS for example, get more: SLOT1's own live video for viewers over WebRTC (typically under a second behind, an estimate), forwarding of that one upload to Twitch, YouTube, Kick or a custom server with one-click OBS setup, recording, screenshots, automatic and hand-cut clips with a browser editor, a public profile, and instant replay of any moment in the log. SLOT1 can also train its own GTA model on frames from creators who opt in. "Los Santos right now" lists every public stream SLOT1 is watching and what it saw on each; an optional demo channel runs a synthetic test video through the real pipeline; operators get an `/admin` dashboard with cookieless visitor statistics. Each of these has its own document ([Further documents](#further-documents)).
+Creators who also send their stream to SLOT1, from OBS for example, get more: SLOT1's own live video for viewers over WebRTC (typically under a second behind, an estimate); forwarding of that one upload to Twitch, YouTube, Kick or a custom server, with one-click OBS setup; recording, screenshots, automatic and hand-cut clips with a browser editor, and a public profile; and instant replay of any moment in the log. SLOT1 can also train its own GTA model on frames from creators who opt in. "Los Santos right now" lists every public stream SLOT1 is watching and what it saw on each; an optional demo channel runs a synthetic test video through the real pipeline; operators get an `/admin` dashboard with cookieless visitor statistics. Each of these has its own document ([Further documents](#further-documents)).
 
 SLOT1 does not:
 
@@ -111,7 +111,7 @@ Open <http://localhost:3000>. Without Twitch credentials, Studio offers a local 
 ```bash
 cp .env.example .env    # fill the secrets
 docker compose --profile infra up -d                                   # Postgres + Redis only
-docker compose --profile infra --profile app up -d --build             # + api, worker, web
+docker compose --profile infra --profile app up -d --build             # + api, worker, inference, web
 docker compose --profile infra --profile app --profile ingest up -d    # + nginx-rtmp gateway
 docker compose --profile infra --profile app --profile edge up -d      # + Caddy with HTTPS (set SLOT1_DOMAIN)
 ```
@@ -120,8 +120,9 @@ Other profiles:
 
 - `s3` adds MinIO.
 - `mediamtx` runs MediaMTX instead of nginx-rtmp.
+- `demo` runs the demo broadcast generator ([docs/DEMO.md](docs/DEMO.md)).
 
-The images are built from `infra/docker/app.Dockerfile`, with targets `api`, `worker`, `web`, `inference` and `inference-gpu`. The API and worker images include ffmpeg, tesseract and a caption font. The Dockerfile's install, build and deploy steps were replayed natively, and the resulting production builds were started; the images themselves were **not** built where SLOT1 was developed (no Docker daemon). See [docs/DEPLOY_HETZNER.md](docs/DEPLOY_HETZNER.md#what-was-and-wasnt-verified).
+The images are built from `infra/docker/app.Dockerfile`, with targets `api`, `worker`, `web`, `inference` and `inference-gpu`. The API and worker images include ffmpeg, tesseract and a caption font. The Dockerfile's install, build and deploy steps were replayed natively, and the resulting production builds were started; the images themselves were **not** built where SLOT1 was developed (no Docker daemon). See [docs/DEPLOY_HETZNER.md](docs/DEPLOY_HETZNER.md#what-was-and-wasnt-verified). They have since been built and run on a server; see [Run it on a server](#run-it-on-a-server).
 
 ## Run it on a server
 
@@ -136,8 +137,11 @@ It writes `.env` with fresh secrets, builds and starts the stack, and prints the
 - `slot1 twitch` turns on sign-in.
 - `slot1 ai` turns on the AI.
 - `slot1 update` deploys the latest code.
+- `slot1 admin-link` prints a one-time link to the `/admin` dashboard.
 
-Firewall ports and details are in [docs/DEPLOY_HETZNER.md](docs/DEPLOY_HETZNER.md).
+Firewall ports, the other `slot1` commands (`demo`, `legal`, `seo`, `domain`, `status`, `logs`) and details are in [docs/DEPLOY_HETZNER.md](docs/DEPLOY_HETZNER.md).
+
+On 1 November 2026 the Docker images were built and run for the first time on a Hetzner Cloud server (Ubuntu) with scripts/server-setup.sh. The site answered over HTTPS through Caddy, `/api/health` reported database and Redis ok, and `/api/capabilities` reported ingest (MediaMTX), live video and relay available. Twitch, AI vision and transcription were not configured yet, so those were not exercised there. That run used the version from before the admin dashboard, demo, legal pages and SEO were added.
 
 ## Configuration
 
@@ -178,7 +182,7 @@ Chat replies come from one dedicated Twitch account, not from the creator's acco
    - per channel: Studio → Stop bot now
    - global: `BOT_GLOBAL_KILL=true`
 
-Commands: `!slot1 help | status | now | recap | find <thing> | ask <question> | clip`. The broadcaster and approved moderators can also use `pause | resume | mute | unmute`. The short aliases `!clip` and `!recap` are opt-in per channel.
+Commands: `!slot1 help | status | now | recap | find <thing> | ask <question> | clip`. The broadcaster and approved moderators can also use `pause | resume | mute | unmute`, plus `relay`, `record on|off` and `autoclip on|off` ([docs/RELAY.md](docs/RELAY.md)). The short aliases `!clip` and `!recap` are opt-in per channel.
 
 ### AI vision, answers and transcription
 
@@ -205,7 +209,7 @@ The GTA V profile (`game_profile=gta5`) defines screen regions for subtitles, mi
 
 1. Pick a gateway:
    - `nginx-rtmp`: `infra/nginx-rtmp`; locally, `bash scripts/ingest-gateway.sh start`.
-   - `mediamtx`: `infra/mediamtx/mediamtx.yml`.
+   - `mediamtx`: `infra/mediamtx/mediamtx.yml`. It also accepts WHIP and SRT publishers and serves SLOT1's own live video over WebRTC, which nginx-rtmp can't ([docs/LIVE_VIDEO.md](docs/LIVE_VIDEO.md)).
 2. Set `INGEST_GATEWAY`, `INGEST_PUBLIC_RTMP_URL`, `INGEST_READ_URL_TEMPLATE`, `INGEST_READ_PASSWORD` and `INGEST_HOOK_SECRET`.
 3. In Studio → Video sources, create a source. Declare it **TEST** for a looped recording or **LIVE** for a real relay.
 4. The stream key is shown once; only its SHA-256 hash is stored.
@@ -225,23 +229,29 @@ Retention defaults to 30 days per channel. Creators can delete a session or all 
 ## Tests
 
 ```bash
-pnpm test                 # 71 unit tests, no services needed
-pnpm test:integration     # 27 tests on real Postgres, Redis, ffmpeg, tesseract (and nginx-rtmp if installed)
-pnpm test:e2e             # 6 browser journeys at 1440, 1280 and 390 px; screenshots in tests/e2e/screenshots/
+pnpm test                 # unit tests (tests/unit), no services needed
+pnpm test:integration     # tests/integration on real Postgres, Redis, ffmpeg, tesseract (and nginx-rtmp if installed)
+pnpm test:e2e             # browser journeys in Chromium at 1440, 1280 and 390 px; screenshots in tests/e2e/screenshots/
 pnpm typecheck && pnpm lint
 ```
 
 Integration tests use the database `slot1_test` (wiped per run) and Redis database 1. Override them with `TEST_DATABASE_URL` and `TEST_REDIS_URL`. Twitch flows are tested against a local mock of Twitch's OAuth, Helix and EventSub endpoints. That proves SLOT1's side of each flow, not Twitch itself.
 
+The training step in `tests/integration/training.test.ts` and all of `tests/integration/inference.test.ts` run only where Python with PyTorch and ONNX is installed ([ml/requirements.txt](ml/requirements.txt)); otherwise they are skipped. The test counts in the final report are from its first run, before the newer features.
+
 ## Project layout
 
 ```
 apps/api        Fastify API            apps/worker   jobs + live supervisor     apps/web   Next.js UI
-packages/*      contracts, db (migrations/), platform, twitch, analysis, bot, services
+apps/inference  shared GTA-model inference service (optional)
+packages/*      contracts, db (migrations/), platform, twitch, analysis, bot, services, gta-runtime
+ml/             GTA model training and evaluation (Python)
 infra/          docker/app.Dockerfile, nginx-rtmp/, mediamtx/, caddy/
-scripts/        local-services.sh, dev-stack.sh, ingest-gateway.sh, publish-test-stream.sh, make-sample-video.sh
+scripts/        local-services.sh, dev-stack.sh, ingest-gateway.sh, publish-test-stream.sh, make-sample-video.sh,
+                server-setup.sh, load-test.ts, build-render-fonts.py
 tests/          unit/, integration/, e2e/ (+ screenshots/)
-docs/           capability matrix, asset manifest, console checklist, Twitch scopes, final report
+docs/           one document per feature, plus the capability matrix, asset manifest, console checklist,
+                Twitch scopes, server deploy and final report
 ```
 
 ## Security model
@@ -259,7 +269,9 @@ docs/           capability matrix, asset manifest, console checklist, Twitch sco
 - PS5: nothing is installed on the console. Whether bot replies appear in the PS5's own chat overlay is unverified ([docs/CONSOLE_TEST_CHECKLIST.md](docs/CONSOLE_TEST_CHECKLIST.md)).
 - The Twitch player and SLOT1's analysis arrive over different paths and can be seconds apart. Times shown as estimates are estimates.
 - A clip is analyzed only after Twitch has made it available, and only with the extra `channel:manage:clips` permission.
-- Real Twitch, real AI providers, MediaMTX, MinIO and the Docker images were not exercised where SLOT1 was built. See the final report for exactly what was and wasn't verified.
+- Forwarding puts SLOT1 in the path: while a creator forwards through SLOT1, a problem in SLOT1's ingest or workers stops their stream on every platform until it recovers ([docs/RELAY.md](docs/RELAY.md#reliability-trade-off)).
+- The GTA model loop has only run on synthetic test footage, and a model trained that way knows nothing about GTA. A useful one needs many hours of real, labeled gameplay and GPU training ([docs/GTA_MODEL.md](docs/GTA_MODEL.md#realistic-expectations)).
+- Real Twitch, real AI providers, MediaMTX, MinIO and the Docker images were not exercised where SLOT1 was built. The final report says exactly what was verified, and lists what still isn't under [Still not verified](docs/FINAL_REPORT.md#still-not-verified).
 
 ## Further documents
 
@@ -267,5 +279,15 @@ docs/           capability matrix, asset manifest, console checklist, Twitch sco
 - [docs/TWITCH_SCOPES.md](docs/TWITCH_SCOPES.md): scopes, endpoints and EventSub subscriptions
 - [docs/ASSET_MANIFEST.md](docs/ASSET_MANIFEST.md): fonts, artwork and test media, with licenses
 - [docs/CONSOLE_TEST_CHECKLIST.md](docs/CONSOLE_TEST_CHECKLIST.md): what to verify on a real PS5
+- [docs/LIVE_VIDEO.md](docs/LIVE_VIDEO.md): SLOT1's own live video over WebRTC through MediaMTX, publishing over WHIP, SRT or RTMP, and who can watch
+- [docs/RELAY.md](docs/RELAY.md): forwarding one stream to Twitch, YouTube, Kick or a custom server, one-click OBS setup, and chat controls
+- [docs/CLIPPER.md](docs/CLIPPER.md): recording, screenshots, auto-clips, the clip editor, the library, public profiles and sharing
+- [docs/INSTANT_REPLAY.md](docs/INSTANT_REPLAY.md): replaying a moment while the stream is live, and timestamps that jump to it
+- [docs/LOS_SANTOS_NOW.md](docs/LOS_SANTOS_NOW.md): the "Los Santos right now" page of public streams and what SLOT1 saw on each
+- [docs/GTA_MODEL.md](docs/GTA_MODEL.md): training SLOT1's own GTA model from opted-in streams, and the model registry
+- [docs/SCALING.md](docs/SCALING.md): the shared inference service for many streams, GPU notes, and CPU-only load measurements
+- [docs/DEMO.md](docs/DEMO.md): the live demo broadcast and the "What the AI sees" panel
+- [docs/ADMIN.md](docs/ADMIN.md): the `/admin` dashboard, cookieless visitor statistics, the contact form and the one-time admin link
+- [docs/LEGAL_AND_SEO.md](docs/LEGAL_AND_SEO.md): the Privacy Policy and Terms, and search metadata, sitemap, share cards and structured data
 - [docs/DEPLOY_HETZNER.md](docs/DEPLOY_HETZNER.md): running SLOT1 on one server, the `slot1` command, and what the deploy path verified
-- [docs/FINAL_REPORT.md](docs/FINAL_REPORT.md): what was built, what was tested, and what is blocked
+- [docs/FINAL_REPORT.md](docs/FINAL_REPORT.md): what was built, what was tested, what was added since, and what is still not verified
