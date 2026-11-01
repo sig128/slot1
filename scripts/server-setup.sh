@@ -292,8 +292,15 @@ EOF
 # The state folder is shared with the API container (user 1000): it reads the deploy status from
 # outbox/, and inbox/ is where it leaves settings saved in /admin for the server to apply.
 ensure_state_dir() {
-  install -d -m 755 "$DIR/state" "$DIR/state/outbox"
-  install -d -m 700 -o 1000 -g 1000 "$DIR/state/inbox"
+  mkdir -p "$DIR/state/outbox" "$DIR/state/inbox"
+  chmod 755 "$DIR/state" "$DIR/state/outbox"
+  chmod 700 "$DIR/state/inbox"
+  # 1000 is the "node" user inside the API container; the server usually has no user with that
+  # number, and not every chown takes a bare number, so perl is the fallback. If both fail, only
+  # saving settings in /admin is off: never a reason to stop an update.
+  chown 1000:1000 "$DIR/state/inbox" 2>/dev/null ||
+    perl -e 'chown(1000, 1000, $ARGV[0]) or exit 1' "$DIR/state/inbox" 2>/dev/null ||
+    note "Couldn't hand the settings folder to the API, so saving settings in /admin stays off."
 }
 
 record_deployed() {
@@ -530,20 +537,39 @@ interactive() {
   [ -z "${SLOT1_UNATTENDED:-}" ] && [ -t 1 ] && { true </dev/tty; } 2>/dev/null
 }
 
+# Twitch usernames: 4 to 25 letters, digits or underscores; several are comma-separated.
+valid_twitch_logins() { [[ "$1" =~ ^[a-z0-9_]{4,25}(,[a-z0-9_]{4,25}){0,9}$ ]]; }
+
 PENDING_ADMIN_PW=""
 first_time_questions() {
-  interactive || return 0
-  [ ! -f "$DIR/state/setup-asked" ] || return 0
   local current answer pw pw2
-  say "Two quick questions (only this once)"
-  current="$(env_get SLOT1_OPERATOR_TWITCH_LOGINS)"
-  read -r -p "    Your Twitch username, for admin access [${current:-not set}]: " answer </dev/tty
-  answer="$(lower "$answer")"
-  if [ -n "$answer" ]; then
+  # Given on the command line, it's used as is and not asked:  SLOT1_ADMINS=name slot1 update
+  if [ -n "${SLOT1_ADMINS:-}" ]; then
+    answer="$(lower "$SLOT1_ADMINS")"
+    valid_twitch_logins "$answer" || die "SLOT1_ADMINS takes Twitch usernames (letters, digits, underscores), comma-separated."
     env_set SLOT1_OPERATOR_TWITCH_LOGINS "$answer"
     note "Admin Twitch username: $answer"
   fi
-  if [ -z "$(env_get SLOT1_ADMIN_PASSWORD_HASH)" ]; then
+  interactive || return 0
+  [ ! -f "$DIR/state/setup-asked-2" ] || return 0
+  say "One-time setup"
+  if [ -z "${SLOT1_ADMINS:-}" ]; then
+    current="$(env_get SLOT1_OPERATOR_TWITCH_LOGINS)"
+    while :; do
+      read -r -p "    Your Twitch username, the NAME in twitch.tv/NAME [${current:-not set}]: " answer </dev/tty
+      answer="$(lower "$answer")"
+      [ -n "$answer" ] || break
+      if valid_twitch_logins "$answer"; then
+        env_set SLOT1_OPERATOR_TWITCH_LOGINS "$answer"
+        note "Admin Twitch username: $answer"
+        break
+      fi
+      note "That isn't a Twitch username (4 to 25 letters, digits or underscores). Once more."
+    done
+  fi
+  if [ -n "$(env_get SLOT1_ADMIN_PASSWORD_HASH)" ]; then
+    note "Admin password: already set (nothing to do)."
+  else
     while :; do
       read -r -s -p "    A password for your admin page (12+ characters, not shown; Enter skips): " pw </dev/tty
       printf '\n'
@@ -566,7 +592,7 @@ first_time_questions() {
     unset pw pw2
   fi
   mkdir -p "$DIR/state"
-  : >"$DIR/state/setup-asked"
+  : >"$DIR/state/setup-asked-2"
   note "Thanks. The rest runs by itself (about 5 to 15 minutes)."
 }
 
