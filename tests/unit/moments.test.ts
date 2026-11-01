@@ -141,6 +141,13 @@ describe("instant replay windows", () => {
     expect(planWindow([], { mediaMs: 1, secondsAgo: null }, 8000, 4000, true)).toMatchObject({ kind: "pending" });
   });
 
+  it("refuses to join across a hole in the saved video", () => {
+    expect(planWindow([{ startMs: 0, endMs: 6000 }, { startMs: 9000, endMs: 15_000 }], { mediaMs: 10_000, secondsAgo: null }, 8000, 4000, false)).toEqual({
+      kind: "unavailable",
+      reason: "Part of that moment wasn't saved",
+    });
+  });
+
   it("replays the last seconds of a live media time", () => {
     expect(planWindow(segs([0, 6000, 12_000]), { mediaMs: null, secondsAgo: 10 }, 8000, 4000, true)).toEqual({ kind: "ok", fromMs: 8000, toMs: 18_000, momentOffsetMs: null, parts: [1, 2] });
   });

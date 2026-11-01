@@ -130,8 +130,8 @@ export const MIN_AFTERMATH_MS = 2000;
 
 /**
  * Choose the window to cut from contiguous segments (sorted, in the reader's media time). While
- * the stream is still being written (`open`), a window whose end isn't saved yet waits, unless at
- * least a second after the moment is already there; then it is cut short rather than delayed.
+ * the stream is still being written (`open`), a window whose end isn't saved yet waits, unless
+ * two seconds after the moment are already there; then it is cut short rather than delayed.
  */
 export function planWindow(
   segments: readonly SegmentTimes[],
@@ -170,6 +170,10 @@ export function planWindow(
   segments.forEach((s, i) => {
     if (s.endMs > from && s.startMs < to) parts.push(i);
   });
+  // Joining across a hole would shift everything after it: say so instead.
+  for (let i = 1; i < parts.length; i++) {
+    if (Math.abs(segments[parts[i]!]!.startMs - segments[parts[i - 1]!]!.endMs) > 250) return { kind: "unavailable", reason: "Part of that moment wasn't saved" };
+  }
   return { kind: "ok", fromMs: from, toMs: to, momentOffsetMs: anchor.mediaMs === null ? null : anchor.mediaMs - from, parts };
 }
 
