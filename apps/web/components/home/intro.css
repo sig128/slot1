@@ -141,7 +141,7 @@
   padding-bottom: 0.14em;
   font-family: "SLOT1 Intro", "Passion One", "Barlow Condensed", Impact, sans-serif;
   font-weight: 900;
-  font-size: clamp(1.9rem, 8.2vw, 2.6rem);
+  font-size: clamp(2.1rem, 10.4vw, 3rem);
   line-height: 0.95;
   color: #fbf4ea;
   text-shadow: 0.03em 0.05em 0 #140715;
@@ -149,7 +149,7 @@
 }
 @media (min-width: 1024px) {
   .gx-tagline {
-    font-size: clamp(2.4rem, 3.3vw, 3.4rem);
+    font-size: clamp(2.8rem, 4.1vw, 4.4rem);
   }
 }
 .gx-tagline > span {
@@ -174,6 +174,105 @@
   background: rgb(10 5 14 / 0.74);
   color: #d9d1c5;
   font-size: 0.95rem;
+}
+
+/* The training line: a subtitle strip, with "GTA VI" in SLOT1's own gold poster type (never the
+   game's logo treatment). */
+.gx-train {
+  max-width: 35rem;
+  padding: 8px 12px;
+  background: rgb(10 5 14 / 0.74);
+  color: #e9e1d5;
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+.gx-vi {
+  white-space: nowrap;
+  font-family: "SLOT1 Intro", "Passion One", Impact, sans-serif;
+  font-weight: 900;
+  font-size: 1.28em;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  color: #ffc94d;
+  -webkit-text-stroke: 0.05em #140715;
+  paint-order: stroke fill;
+  text-shadow: 0.03em 0.06em 0 #140715;
+}
+
+/* --- How it works: a mission briefing --- */
+.gx-steps {
+  position: relative;
+  background:
+    radial-gradient(circle, rgb(255 201 77 / 0.07) 1.2px, transparent 1.7px) 0 0 / 9px 9px,
+    linear-gradient(#13061a, #101014);
+  border-top: 3px solid #140715;
+}
+.gx-steps-list {
+  position: relative;
+  display: grid;
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (min-width: 900px) {
+  .gx-steps-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 28px;
+  }
+  /* the GPS route between the objectives */
+  .gx-steps-list::before {
+    content: "";
+    position: absolute;
+    left: 6%;
+    right: 6%;
+    top: 46px;
+    border-top: 4px dashed #ffc94d;
+    opacity: 0.55;
+  }
+}
+.gx-step {
+  position: relative;
+  padding: 18px 20px 22px;
+  background: rgb(22 10 28 / 0.94);
+  border: 3px solid #140715;
+  box-shadow:
+    inset 0 0 0 1px rgb(244 237 226 / 0.08),
+    5px 6px 0 #140715;
+}
+.gx-step-num {
+  display: inline-grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border: 3px solid #140715;
+  border-radius: 4px;
+  background: #ffc94d;
+  color: #140715;
+  font-family: "SLOT1 Intro", "Passion One", Impact, sans-serif;
+  font-weight: 900;
+  font-size: 2.4rem;
+  line-height: 1;
+  box-shadow: 3px 4px 0 #140715;
+}
+.gx-step-icon {
+  width: 56px;
+  height: 56px;
+  flex: none;
+}
+.gx-key {
+  color: #ffc94d;
+  font-weight: 600;
+}
+
+/* "Where it stands": the GTA AI's honest status as a mission objectives panel. */
+.gx-objectives {
+  padding: 20px 22px 24px;
+  background: rgb(22 10 28 / 0.94);
+  border: 3px solid #140715;
+  box-shadow:
+    inset 0 0 0 1px rgb(244 237 226 / 0.08),
+    5px 6px 0 #140715;
 }
 
 /* --- HUD --- */

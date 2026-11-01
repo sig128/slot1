@@ -1,17 +1,24 @@
+import "./intro.css";
 import Link from "next/link";
 import type { EvidenceClass } from "@slot1/contracts";
 import { EVIDENCE_CLASS_LABEL } from "@slot1/contracts";
 import { EvidenceGlyph } from "@/components/watch/EvidenceGlyph";
-import { FAQ, FEATURES, STEPS } from "@/lib/home-content";
+import { FAQ, FEATURES } from "@/lib/home-content";
 
 const KNOWS: { cls: EvidenceClass; meaning: string }[] = [
   { cls: "visible_text", meaning: "Read from text on screen, like a mission title." },
   { cls: "visible", meaning: "Seen in the frames themselves." },
-  { cls: "inferred", meaning: "Concluded from several frames, and labeled as a conclusion." },
+  { cls: "inferred", meaning: "Worked out from several frames, and marked as a conclusion." },
   { cls: "heard", meaning: "From the stream’s audio, when transcription is on." },
   { cls: "measured", meaning: "Measured from the video: cuts, black screens, coverage." },
   { cls: "platform", meaning: "Reported by Twitch, like the title or category." },
 ];
+
+/** Rockstar Games' scheduled date for GTA VI. The date is shown only while it is still ahead. */
+const GTA_VI_SCHEDULED = Date.UTC(2026, 10, 19);
+function gtaViStillAhead(): boolean {
+  return Date.now() < GTA_VI_SCHEDULED;
+}
 
 function SectionTitle({ id, children }: { id: string; children: React.ReactNode }) {
   return (
@@ -21,45 +28,100 @@ function SectionTitle({ id, children }: { id: string; children: React.ReactNode 
   );
 }
 
+type Stage = "done" | "active" | "next";
+const STAGE_LABEL: Record<Stage, string> = { done: "Supported", active: "In training", next: "Up next" };
+
+function StageMark({ stage }: { stage: Stage }) {
+  return (
+    <svg viewBox="0 0 28 28" className="mt-0.5 h-7 w-7 shrink-0" aria-hidden>
+      <rect x="2" y="2" width="24" height="24" rx="4" fill={stage === "done" ? "#ffc94d" : "#1c0b22"} stroke="#140715" strokeWidth="3" />
+      {stage === "done" && <path d="M8 14.5l4 4 8-9" fill="none" stroke="#140715" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />}
+      {stage === "active" && <path d="M14 7a7 7 0 0 1 0 14z" fill="#ffc94d" stroke="#140715" strokeWidth="1.6" />}
+      {stage === "next" && <circle cx="14" cy="14" r="5.5" fill="none" stroke="#ffc94d" strokeWidth="2.6" strokeDasharray="3 2.6" />}
+    </svg>
+  );
+}
+
 /**
- * What SLOT1 is, for anyone arriving from a search or a shared link. Server-rendered so search
- * engines read it; the On Air section above stays the page's main job.
+ * The rest of the home page, under the intro and "How it works": the GTA AI SLOT1 is training,
+ * what you get, how SLOT1 backs up what it says, and questions. Server-rendered so search engines
+ * read it; h2 sections only (the page's h1 is the intro).
  */
 export function HomeLanding() {
+  const stillAhead = gtaViStillAhead();
   return (
     <div className="border-t hairline">
-      <section aria-labelledby="what-is-slot1" className="mx-auto grid max-w-[1600px] gap-12 px-4 py-20 sm:px-6 lg:grid-cols-12 lg:px-10">
-        <div className="lg:col-span-7">
-          <h2 id="what-is-slot1" className="poster-title text-[length:var(--text-display-lg)] font-black leading-[0.88]">
-            A broadcast companion that shows its evidence.
+      <section aria-labelledby="gta-ai" className="mx-auto grid max-w-[1600px] gap-12 px-4 py-20 sm:px-6 lg:grid-cols-12 lg:px-10">
+        <div className="lg:col-span-6">
+          <h2 id="gta-ai" className="poster-title scroll-mt-24 text-[length:var(--text-display-lg)] font-black leading-[0.88]">
+            The GTA AI we’re building together
           </h2>
-          <p className="mt-6 max-w-[60ch] text-[1.08rem] text-ivory-2">
-            SLOT1 sits beside a GTA stream. It samples the gameplay a creator sends it, reads what’s on screen and keeps a running log of what happened.
-            Every line links to the frames it came from. When SLOT1 hasn’t seen something, it says “I haven’t observed that” instead of guessing.
+          <p className="mt-6 max-w-[56ch] text-[1.1rem] text-ivory-2">
+            SLOT1 is training its own GTA AI. When creators opt in, frames from their streams teach it the missions, places, vehicles and moments of the
+            game.
           </p>
-          <p className="mt-4 max-w-[60ch] text-ivory-2">
-            Viewers get the stream with the log beside it, instant replays and the big moments. Creators get one place to stream from, a clipper, and a
-            chat bot that knows what just happened.
-          </p>
+          <ul className="mt-6 max-w-[56ch] space-y-3 text-ivory-2">
+            <li>
+              <strong className="font-display text-[1.12rem] font-semibold text-ivory">Opt-in only.</strong> Nothing is used without the creator’s OK. Turn
+              it on in Studio, under GTA model.
+            </li>
+            <li>
+              <strong className="font-display text-[1.12rem] font-semibold text-ivory">Change your mind any time.</strong> Switching it off stops
+              collection and removes your frames from future training sets. Copies already used in a training run can’t be recalled.
+            </li>
+          </ul>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link href="/studio" className="btn btn-coral">
+              Open Studio
+            </Link>
+            <Link href="/setup#ai" className="btn btn-ghost">
+              How the AI works
+            </Link>
+          </div>
         </div>
-        <aside aria-labelledby="how-it-knows" className="lg:col-span-4 lg:col-start-9">
-          <h3 id="how-it-knows" className="font-display text-[1.45rem] font-bold leading-tight">
-            Every line says how SLOT1 knows
-          </h3>
-          <dl className="mt-4 divide-y divide-line border-y hairline">
-            {KNOWS.map((k) => (
-              <div key={k.cls} className="grid grid-cols-[1.25rem_7.5rem_1fr] items-baseline gap-x-3 py-2.5 text-sm">
-                <EvidenceGlyph cls={k.cls} className="translate-y-[-1px] text-ivory" />
-                <dt className="font-display text-[1.02rem] font-semibold text-ivory">{EVIDENCE_CLASS_LABEL[k.cls]}</dt>
-                <dd className="text-ivory-2">{k.meaning}</dd>
-              </div>
-            ))}
-          </dl>
-        </aside>
+
+        <div className="lg:col-span-5 lg:col-start-8">
+          <div className="gx-objectives">
+            <h3 className="font-display text-[1.45rem] font-bold leading-tight text-ivory">Where it stands</h3>
+            <ol className="mt-4 space-y-5">
+              <li className="flex gap-3.5">
+                <StageMark stage="done" />
+                <div>
+                  <p className="font-display text-[1.3rem] font-bold leading-tight text-ivory">
+                    GTA V and GTA Online <span className="ml-1 align-middle text-[0.85rem] font-semibold text-gold">{STAGE_LABEL.done}</span>
+                  </p>
+                  <p className="mt-1 text-[0.95rem] text-ivory-2">Supported today. The log reads on-screen text, plus an AI vision model when this site has one switched on.</p>
+                </div>
+              </li>
+              <li className="flex gap-3.5">
+                <StageMark stage="active" />
+                <div>
+                  <p className="font-display text-[1.3rem] font-bold leading-tight text-ivory">
+                    SLOT1’s own GTA model <span className="ml-1 align-middle text-[0.85rem] font-semibold text-gold">{STAGE_LABEL.active}</span>
+                  </p>
+                  <p className="mt-1 text-[0.95rem] text-ivory-2">Learning from opted-in gameplay. It isn’t used for the log yet.</p>
+                </div>
+              </li>
+              <li className="flex gap-3.5">
+                <StageMark stage="next" />
+                <div>
+                  <p className="leading-tight">
+                    <span className="gx-vi text-[1.45rem]">GTA VI</span>{" "}
+                    <span className="ml-1 align-middle font-display text-[0.85rem] font-semibold text-gold">{STAGE_LABEL.next}</span>
+                  </p>
+                  <p className="mt-1.5 text-[0.95rem] text-ivory-2">
+                    {stillAhead && "Rockstar Games has scheduled it for 19 November 2026 on PS5 and Xbox Series X|S. "}
+                    SLOT1 is getting ready to learn its world as soon as players stream it.
+                  </p>
+                </div>
+              </li>
+            </ol>
+          </div>
+        </div>
       </section>
 
-      <section aria-labelledby="whats-in-slot1" className="mx-auto max-w-[1600px] px-4 pb-20 sm:px-6 lg:px-10">
-        <SectionTitle id="whats-in-slot1">What’s in SLOT1</SectionTitle>
+      <section aria-labelledby="what-you-get" className="mx-auto max-w-[1600px] px-4 pb-20 sm:px-6 lg:px-10">
+        <SectionTitle id="what-you-get">What you get</SectionTitle>
         {/* Pause-menu list: the row under the pointer or keyboard focus takes the ivory selection bar. */}
         <ul className="mt-8 grid border-t hairline lg:grid-cols-2 lg:gap-x-10">
           {FEATURES.map((f) => (
@@ -80,43 +142,24 @@ export function HomeLanding() {
         </ul>
       </section>
 
-      <section aria-labelledby="how-it-works" className="mx-auto max-w-[1600px] px-4 pb-20 sm:px-6 lg:px-10">
-        <SectionTitle id="how-it-works">How it works</SectionTitle>
-        <ol className="mt-8 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
-          {STEPS.map((s, i) => (
-            <li key={s.title} className="border-t border-line-strong pt-4">
-              <span className="poster-title tnum block text-[3.2rem] leading-none text-apricot" aria-hidden>
-                {i + 1}
-              </span>
-              <h3 className="mt-3 font-display text-[1.45rem] font-bold leading-tight">
-                <span className="sr-only">Step {i + 1}: </span>
-                {s.title}
-              </h3>
-              <p className="mt-2 max-w-[38ch] text-[0.95rem] text-ivory-2">{s.body}</p>
-            </li>
-          ))}
-        </ol>
-        <div className="mt-12 grid gap-6 border-y hairline py-8 sm:grid-cols-2">
-          <div>
-            <p className="font-display text-[1.45rem] font-bold leading-tight">Watching?</p>
-            <p className="mt-1 max-w-[46ch] text-sm text-ivory-2">No account needed. Open a public stream and the log runs beside it.</p>
-            <Link href="/los-santos" className="btn btn-primary mt-4">
-              See who’s live
-            </Link>
-          </div>
-          <div>
-            <p className="font-display text-[1.45rem] font-bold leading-tight">Streaming?</p>
-            <p className="mt-1 max-w-[46ch] text-sm text-ivory-2">Connect Twitch, send your stream once, and decide what’s public.</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link href="/studio" className="btn btn-coral">
-                Connect my Twitch
-              </Link>
-              <Link href="/setup" className="btn btn-ghost">
-                How SLOT1 works
-              </Link>
-            </div>
-          </div>
+      <section aria-labelledby="proof" className="mx-auto grid max-w-[1600px] gap-10 px-4 pb-20 sm:px-6 lg:grid-cols-12 lg:px-10">
+        <div className="lg:col-span-5">
+          <SectionTitle id="proof">Proof, not guesses</SectionTitle>
+          <p className="mt-5 max-w-[48ch] text-[1.05rem] text-ivory-2">
+            Everything SLOT1 tells you points to the exact frames it came from, and says how it knows. When it hasn’t seen something, it says so.
+          </p>
         </div>
+        <dl className="grid content-start gap-x-10 border-t hairline sm:grid-cols-2 lg:col-span-7">
+          {KNOWS.map((k) => (
+            <div key={k.cls} className="grid grid-cols-[1.25rem_1fr] items-baseline gap-x-3 border-b hairline py-3 text-sm">
+              <EvidenceGlyph cls={k.cls} className="translate-y-[-1px] text-ivory" />
+              <div>
+                <dt className="font-display text-[1.06rem] font-semibold text-ivory">{EVIDENCE_CLASS_LABEL[k.cls]}</dt>
+                <dd className="text-ivory-2">{k.meaning}</dd>
+              </div>
+            </div>
+          ))}
+        </dl>
       </section>
 
       <section aria-labelledby="questions" className="mx-auto grid max-w-[1600px] gap-10 px-4 pb-24 sm:px-6 lg:grid-cols-12 lg:px-10">

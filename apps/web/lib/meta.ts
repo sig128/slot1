@@ -24,10 +24,10 @@ export interface PageMeta {
 export const SITE = {
   name: "SLOT1",
   /** Home page title: under 60 characters so search results don't cut it. */
-  title: "SLOT1: live GTA streams with an AI that shows its evidence",
+  title: "SLOT1: your AI sidekick for GTA streams",
   description:
-    "Watch GTA streams with a live AI log that links every line to the frames it came from. Instant replays, clips, moments and multistreaming for creators.",
-  tagline: "Live GTA streams, with an AI that shows its evidence.",
+    "SLOT1 watches your GTA stream live, spots missions, chases and crashes, and turns them into clips and instant replays. Opt in to help train an AI for GTA VI.",
+  tagline: "Your AI sidekick for GTA.",
   locale: "en_US",
   themeColor: "#101014",
 } as const;
@@ -77,9 +77,17 @@ export function pageMetadata(p: {
   };
 }
 
-/** The site-wide share card (app/opengraph-image.tsx). */
+/** The site-wide share card (app/opengraph-image.tsx); the alt text matches what the card says. */
 export function defaultShareImage(): OgImage {
-  return { url: "/opengraph-image", width: 1200, height: 630, alt: SITE.tagline };
+  return { url: "/opengraph-image", width: 1200, height: 630, alt: "SLOT1: your AI sidekick for GTA." };
+}
+
+/**
+ * A channel's own share card (app/watch/[channel]/opengraph-image.tsx): live state, name, title and,
+ * for SLOT1-connected live channels, Twitch's thumbnail. It only shows what any visitor may see.
+ */
+export function channelShareImage(login: string, displayName: string): OgImage {
+  return { url: `/watch/${encodeURIComponent(login)}/opengraph-image`, width: 1200, height: 630, alt: `Watch ${displayName} on SLOT1` };
 }
 
 type WatchMeta = {
@@ -95,12 +103,14 @@ type WatchMeta = {
 export function watchMetadata(w: WatchMeta): PageMeta {
   const { login, displayName, broadcast } = w.channel;
   const path = `/watch/${login}`;
+  const images = [channelShareImage(login, displayName)];
   const indexable = w.authorized && /^[a-z0-9_]+$/i.test(login);
   if (!indexable) {
     return pageMetadata({
       title: `Watch ${displayName}`,
       description: `Watch ${displayName} on SLOT1 with Twitch's official player.`,
       path,
+      images,
       noindex: true,
     });
   }
@@ -108,5 +118,5 @@ export function watchMetadata(w: WatchMeta): PageMeta {
   const description = live
     ? `${displayName} is live${broadcast.category ? ` in ${broadcast.category}` : ""}${broadcast.title ? `: ${broadcast.title}` : ""}. Watch on SLOT1 with a log of what happened on screen.`
     : `${displayName}'s GTA streams on SLOT1, with an evidence-backed log of what happened on screen, instant replays and clips.`;
-  return pageMetadata({ title: live ? `${displayName} is live` : `Watch ${displayName}`, description, path, type: "video.other" });
+  return pageMetadata({ title: live ? `${displayName} is live` : `Watch ${displayName}`, description, path, images, type: "video.other" });
 }

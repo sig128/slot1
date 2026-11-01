@@ -17,6 +17,10 @@ export async function rootMetadata(): Promise<Metadata> {
     applicationName: SITE.name,
     keywords: [
       "GTA streams",
+      "GTA AI",
+      "AI sidekick",
+      "GTA VI",
+      "GTA 6",
       "GTA V live",
       "Twitch",
       "AI stream companion",

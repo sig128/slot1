@@ -1,6 +1,7 @@
 import "server-only";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { ReactNode } from "react";
 
 /**
  * Share-card (Open Graph) rendering helpers. Satori, which draws these images, reads TTF, OTF
@@ -18,6 +19,8 @@ export const C = {
   ivory3: "#8a847b",
   coral: "#ff4f87",
   apricot: "#ffad72",
+  gold: "#ffc94d",
+  ink: "#140715",
 };
 
 let fontsPromise: Promise<{ name: string; data: Buffer; weight: 600 | 800 | 900; style: "normal" }[]> | null = null;
@@ -55,40 +58,110 @@ export function truncate(text: string, max: number): string {
   return `${space > max * 0.6 ? cut.slice(0, space) : cut}…`;
 }
 
-/** The skyline from SkylineArt, simplified for the share card (original artwork, no game assets). */
-const SKYLINE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 210" preserveAspectRatio="none">
-<defs>
-<linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#101014" stop-opacity="0"/><stop offset="0.55" stop-color="#3a1a2c"/><stop offset="0.86" stop-color="#7a2c45"/><stop offset="1" stop-color="#ff4f87"/></linearGradient>
-<linearGradient id="h" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff4f87" stop-opacity="0"/><stop offset="0.35" stop-color="#ff4f87"/><stop offset="0.7" stop-color="#ffad72"/><stop offset="1" stop-color="#ffad72" stop-opacity="0"/></linearGradient>
-</defs>
-<rect width="1200" height="170" fill="url(#s)"/>
-<circle cx="870" cy="170" r="92" fill="#ffad72" opacity="0.2"/><circle cx="870" cy="170" r="56" fill="#ffad72" opacity="0.34"/>
-<g fill="#0d0c11"><rect x="150" y="70" width="66" height="100"/><rect x="222" y="112" width="38" height="58"/><rect x="326" y="52" width="52" height="118"/><rect x="382" y="96" width="34" height="74"/><rect x="500" y="78" width="38" height="92"/><rect x="542" y="118" width="58" height="52"/><rect x="642" y="60" width="38" height="110"/><rect x="684" y="106" width="48" height="64"/><rect x="792" y="74" width="74" height="96"/><rect x="950" y="66" width="44" height="104"/><rect x="998" y="116" width="66" height="54"/></g>
-<g fill="#ffad72" opacity="0.85"><rect x="168" y="96" width="5" height="7"/><rect x="190" y="118" width="5" height="7"/><rect x="340" y="80" width="5" height="7"/><rect x="356" y="104" width="5" height="7"/><rect x="510" y="110" width="5" height="7"/><rect x="652" y="96" width="5" height="7"/><rect x="806" y="98" width="5" height="7"/><rect x="826" y="122" width="5" height="7"/><rect x="962" y="92" width="5" height="7"/></g>
-<g fill="#0a090d"><path d="M80 170 C 84 128, 90 98, 93 66 L 98 66 C 95 98, 91 130, 88 170 Z"/><path d="M95 68 C 74 54, 50 58, 32 72 C 54 62, 76 64, 93 74 Z"/><path d="M96 66 C 110 46, 136 40, 158 48 C 134 46, 114 54, 99 72 Z"/><path d="M1120 170 C 1116 132, 1110 104, 1106 76 L 1111 76 C 1114 104, 1119 132, 1126 170 Z"/><path d="M1108 78 C 1090 62, 1066 62, 1048 74 C 1070 66, 1090 70, 1106 84 Z"/><path d="M1110 76 C 1124 58, 1148 52, 1170 60 C 1148 58, 1128 66, 1113 82 Z"/></g>
-<rect y="168" width="1200" height="3" fill="url(#h)"/>
-<rect y="171" width="1200" height="39" fill="#0b0b0e"/>
-</svg>`;
+/**
+ * The share cards' background: SLOT1's loading-screen artwork (components/brand/SkylineArt.tsx),
+ * captured once as a static 1200 × 630 PNG in public/og (original artwork, no game assets).
+ * Read relative to the web app's directory, like the fonts above.
+ */
+let scenePromise: Promise<string> | null = null;
 
-export const SKYLINE_SRC = `data:image/svg+xml;base64,${Buffer.from(SKYLINE).toString("base64")}`;
+export function ogScene(): Promise<string> {
+  scenePromise ??= readFile(join(process.cwd(), "public", "og", "scene-1200x630.png"))
+    .then((buf) => `data:image/png;base64,${buf.toString("base64")}`)
+    .catch((err: unknown) => {
+      scenePromise = null;
+      throw err;
+    });
+  return scenePromise;
+}
 
-/** The SLOT1 station ident: "SLOT" in ivory, the "1" in a sunset badge. */
+/** The public host name for the card ("slot1.fun"), from the configured origin at request time. */
+export function ogHost(origin: string): string {
+  try {
+    return new URL(origin).host.replace(/^www\./, "");
+  } catch {
+    return "SLOT1";
+  }
+}
+
+/** A thick ink outline for text, drawn as shadows (the share renderer has no paint-order). */
+export function inkOutline(px: number, drop = px * 1.6): string {
+  const d = Math.max(1, Math.round(px));
+  const o = [
+    [-d, 0],
+    [d, 0],
+    [0, -d],
+    [0, d],
+    [-d, -d],
+    [d, -d],
+    [-d, d],
+    [d, d],
+  ].map(([x, y]) => `${x}px ${y}px 0 ${C.ink}`);
+  return [...o, `${Math.round(drop * 0.4)}px ${Math.round(drop)}px 0 ${C.ink}`].join(", ");
+}
+
+/** SLOT1's title card, as on the home intro: gold "SLOT" with an ink outline, the boxed "1". */
 export function OgWordmark({ size }: { size: number }) {
   return (
-    <div style={{ display: "flex", alignItems: "stretch", fontFamily: "Passion One", fontWeight: 900, fontSize: size, lineHeight: 1, color: C.ivory }}>
-      <span style={{ paddingRight: size * 0.06 }}>SLOT</span>
+    <div style={{ display: "flex", alignItems: "stretch", fontFamily: "Passion One", fontWeight: 900, fontSize: size, lineHeight: 0.86 }}>
+      <span style={{ color: C.gold, textShadow: inkOutline(size * 0.035, size * 0.06), paddingRight: size * 0.06 }}>SLOT</span>
       <span
         style={{
           display: "flex",
           alignItems: "center",
-          padding: `0 ${size * 0.14}px`,
-          borderRadius: size * 0.08,
+          margin: `${size * 0.03}px 0 ${size * 0.05}px 0`,
+          padding: `0 ${size * 0.13}px`,
+          borderRadius: size * 0.07,
+          border: `${Math.max(2, Math.round(size * 0.045))}px solid ${C.ink}`,
           background: "linear-gradient(160deg, #FF4F87 0%, #FF7A7C 48%, #FFAD72 100%)",
-          color: C.graphite,
+          boxShadow: `${Math.round(size * 0.025)}px ${Math.round(size * 0.06)}px 0 ${C.ink}`,
+          color: C.ink,
         }}
       >
         1
       </span>
     </div>
+  );
+}
+
+/** The game-style help box: black glass, white text (the home intro's TIP box). */
+export function OgHelpBox({ children, accent }: { children: ReactNode; accent?: string }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        padding: "14px 22px",
+        background: "rgba(10, 6, 14, 0.78)",
+        border: "2px solid rgba(255, 255, 255, 0.10)",
+        borderRadius: 6,
+        fontFamily: "Barlow Condensed",
+        fontWeight: 600,
+        fontSize: 30,
+        lineHeight: 1.1,
+        color: C.ivory,
+      }}
+    >
+      {accent && <span style={{ display: "flex", flexShrink: 0, color: C.gold, fontWeight: 800, marginRight: 12 }}>{accent}</span>}
+      <span style={{ display: "flex", flexShrink: 1 }}>{children}</span>
+    </div>
+  );
+}
+
+/** Darkens the city behind the text column so the copy stays readable on the artwork. */
+export function OgShade({ strength = 1 }: { strength?: number }) {
+  const a = (v: number) => (v * strength).toFixed(2);
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: 0,
+        top: 0,
+        width: OG_SIZE.width,
+        height: OG_SIZE.height,
+        display: "flex",
+        background: `linear-gradient(90deg, rgba(20,7,21,${a(0.86)}) 0%, rgba(20,7,21,${a(0.7)}) 32%, rgba(20,7,21,${a(0.28)}) 56%, rgba(20,7,21,0) 72%)`,
+      }}
+    />
   );
 }
