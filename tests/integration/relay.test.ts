@@ -93,6 +93,16 @@ function ingestEnv(rtmpPort: number) {
   };
 }
 
+/**
+ * Local sign-in is rate limited per IP in Redis, and every test file shares that Redis: start
+ * with a clean budget and leave one, so this file's sign-ins never count against another file's.
+ */
+async function resetRateLimits(h: Harness | undefined) {
+  if (!h) return;
+  const keys = await h.ctx.redis.keys("slot1-api-rl:*");
+  if (keys.length) await h.ctx.redis.del(...keys);
+}
+
 const overview = async (b: Browser) => (await b.get("/api/studio/relay")).json<RelayOverview>();
 
 /* ------------------------------------------------------------------------------------------ */
@@ -115,6 +125,7 @@ describe("forwarding destinations: keys, permissions and the Twitch stream key",
     const port = await freePort();
     h = await startHarness({ ...mock.env(), ...ingestEnv(port), RELAY_ALLOW_PRIVATE_DESTINATIONS: "true" });
     strict = await startHarness(ingestEnv(port));
+    await resetRateLimits(h);
     owner = new Browser(h);
     await owner.signInLocal("Relay Owner");
     other = new Browser(h);
@@ -124,6 +135,7 @@ describe("forwarding destinations: keys, permissions and the Twitch stream key",
   afterAll(async () => {
     // Grants are encrypted with this file's key: retire them so later files never try to use them.
     await h?.ctx.db.query(`UPDATE encrypted_grants SET status = 'revoked' WHERE twitch_user_id = $1`, [CREATOR.id]).catch(() => undefined);
+    await resetRateLimits(h).catch(() => undefined);
     await h?.close();
     await strict?.close();
     await mock?.stop();
@@ -384,6 +396,7 @@ describe.skipIf(!hasNginxRtmp || !hasOpenssl)("forwarding a real stream through 
     nginx = spawn("nginx", ["-c", path.join(runDir, "nginx.conf"), "-p", runDir, "-g", "daemon off;"], { stdio: "ignore" });
     await sleep(500);
 
+    await resetRateLimits(h);
     creator = new Browser(h);
     await creator.signInLocal("Relay Streamer");
     const creds = (await creator.request("POST", "/api/studio/relay/ingest-credentials", { json: {} })).json<IngestCredentials>();
@@ -415,6 +428,7 @@ describe.skipIf(!hasNginxRtmp || !hasOpenssl)("forwarding a real stream through 
     await live?.stopAll();
     nginx?.kill("SIGQUIT");
     for (const s of tlsServers) s.close();
+    await resetRateLimits(h).catch(() => undefined);
     await h?.close();
     if (certDir) await rm(certDir, { recursive: true, force: true });
   });

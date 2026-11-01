@@ -200,10 +200,10 @@ export function InstantReplayPlayer({ state, variant, onClose }: { state: Exclud
       }`}
     >
       <div className="flex items-center justify-between gap-2 px-3 pb-1.5 pt-2">
-        <h2 id={labelId} className="min-w-0 font-display text-[0.95rem] font-semibold tracking-[0.04em]">
+        <h2 id={labelId} className="flex min-w-0 flex-col font-display text-[0.95rem] font-semibold leading-tight tracking-[0.04em]">
           <span className="text-apricot">Instant replay</span>
           <span className="sr-only">: </span>
-          <span className="ml-2 truncate font-sans text-[0.8rem] font-normal tracking-normal text-ivory-2">{target.label}</span>
+          <span className="truncate font-sans text-[0.8rem] font-normal tracking-normal text-ivory-2">{target.label}</span>
         </h2>
         <button type="button" className="btn btn-quiet btn-sm -mr-1 shrink-0" aria-label="Close instant replay" onClick={onClose}>
           <span aria-hidden>✕</span>
@@ -255,10 +255,11 @@ export function InstantReplayPlayer({ state, variant, onClose }: { state: Exclud
         <button
           type="button"
           data-replay-focus
-          className="btn btn-ghost btn-sm"
-          disabled={!ready}
+          // aria-disabled, not disabled: focus can rest here while the replay is cut.
+          className={`btn btn-ghost btn-sm ${ready ? "" : "cursor-wait opacity-45"}`}
+          aria-disabled={!ready}
           aria-label={!ready ? "Replay loading" : ended ? "Play the replay again" : playing ? "Pause the replay" : "Play the replay"}
-          onClick={toggle}
+          onClick={() => ready && toggle()}
         >
           <span aria-hidden>{ended ? "↺" : playing ? "❚❚" : "▶"}</span>
           <span className="hidden sm:inline">{ended ? "Again" : playing ? "Pause" : "Play"}</span>

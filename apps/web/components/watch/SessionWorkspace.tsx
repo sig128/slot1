@@ -1,7 +1,7 @@
 "use client";
 
 import { Tabs } from "radix-ui";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   formatAge,
   jumpTarget,
@@ -142,16 +142,16 @@ export function SessionWorkspace(p: Props) {
 
   // `?t=` / `?moment=` in a replay: land on the moment once the video knows its duration.
   const landed = useRef(false);
-  const land = () => {
-    if (landed.current) return;
+  const land = useCallback(() => {
+    const v = video.current;
+    if (landed.current || !v || v.readyState < 1) return;
     landed.current = true;
     const momentMs = p.initialSeekMs ?? items.find((x) => x.id === p.initialMomentId)?.mediaStartMs ?? null;
-    const v = video.current;
-    if (momentMs === null || !v) return;
-    const at = jumpTarget(momentMs);
-    v.currentTime = at / 1000;
-    setPosition(at);
-  };
+    // The playhead follows from the video's own timeupdate after the seek.
+    if (momentMs !== null) v.currentTime = jumpTarget(momentMs) / 1000;
+  }, [p.initialSeekMs, p.initialMomentId, items]);
+  // The browser may have read the video's metadata before this page became interactive.
+  useEffect(() => land(), [land]);
 
   const onCite = (id: string, mediaStartMs: number | null) => {
     select(id);
