@@ -38,6 +38,8 @@ export interface AiViewContext {
   demo: boolean;
   intervalMs: number;
   measuredCadenceMs: number | null;
+  /** Boxes the creator hid from the AI (already black in the analyzed frame). */
+  hidden?: readonly { x: number; y: number; w: number; h: number }[];
 }
 
 const round = (n: number, d = 4) => Math.round(n * 10 ** d) / 10 ** d;
@@ -119,6 +121,7 @@ export function buildAiViewSnapshot(
     },
     produced: i.produced.slice(0, 12),
     source: { label: c.label, demo: c.demo },
+    hidden: (c.hidden ?? []).map((h) => box([h.x, h.y, h.w, h.h])!),
   });
 }
 

@@ -212,6 +212,32 @@ export interface LiveIngestOptions {
   /** Hardware decoding (FFMPEG_HWACCEL). Decoded frames come back to system memory for the filters. */
   hwaccel?: HwAccel;
   hwaccelDevice?: string | null;
+  /**
+   * "Hide your camera from the AI": boxes (fractions of the picture) filled with black inside
+   * ffmpeg, before a frame is encoded and handed to anything. Only the analysis frames are
+   * masked; the rolling buffer and the recording stay the creator's full stream.
+   */
+  mask?: readonly MaskBox[];
+}
+
+/** A box to black out, as fractions of the picture (0..1). */
+export interface MaskBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * ffmpeg drawbox filters that fill each box with black. Each box grows by 2 px on every side so
+ * scaling and chroma subsampling can't leave a sliver of the hidden area at its edges; drawbox
+ * clips anything that falls outside the frame.
+ */
+export function cameraMaskFilters(boxes: readonly MaskBox[] | undefined): string[] {
+  const n = (v: number) => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0).toFixed(4);
+  return (boxes ?? [])
+    .filter((b) => b.w > 0 && b.h > 0)
+    .map((b) => `drawbox=x=floor(iw*${n(b.x)})-2:y=floor(ih*${n(b.y)})-2:w=ceil(iw*${n(b.w)})+4:h=ceil(ih*${n(b.h)})+4:color=black:t=fill`);
 }
 
 export type HwAccel = "none" | "cuda" | "vaapi" | "videotoolbox";
@@ -282,8 +308,14 @@ export class LiveIngestAdapter implements MediaSourceAdapter {
       "-an",
       "-vf",
       // round=up: each sample is the last frame at or before its timestamp, so the PTS names the
-      // moment shown (round=near emitted the frame from half an interval later).
-      `fps=${fps}:round=up,scale='min(${o.maxEdge},iw)':'min(${o.maxEdge},ih)':force_original_aspect_ratio=decrease:force_divisible_by=2,showinfo`,
+      // moment shown (round=near emitted the frame from half an interval later). The creator's
+      // hidden boxes are blacked out here, so no unmasked analysis frame ever leaves ffmpeg.
+      [
+        `fps=${fps}:round=up`,
+        `scale='min(${o.maxEdge},iw)':'min(${o.maxEdge},ih)':force_original_aspect_ratio=decrease:force_divisible_by=2`,
+        ...cameraMaskFilters(o.mask),
+        "showinfo",
+      ].join(","),
       "-f",
       "image2pipe",
       "-c:v",

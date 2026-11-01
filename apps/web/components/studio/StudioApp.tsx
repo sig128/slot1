@@ -10,6 +10,7 @@ import { requirementText } from "@/lib/requirements";
 import { AdvancedSection, BotSection, JobsSection, OverviewSection, PrivacySection, SourcesSection } from "./StudioSections";
 import { GtaModelSection } from "./GtaModelSection";
 import { LibrarySection } from "./LibrarySection";
+import { AiClipToolsSection } from "@/components/clipper/ai/AiClipToolsSection";
 import { StreamSetupSection } from "./StreamSetup";
 
 export interface StudioCtx {
@@ -28,6 +29,7 @@ const SECTIONS = [
   ["stream", "Stream setup"],
   ["sources", "Video sources"],
   ["library", "Library"],
+  ["ai-clips", "AI clip tools"],
   ["bot", "Bot and chat"],
   ["privacy", "Privacy and data"],
   ["jobs", "Jobs and usage"],
@@ -183,6 +185,9 @@ export function StudioApp() {
           </Tabs.Content>
           <Tabs.Content value="library" id="library">
             <LibrarySection ctx={ctx} />
+          </Tabs.Content>
+          <Tabs.Content value="ai-clips" id="ai-clips">
+            <AiClipToolsSection ctx={ctx} />
           </Tabs.Content>
           <Tabs.Content value="advanced">
             <AdvancedSection ctx={ctx} />

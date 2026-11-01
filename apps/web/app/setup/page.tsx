@@ -137,16 +137,19 @@ export default function SetupPage() {
                   <span className="sr-only">What SLOT1 sees: </span>
                   {m.sees}
                 </p>
-                <dl>
-                  <div>
-                    <dt>What happens</dt>
-                    <dd>{m.what}</dd>
-                  </div>
-                  <div>
-                    <dt>What it needs</dt>
-                    <dd>{m.needs}</dd>
-                  </div>
-                </dl>
+                <details className="su-more">
+                  <summary>How it works</summary>
+                  <dl>
+                    <div>
+                      <dt>What happens</dt>
+                      <dd>{m.what}</dd>
+                    </div>
+                    <div>
+                      <dt>What it needs</dt>
+                      <dd>{m.needs}</dd>
+                    </div>
+                  </dl>
+                </details>
               </div>
             ))}
           </div>
@@ -205,18 +208,20 @@ export default function SetupPage() {
                 <span>SLOT1</span>
                 <span>Twitch chat</span>
               </p>
-              <div className="su-app">
-                <h3 className="su-app-head">Anyone in chat</h3>
-                <CommandList items={COMMANDS} />
-              </div>
-              <div className="su-app">
-                <h3 className="su-app-head" data-tone="coral">
-                  Creator and approved mods
-                </h3>
-                <CommandList items={CREATOR_COMMANDS} />
-              </div>
+              <h3 className="su-app-head">Anyone in chat</h3>
+              <CommandList items={COMMANDS} />
             </div>
-            <div className="su-panel">
+            <div className="su-phone">
+              <p className="su-phone-status" aria-hidden>
+                <span>SLOT1</span>
+                <span>Twitch chat</span>
+              </p>
+              <h3 className="su-app-head" data-tone="coral">
+                Creator and approved mods
+              </h3>
+              <CommandList items={CREATOR_COMMANDS} />
+            </div>
+            <div className="su-panel su-bot-rules">
               <h3 className="su-panel-title">House rules</h3>
               <ul className="su-rules">
                 <li>When it hasn’t seen something, it says “I haven’t observed that.”</li>

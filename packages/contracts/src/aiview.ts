@@ -87,6 +87,8 @@ export const AiViewSnapshot = z.object({
   }),
   produced: z.array(AiViewProduced),
   source: z.object({ label: SourceLabel, demo: z.boolean() }),
+  /** Areas the creator hid from the AI: already solid black in the frame above, before analysis. */
+  hidden: z.array(NormBox).default([]),
 });
 export type AiViewSnapshot = z.infer<typeof AiViewSnapshot>;
 

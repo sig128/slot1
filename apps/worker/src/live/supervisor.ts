@@ -200,6 +200,8 @@ class LiveRunner {
       while (this.running) {
         if (!(await this.lease.renew(`source:${this.source.id}`, LEASE_TTL_MS))) break;
         settings = await getSettings(ctx.db, this.source.broadcaster_id);
+        // Fresh source row for every reader run: it carries the creator's current camera mask.
+        this.source = (await getSource(ctx.db, this.source.id)) ?? this.source;
         if (this.demo && this.session && Date.now() - this.session.started_at.getTime() > DEMO_LIMITS.sessionMaxMs) {
           // The demo runs for weeks: close its session hourly so nothing grows without bound.
           await endSession(ctx.db, this.session.id);
@@ -222,6 +224,9 @@ class LiveRunner {
           : null;
         this.recorder = recorder;
         if (recorder) this.recordingId = recorder.recordingId;
+        // "Hide your camera from the AI": blacked out inside ffmpeg for every analyzed frame.
+        const mask = this.source.camera_mask ?? [];
+        const maskKey = JSON.stringify(mask);
         const adapter = new LiveIngestAdapter(
           { sourceId: this.source.id, broadcasterId: this.source.broadcaster_id, sessionId: session.id, kind: "live_ingest", label: this.source.label },
           ctx.tools,
@@ -235,6 +240,7 @@ class LiveRunner {
             hwaccel: ctx.config.env.FFMPEG_HWACCEL,
             hwaccelDevice: ctx.config.env.FFMPEG_HWACCEL_DEVICE,
             recording: recorder?.options() ?? null,
+            mask,
           },
           (count, atPts) => {
             // Frames dropped under load are disclosed as coverage gaps, never hidden.
@@ -284,12 +290,14 @@ class LiveRunner {
                     demo: this.demo,
                     intervalMs: settings.sampleIntervalMs,
                     measuredCadenceMs: adapter.health().cadenceMs ?? null,
+                    hidden: mask,
                   },
                   i,
                 ),
             })
           : null;
         let gotFrame = false;
+        let maskCheckedAt = Date.now();
         for await (const frame of adapter.frames()) {
           if (!this.running) break;
           gotFrame = true;
@@ -309,6 +317,12 @@ class LiveRunner {
           if ((fresh.agentEnabled && !fresh.analysisPaused) !== analyzing || (fresh.recordingEnabled && fresh.recordingConsent) !== (settings.recordingEnabled && settings.recordingConsent)) break;
           // The demo's hourly session change (handled at the top of the loop).
           if (this.demo && Date.now() - session.started_at.getTime() > DEMO_LIMITS.sessionMaxMs) break;
+          // A changed camera mask applies from the next reader run, a few seconds from now.
+          if (Date.now() - maskCheckedAt > 4000) {
+            maskCheckedAt = Date.now();
+            const current = await getSource(ctx.db, this.source.id);
+            if (current && JSON.stringify(current.camera_mask ?? []) !== maskKey) break;
+          }
         }
         await pipeline?.flush();
         await adapter.disconnect();

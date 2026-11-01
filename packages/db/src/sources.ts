@@ -21,6 +21,8 @@ export interface MediaSourceRow {
   probe: ProbeJson | null;
   error: string | null;
   created_at: Date;
+  /** Boxes hidden from the AI (fractions of the picture); empty when nothing is hidden. */
+  camera_mask: { x: number; y: number; w: number; h: number }[];
 }
 
 export interface ProbeJson {
@@ -36,7 +38,7 @@ export interface ProbeJson {
 }
 
 const M_COLS = `id, broadcaster_id, session_id, kind, label, name, status, original_asset_id, playback_asset_id, publish_path,
-  publish_key_hash, publish_key_hint, publisher_ip, publish_started_at, publish_ended_at, revoked_at, probe, error, created_at`;
+  publish_key_hash, publish_key_hint, publisher_ip, publish_started_at, publish_ended_at, revoked_at, probe, error, created_at, camera_mask`;
 
 export async function createUploadSource(db: Queryable, broadcasterId: string, sessionId: string, name: string): Promise<MediaSourceRow> {
   const { rows } = await db.query<MediaSourceRow>(
@@ -91,6 +93,25 @@ export async function listPublishingSources(db: Queryable): Promise<MediaSourceR
     `SELECT ${M_COLS} FROM media_sources WHERE kind = 'live_ingest' AND status = 'publishing' AND revoked_at IS NULL`,
   );
   return rows;
+}
+
+/**
+ * Set the boxes hidden from the AI on one of the creator's live sources. Returns null when the
+ * source isn't theirs, isn't a live source, or was revoked.
+ */
+export async function setSourceCameraMask(
+  db: Queryable,
+  broadcasterId: string,
+  id: string,
+  boxes: { x: number; y: number; w: number; h: number }[],
+): Promise<MediaSourceRow | null> {
+  const { rows } = await db.query<MediaSourceRow>(
+    `UPDATE media_sources SET camera_mask = $3::jsonb, updated_at = now()
+     WHERE id = $1 AND broadcaster_id = $2 AND kind = 'live_ingest' AND revoked_at IS NULL AND status <> 'deleted'
+     RETURNING ${M_COLS}`,
+    [id, broadcasterId, JSON.stringify(boxes)],
+  );
+  return rows[0] ?? null;
 }
 
 export async function updateSourceStatus(db: Queryable, id: string, status: MediaSourceRow["status"], error: string | null = null) {

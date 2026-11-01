@@ -16,7 +16,7 @@
 }
 .su-art {
   position: relative;
-  height: clamp(140px, 19vw, 230px);
+  height: clamp(150px, 20vw, 280px);
 }
 .su-art::after {
   /* the game is paused: the scene sinks back behind the menu */
@@ -277,7 +277,7 @@
 .su-brief-side {
   min-width: 0;
 }
-@media (min-width: 1280px) {
+@media (min-width: 1360px) {
   .su-brief-top {
     grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr);
     align-items: start;
@@ -521,10 +521,12 @@
   font-size: 0.95rem;
   line-height: 1.4;
 }
+.su-mode .su-more {
+  margin-top: 2px;
+}
 .su-mode dl {
   display: grid;
   gap: 6px;
-  margin-top: auto;
   font-size: 0.88rem;
 }
 .su-mode dt {
@@ -569,21 +571,33 @@
   font-size: 0.9rem;
 }
 
-/* --- the chat bot: a phone --- */
-@media (min-width: 1024px) {
+/* --- the chat bot: two phones and the house rules --- */
+@media (min-width: 900px) {
   .su-bot {
-    grid-template-columns: minmax(0, 400px) minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
+  }
+  .su-bot-rules {
+    grid-column: 1 / -1;
+  }
+}
+@media (min-width: 1280px) {
+  .su-bot {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.85fr);
+  }
+  .su-bot-rules {
+    grid-column: auto;
   }
 }
 .su-phone {
   width: 100%;
-  max-width: 400px;
-  padding: 14px 10px 18px;
+  max-width: 460px;
+  justify-self: center;
+  padding: 12px 10px 16px;
   background: #0d0a12;
   border: 5px solid #140715;
   outline: 2px solid #3d3549;
-  border-radius: 30px;
+  border-radius: 28px;
   box-shadow: 0 7px 0 rgb(20 7 21 / 0.85);
 }
 .su-phone-status {
@@ -594,9 +608,6 @@
   font-weight: 700;
   font-size: 0.86rem;
   color: #b8b0a4;
-}
-.su-app + .su-app {
-  margin-top: 12px;
 }
 .su-app-head {
   padding: 8px 12px;
@@ -621,8 +632,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 2px 10px;
-  padding: 9px 12px 10px;
+  gap: 1px 10px;
+  padding: 8px 12px 9px;
   border-top: 1px solid rgb(244 237 226 / 0.07);
 }
 .su-cmd:first-child {
@@ -636,8 +647,8 @@
 }
 .su-cmd p {
   grid-column: 1 / -1;
-  font-size: 0.86rem;
-  line-height: 1.4;
+  font-size: 0.85rem;
+  line-height: 1.38;
   color: #b8b0a4;
 }
 .su-copy {

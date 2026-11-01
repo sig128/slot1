@@ -263,5 +263,6 @@ export function sourceView(row: MediaSourceRow, health: SourceHealthRow | null, 
         : null,
     health: sourceHealthView(health),
     error: row.error,
+    cameraMask: row.kind === "live_ingest" ? (row.camera_mask ?? []) : [],
   };
 }

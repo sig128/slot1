@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CameraMask } from "./camera-mask";
 import {
   AnalysisState,
   AssetKind,
@@ -468,6 +469,8 @@ export const MediaSourceView = z.object({
     .nullable(),
   health: SourceHealthView.nullable(),
   error: z.string().nullable(),
+  /** Live sources: boxes the creator hid from the AI (blacked out before any analysis). */
+  cameraMask: CameraMask.default([]),
 });
 export type MediaSourceView = z.infer<typeof MediaSourceView>;
 

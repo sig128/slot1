@@ -3,7 +3,7 @@ import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { extractFrameAt } from "@slot1/analysis";
-import { bigMoment, DEMO_LOGIN, DEMO_PUBLISH_PATH, type ChannelSettings, type DemoInfo, type Observation } from "@slot1/contracts";
+import { bigMoment, DEMO_CAMERA_MASK, DEMO_LOGIN, DEMO_PUBLISH_PATH, type ChannelSettings, type DemoInfo, type Observation } from "@slot1/contracts";
 
 export { DEMO_LOGIN, DEMO_PUBLISH_PATH, DEMO_STREAM_NAME } from "@slot1/contracts";
 import {
@@ -146,6 +146,8 @@ export async function reconcileDemo(ctx: ServerContext): Promise<{ state: "enabl
     } else {
       await createIngestSource(tx, { broadcasterId: b.id, name: DEMO_SOURCE_NAME, label: "test", publishPath: DEMO_PUBLISH_PATH, keyHash: sha256(key), keyHint: key.slice(-4) });
     }
+    // The demo shows "Hide your camera from the AI" at work: its placeholder webcam tile is hidden.
+    await tx.query(`UPDATE media_sources SET camera_mask = $2::jsonb WHERE publish_path = $1`, [DEMO_PUBLISH_PATH, JSON.stringify(DEMO_CAMERA_MASK)]);
     return { state: "enabled" as const, broadcasterId: b.id };
   });
   // Switched off: the demo's sessions and clips go (outside the transaction; files are involved).
