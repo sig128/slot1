@@ -256,7 +256,8 @@ function drawCaptions(ctx: CanvasRenderingContext2D, W: number, H: number, ct: E
   const cue = ct.cues.find((c) => t >= c.startMs && t < c.endMs);
   if (!cue) return;
   const words = cueWords(cue);
-  const y = ct.position === "top" ? 0.14 * H : ct.position === "center" ? 0.5 * H : H - 300 * u;
+  // Same anchors as the render (centre of the caption block).
+  const y = ct.position === "top" ? 0.16 * H : ct.position === "center" ? 0.5 * H : 0.78 * H;
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.lineJoin = "round";
@@ -298,7 +299,7 @@ function drawCaptions(ctx: CanvasRenderingContext2D, W: number, H: number, ct: E
     lineW += (lineW > 0 ? space : 0) + width;
   }
   const lh = 100 * u;
-  const top = y - ((lines.length - 1) * lh) / 2 - (ct.position === "bottom" ? (lines.length - 1) * lh * 0.5 : 0);
+  const top = y - ((lines.length - 1) * lh) / 2;
   ctx.textAlign = "left";
   lines.forEach((line, li) => {
     const total = line.reduce((n, x) => n + x.width, 0) + space * (line.length - 1);

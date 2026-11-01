@@ -113,53 +113,148 @@ Twitch clips and the existing quick clip renders also appear in the library.
 
 ## The editor
 
-`/studio/edit/<projectId>` edits a **non-destructive edit decision list** (EDL). The EDL is
-validated with zod (`Edl` in `packages/contracts/src/clipper.ts`) on the client, on save and
-again before rendering:
+`/studio/edit/<projectId>` is a multi-track editor over a **non-destructive edit decision list**
+(EDL). The EDL is validated with zod (`Edl` in `packages/contracts/src/clipper.ts`) in the
+browser, on save and again before rendering. Every field has a default, so edits saved by older
+versions parse and render exactly as before (an edit that uses only the original fields gets the
+original ffmpeg command). The schema carries `.describe()` text on every field, so its JSON
+Schema explains itself to AI tools.
 
 | Field | Meaning |
 | --- | --- |
-| `segments[]` | 1–20 segments: `sessionId`, `inMs`/`outMs` (0.3 s–5 min), `speed` (0.5, 1, 1.5, 2), `reframe {x, y, zoom}` |
+| `segments[]` | The main video track, 1–20 segments: `sessionId`, `inMs`/`outMs` (0.3 s–5 min), `speed` 0.25–4×, optional `rampTo` (speed ramp, rendered as 8 constant-speed steps), `reframe {x, y, zoom}` or keyframed `keys[]` (pan/zoom in source time), `volume`, and `transitionIn` (cut, crossfade, flash, dip, whip, glitch; 0.1–2 s overlap) |
 | `aspect` | `9:16` (Vertical 1080×1920), `16:9` (Widescreen 1920×1080) or `1:1` (Square 1080×1080) |
-| `layout` | `crop` (fill the frame, using each segment's reframe) or `fit` (whole frame over a blurred backdrop) |
-| `texts[]` | Up to 20 overlays on the output timeline: poster, banner or caption style; top, middle or bottom |
-| `captions` | Burn in transcript lines that fall inside the segments |
-| `fadeInMs`, `fadeOutMs`, `volume` | Fades of up to 5 s each; volume 0–200 % |
-| `coverMs` | Output time of the cover (poster) frame |
+| `layout` | `crop` (fill and reframe), `fit` (whole frame over a blurred backdrop) or `split` (facecam panel over gameplay, vertical only) |
+| `split` | Facecam box in the source picture, the camera panel's share of the height (20–60 %), camera on top or bottom |
+| `overlays[]` | Up to 4 overlay tracks (hide, lock), 40 items each: animated text (poster, banner, subtitle box, mission title, wasted red, lower third, title card; pop, slide, typewriter or fade), images (Studio library stickers/overlays/frames, or the creator's uploads) and picture-in-picture (another moment, or a crop of the picture such as the facecam). Position, scale, rotation and opacity can be keyframed on the output timeline |
+| `audioTracks[]` | Up to 4 audio tracks (music, sound effects, voice; mute, solo, lock, volume) with clips that have offsets, fades, looping and a volume envelope. `duck` lowers a track while the source audio has voice-band sound (see the caveat below) |
+| `sourceAudio` | The main track's audio: mute, solo, an FFT denoiser (`afftdn`), a voice boost (EQ and compression), a volume envelope |
+| `effects[]` | WASTED (freeze, desaturate, darken, banner), MISSION PASSED (gold banner and flash), punch-in zoom, camera shake, flash, glitch. Original SLOT1 art in the GTA spirit: no Rockstar audio, artwork or fonts, no Pricedown |
+| `grade` | Original grade presets (Vice City night, Los Santos golden hour, Noir, Neon, Bleach) plus brightness, contrast, saturation, vignette and grain |
+| `captionTrack` | Caption cues with optional word timings: word highlight (karaoke), subtitle, or big words; top, middle or bottom |
+| `texts[]`, `captions` | The older text overlays and transcript burn-in, kept so earlier edits render the same |
+| `fadeInMs`, `fadeOutMs`, `volume`, `coverMs`, `normalize` | Fades, source volume (0–200 %), cover frame, loudness normalization to about −14 LUFS with a peak limiter |
 
 The whole edit is capped at 10 minutes. Unknown fields are stripped, so nothing a client sends
-reaches ffmpeg except validated numbers and text. Text goes through files (`drawtext
-textfile=`), never through the filtergraph string.
+reaches ffmpeg except validated numbers and text. Text goes through files (`drawtext textfile=`
+for the older texts, ASS subtitle files for everything new), never through the filtergraph.
+Library items are referenced by Studio library id and uploads by id; the API checks that uploads
+and picture-in-picture sessions belong to the creator, and a render is refused up front when a
+library id isn't installed on the server.
 
-**Preview.** The preview plays in the browser at the output aspect, with the crop, text and
-fades applied. "Source" plays the whole video freely to pick points. "Edit" plays the segments
-in order at their speeds. The blurred backdrop is drawn in a canvas. Volume above 100 % and
-burned-in captions appear only in the render.
+**Timeline.** Overlay tracks sit on top, then the video track, effects, captions, the game
+audio (with its waveform) and the audio tracks (with theirs). Drag blocks to move them and their
+edges to trim; trimming a segment ripples the rest of the edit, Alt (or the Roll toggle) rolls a
+cut instead so the length stays put. Moves and trims snap to the playhead, the AI's moments and
+every other edge (Shift or N turns snapping off). Shift-click selects several items. Split,
+delete and ripple delete keep items on the footage they were placed over, because times are
+carried through the source time they show. The ruler zooms (buttons, +/−/\, Ctrl+wheel).
+Every change is one undo step (slider drags and typing merge), including AI proposals and
+templates. Saving is automatic; the header says when there are unsaved changes.
 
-**Keyboard.** Space plays or pauses. J goes back 1 s, K pauses, and L plays (press L again for
-2× and 4×). I and O set the selected segment's in and out points. ←/→ step one frame (Shift: one
-second). The timeline handles are keyboard sliders (arrows ±0.1 s, Shift ±1 s, PageUp/PageDown
-±10 s). The editor works at 390 px wide: the panels stack under the preview.
+**Inspector.** Tabs: Clip (the selection's properties, keyframes, transitions, speed and ramps,
+"Follow the action", instant replay, segments list), Format (size, framing, facecam split,
+fades, cover, templates), Look (grades and effects), Text (animated text, picture-in-picture),
+Audio (game audio, tracks, ducking, loudness), Captions (styles, generation, manual editing),
+Library (the Studio's sounds and elements plus the creator's uploads), AI (the AI clip tools)
+and Export.
 
-**Render.** "Render" saves the current EDL, then queues a `render-project` job on the
-`slot1-library` queue. `buildEdlRender` (`packages/analysis/src/edl-render.ts`) is a pure,
-unit-tested function that turns the EDL into one ffmpeg command:
+**Follow the action** measures where the picture moves (frame differences on a small grid,
+skipping scene cuts and the facecam box) and places reframe keyframes over the movement. It
+never invents motion: with no clear movement it changes nothing and says so. It needs the
+browser to read the video's pixels; when the storage doesn't allow that, it says so.
 
-- one input per segment with `-ss`/`-t` before `-i` (accurate seek);
-- crop (`cropFor`) or fit-over-boxblur scaled to the preset;
-- `setpts` plus chained `atempo` for speed changes;
-- `concat`, then `drawtext` for texts and captions, then `fade`/`afade` and `volume`;
-- yuv420p, AAC 48 kHz, `+faststart`;
+**Templates** ("TikTok highlight", "Best-of reel", "Wasted moment") only use what exists: the
+edit, the AI's moments and the creator's camera box. When the data a template needs is missing
+(no big moments, no WASTED reading) the edit is left alone and the reason is shown.
+
+**Facecam split.** When the creator has drawn boxes with "Hide your camera from the AI"
+(Studio → Stream setup), the first box prefills the split's camera box.
+
+**Preview.** A canvas compositor draws the edit in the browser: segments in order at their
+speeds and ramps, framing and keyframes, overlays and their animations, captions, effects, fades
+and the audio clips. "Source" plays the whole recording to pick points. The preview says when it
+approximates the final render: colour grades, transitions, ducking and loudness are exact only
+in the render.
+
+**Keyboard** (press ? in the editor for the list). Space plays or pauses; J, K and L shuttle;
+←/→ step one frame (Shift: one second); ↑/↓ jump between edit points; I and O set in and out
+points (Source) or trim the segment under the playhead (Edit); S splits; Delete deletes and
+Shift+Delete ripple deletes; Ctrl/⌘+Z undoes and Ctrl/⌘+Shift+Z or Ctrl+Y redoes. The editor
+works at 390 px wide: the panels stack under the preview and the timeline scrolls sideways
+inside its own box.
+
+**Audio and ducking, honestly.** The game audio is one mixed stream. SLOT1 can't separate the
+creator's voice from the game, so "Duck under speech" lowers music while the source has energy
+in the voice band (a sidechain compressor keyed on 300–3400 Hz): loud game sound in that band
+ducks the music too. The voice boost and denoiser act on the whole stream for the same reason.
+
+**Uploads.** Music, voice-overs, logos and stickers (MP3, M4A, AAC, WAV, OGG, Opus, FLAC; PNG,
+JPG, WebP, GIF) up to 50 MB of audio (20 minutes) or 10 MB per image. The creator confirms they
+own the file or have the rights to use it; the confirmation time is stored. Files are checked with
+ffprobe (local file protocol only), stay private and are deleted with "Delete everything".
+
+**Captions.** "Generate captions" transcribes the edit's audio (mono 16 kHz) with the configured
+transcription provider and offers the cues to apply. Without `TRANSCRIPTION_PROVIDER` and
+`TRANSCRIPTION_MODEL` it says exactly that. Cues can always be typed and timed by hand.
+
+**Render and export.** "Render" saves the current EDL, then queues a `render-project` job on
+the `slot1-library` queue. Export renders the same edit for several platforms at once, one
+library item each:
+
+| Preset | Shape | Length limit SLOT1 checks |
+| --- | --- | --- |
+| As edited | the edit's own | 10 minutes (the edit's cap) |
+| TikTok | 9:16 | 10 minutes |
+| YouTube Shorts | 9:16 | 3 minutes |
+| Instagram Reels | 9:16 | 3 minutes |
+| X | the edit's own | 2 minutes 20 seconds |
+| YouTube | 16:9 | none beyond the edit's cap |
+
+These limits are the platforms' published ones as of 2025 and they change; check the platform
+before relying on them. An export that a platform wouldn't take is refused with the reason.
+Options: 1080p or 720p, 24/30/60 fps, quality high/standard/small (CRF 20/23/27 with a bitrate
+cap per preset), animated GIF (up to 30 s, 15 fps, 480 px wide, no sound) and audio only (AAC).
+A **thumbnail** is a 1280×720 PNG of one frame with big styled text, saved to the library;
+"Save this frame" saves the source frame without overlays.
+
+`buildEdlRender` (`packages/analysis/src/edl-render.ts`) is a pure, unit-tested function that
+turns the EDL into one ffmpeg command:
+
+- one input per segment with `-ss`/`-t` before `-i` (accurate seek), one per picture-in-picture,
+  image, upload or library sound (looping inputs are bounded with `-t`);
+- per segment: crop or keyframed crop (`scale` with `eval=frame` and a per-frame `crop`
+  expression), fit over a blurred backdrop, or the facecam `vstack` with an ink-and-gold
+  divider; `setpts`/`atempo` for speed, split/trim/concat steps for ramps;
+- `concat` for cuts, `xfade`/`acrossfade` pairwise for transitions;
+- grade (colour balance, eq, curves, vignette, noise), effects in their time windows (the WASTED
+  freeze is a linear `loop`/`select`/`setpts` chain: a `split` into `freezeframes` stalls ffmpeg 6
+  while other inputs are still being read), then the older `drawtext` texts;
+- overlay tracks: images and picture-in-picture via `overlay` with per-frame position, `rotate`,
+  alpha by `geq` for keyframed opacity; animated text, effect banners and captions as ASS
+  subtitles in Passion One (`fontsdir`);
+- audio: per-clip trims, fades, `adelay`, envelopes, `amix`, `sidechaincompress` for ducking,
+  `afftdn`/EQ/compression for the source, `loudnorm` and `alimiter`;
+- yuv420p, AAC 48 kHz, `+faststart`, a bitrate cap when the edit uses the new features;
 - progress from `-progress pipe:1`, stored on the job run and shown in the editor and the library.
 
-Limits: at most 4 renders in flight per creator and 30 render requests per hour. Rendering is
-refused up front with a clear message when a segment's session or video no longer exists.
+Limits: at most 4 renders in flight per creator for single renders and 8 for a batch export, 30
+render and 20 export requests per hour. Rendering is refused up front with a clear message when
+a segment's session or video, a picture-in-picture video, an upload or a library item is gone.
 
-**Encoders.** `FFMPEG_ENCODER=libx264` (default, CPU, `-preset veryfast -crf 20`) or
-`h264_nvenc` (NVIDIA GPU, `-preset p4 -cq 21`). NVENC needs an NVIDIA GPU and driver in the
-worker container and an ffmpeg built with NVENC. Check with
-`ffmpeg -hide_banner -encoders | grep nvenc`. `WORKER_LIBRARY_CONCURRENCY` (default 2) sets how
-many renders, screenshots and finalizations one worker runs at once.
+**Encoders.** `FFMPEG_ENCODER=libx264` (default, CPU, `-preset veryfast`) or `h264_nvenc`
+(NVIDIA GPU, `-preset p4`). NVENC needs an NVIDIA GPU and driver in the worker container and an
+ffmpeg built with NVENC. Check with `ffmpeg -hide_banner -encoders | grep nvenc`.
+`WORKER_LIBRARY_CONCURRENCY` (default 2) sets how many renders, screenshots and finalizations one
+worker runs at once.
+
+**Render cost.** Measured on a shared 2-vCPU test machine (libx264 veryfast) while other jobs
+were running: a 10.2 s vertical 1080×1920 edit with the facecam split, two transitions, a
+WASTED freeze, an animated title, an uploaded image, captions, ducked music and loudness
+normalization rendered in 14–17 s; the same kind of 6 s edit at 720p in 4–5 s per platform
+version; an audio-only export in under half a second; a 6 s GIF in 13–23 s (palette generation
+is the slow part). The heaviest filters are temporal grain and keyframed opacity (`geq`); grain
+stays subtle and renders that use the new features get a bitrate cap.
 
 **Fonts.** Burned-in text uses Passion One (SIL Open Font License 1.1), converted losslessly
 from the web app's WOFF2 into TTF by `scripts/build-render-fonts.py` (fontTools) and stored with
@@ -281,12 +376,17 @@ only items anyone may see. Unlisted item pages are `noindex`. Absolute URLs use
 | `POST /api/library/screenshots` | Owner | Screenshot from media, live or evidence |
 | `GET/POST /api/projects` | Owner | List or create edit projects |
 | `GET/PATCH/DELETE /api/projects/:id` | Owner | Read (with playback, markers and renders), save, delete |
-| `POST /api/projects/:id/render` | Owner | Queue a render |
+| `POST /api/projects/:id/render` | Owner | Queue a render (optional `RenderOptions` for one preset) |
+| `POST /api/projects/:id/exports` | Owner | Batch export: `{ presets[], format, height, fps, quality }`, one library item per preset |
+| `POST /api/projects/:id/thumbnail` | Owner | A 1280×720 PNG thumbnail into the library |
+| `GET/POST /api/projects/:id/captions` | Owner | Generated captions (status and cues), or start generating them |
+| `GET/POST /api/editor/media`, `DELETE /api/editor/media/:id` | Owner | The creator's uploads for edits (multipart, rights confirmation required) |
+| `GET /api/editor/waveform/:sessionId` | Owner | Timeline waveform peaks of a session's audio (built once by the worker) |
 | `GET /api/profiles/:login` | Anyone (public channel) or owner | Profile data |
 
 Every mutation needs the session cookie and the CSRF header, like the rest of the API.
 
-## Data model (migration `0003_clipper.sql`)
+## Data model (migrations `0003_clipper.sql`, `0007_clipper_pro.sql`)
 
 - `channel_settings`: `recording_enabled`, `recording_retention_days`, `auto_clips`,
   `auto_clip_pre_roll_ms`, `auto_clip_post_roll_ms`.
@@ -298,6 +398,10 @@ Every mutation needs the session cookie and the CSRF header, like the rest of th
   recording, project, clip job, job run and assets.
 - `media_sources.kind` adds `recording`; `evidence_assets.kind` adds `recording_segment`,
   `screenshot`, `render` and `poster`.
+- `0007_clipper_pro.sql`: `library_items.kind` adds `thumbnail`; `library_items` gains `preset`,
+  `format` (`mp4`, `gif`, `audio`, `png`; default `mp4`) and `render_options`; new table
+  `project_media` (the creator's uploads for edits, with `rights_confirmed_at`). Generated
+  captions are stored as a file next to the edit; waveform peaks next to the session's media.
 
 ## Tests
 
@@ -327,6 +431,23 @@ Every mutation needs the session cookie and the CSRF header, like the rest of th
       shows that scene);
     - recording privacy on a public session;
     - the retention sweep keeping clips and screenshots, and session deletion.
+- **Unit** (`tests/unit/clipper-pro.test.ts`): EDL back-compat (older edits parse, get every
+  default and render with the original command), validation messages, render options, the JSON
+  Schema, timing through ramps and transitions; the editing operations (split, ripple delete,
+  trims carried through source time, roll, move, delete with and without ripple, snapping,
+  instant replay, the three templates with and without the data they need); and the filtergraph
+  for every feature (facecam split, keyframes, ramps, every transition, grades, every effect,
+  overlay text/images/picture-in-picture, captions, the audio mix with ducking and loudness,
+  presets, GIF, audio only, thumbnails, unknown library items).
+- **Integration** (`tests/integration/editor.test.ts`, real Postgres, Redis and ffmpeg): uploads
+  with the rights check; refusing other creators' files and unknown library items; a vertical
+  facecam split with a crossfade, a flash, WASTED, captions and ducked music, checked with ffprobe
+  and by its pixels (the gold divider, the frozen grey WASTED frames, captions appearing only
+  during their cue) and its loudness (about −14 LUFS); ducking measured on an audio-only export
+  (the music drops while the game audio has sound); a three-platform batch export (720×1280,
+  720×1280, 1280×720), a GIF and a refused X export; a 1280×720 thumbnail; timeline waveforms;
+  the captions requirement message; deleting uploads.
 - **E2E** (`tests/e2e/clipper.spec.ts`): the Library tab and editor flow (screenshot, edit clip,
-  keyboard in/out, preset switch, text, render, share, public profile) at desktop and 390 px. It
-  checks for no console errors and no horizontal overflow.
+  keyboard in/out, the multi-track timeline, undo/redo, split, preset switch, text, render, share,
+  public profile) at desktop and 390 px. It checks for no console errors and no horizontal
+  overflow.

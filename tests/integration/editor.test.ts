@@ -173,7 +173,7 @@ describe("pro clip editor", () => {
     expect(chroma(at(8.3))).toBeLessThan(6);
     expect(chroma(at(5.0))).toBeGreaterThan(30);
     // Captions burn in over the frozen picture: the caption area changes only while the cue is on.
-    const cap = (t: number) => region(file, t, "1080:220:0:1520");
+    const cap = (t: number) => region(file, t, "1080:160:0:1420");
     expect(diff(cap(8.3), cap(8.6))).toBeLessThan(2);
     expect(diff(cap(8.6), cap(9.3))).toBeGreaterThan(8);
     // Loudness normalized to about −14 LUFS.
