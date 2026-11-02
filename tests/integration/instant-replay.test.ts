@@ -276,20 +276,21 @@ describe.skipIf(!hasNginxRtmp)("instant replay through nginx-rtmp", () => {
 
     // The same window again is served from the cache, and nothing went into the library. A cut
     // that stopped at the live edge (under 4 s after the moment) is cut again, fuller, once the rest
-    // is saved: ask until the window stops growing, then the same window must come from the cache.
+    // is saved: ask until the whole window is there, then the same window must come from the cache.
     const dir = path.join(h.storageRoot, "storage", "b", broadcasterId, "s", sessionId, "instant-replay");
     const mp4s = async () => (await readdir(dir)).filter((f) => f.endsWith(".mp4")).length;
+    const full = o.mediaStartMs + 4000;
     let last = r;
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 12 && last.endMs < full; i++) {
+      await sleep(1500);
       const next = (await replay(creator, { observationId: o.id })).r;
-      if (next.endMs === last.endMs) break;
-      expect(next.endMs).toBeGreaterThan(last.endMs);
-      expect(next.endMs).toBeLessThanOrEqual(o.mediaStartMs + 4000);
+      expect(next.endMs).toBeGreaterThanOrEqual(last.endMs);
       last = next;
     }
+    expect(last.endMs).toBe(full);
     const files = await mp4s();
     const again = await replay(creator, { observationId: o.id });
-    expect(again.r.endMs).toBe(last.endMs);
+    expect(again.r.endMs).toBe(full);
     expect(await mp4s()).toBe(files);
     // The time only guards against a recut, with headroom for a busy machine.
     expect(again.ms).toBeLessThan(4000);
