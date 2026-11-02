@@ -42,7 +42,7 @@ test.describe("SLOT1 live video", () => {
     await standin?.close();
   });
 
-  test("plays SLOT1's own stream with a delay estimate and can switch to Twitch's player", async ({ page, baseURL }) => {
+  test("plays SLOT1's own stream with a delay estimate and can switch to the other player", async ({ page, baseURL }) => {
     const caps = (await (await page.request.get("/api/capabilities")).json()) as { ingest: { available: boolean; reason: string | null } };
     test.skip(!caps.ingest.available, `Needs a continuous-ingest gateway in the dev stack: ${caps.ingest.reason}`);
     const status = execFileSync("bash", [path.join(ROOT, "scripts/ingest-gateway.sh"), "status"], { encoding: "utf8" }).trim();
@@ -92,9 +92,10 @@ test.describe("SLOT1 live video", () => {
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({ path: path.join(HERE, "screenshots", test.info().project.name, "live-video.png"), fullPage: true });
 
-    // Viewers can always go back to Twitch's player, and return.
+    // Viewers can always switch to the other player, and return: Twitch's player for a Twitch
+    // channel, the frames the AI analyzed for a channel without Twitch (this local creator).
     const accepted = standin!.accepted();
-    await page.getByRole("button", { name: "Twitch player" }).click();
+    await page.getByRole("button", { name: /^(Twitch player|Analyzed frames)$/ }).click();
     await expect(page.locator("[data-live-player]")).toHaveCount(0);
     await page.getByRole("button", { name: "Switch to SLOT1 video" }).click();
     await expect(page.locator('[data-live-player="live"]')).toBeVisible({ timeout: 20_000 });
