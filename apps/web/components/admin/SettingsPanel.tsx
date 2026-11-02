@@ -64,11 +64,14 @@ export function SettingsAlert({ settings, events }: { settings: AdminSettingsVie
   );
 }
 
-export function SettingsPanel({ initial, initialEvents }: { initial: AdminSettingsView; initialEvents: TwitchSignInEvent[] }) {
+/**
+ * `now` comes from the dashboard's clock, which starts at the time the page was rendered on the
+ * server: "3 min ago" is then the same text on the server and in the browser.
+ */
+export function SettingsPanel({ initial, initialEvents, now }: { initial: AdminSettingsView; initialEvents: TwitchSignInEvent[]; now: number }) {
   const [view, setView] = useState<AdminSettingsView>(initial);
   const [events, setEvents] = useState<TwitchSignInEvent[]>(initialEvents);
   const [save, setSave] = useState<SaveState>({ phase: "idle" });
-  const [now, setNow] = useState(() => Date.now());
   const off = !view.available;
 
   const reload = useCallback(async () => {
@@ -81,14 +84,13 @@ export function SettingsPanel({ initial, initialEvents }: { initial: AdminSettin
     }
   }, []);
 
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 5000);
-    return () => clearInterval(t);
-  }, []);
-
   const mounted = useRef(true);
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     mounted.current = true;
+    // The forms answer from here on (tests wait for it before typing).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReady(true);
     return () => {
       mounted.current = false;
     };
@@ -185,20 +187,25 @@ export function SettingsPanel({ initial, initialEvents }: { initial: AdminSettin
   const common = { view, off, busy, save, send };
 
   return (
-    <div className="grid gap-12">
+    <div className="grid gap-12" data-testid="settings-panel" data-ready={ready ? "" : undefined}>
       {off && (
         <p className="max-w-[80ch] border-l-4 border-gold bg-graphite-800/80 py-3 pl-4 pr-5 text-ivory-2" data-testid="settings-unavailable">
           <span className="block font-display text-xl font-bold text-ivory">Saving settings isn’t available on this server.</span>
           {view.unavailableReason}
         </p>
       )}
+      {/* Two columns of about the same height on wide screens; one column, in this order, on phones. */}
       <div className="grid gap-x-14 gap-y-14 xl:grid-cols-2">
-        <TwitchGroup {...common} />
-        <AiGroup {...common} />
-        <LegalGroup {...common} />
-        <SeoGroup {...common} />
-        <UpdatesGroup {...common} now={now} />
-        <PasswordGroup {...common} />
+        <div className="grid content-start gap-14">
+          <TwitchGroup {...common} />
+          <SeoGroup {...common} />
+          <UpdatesGroup {...common} now={now} />
+        </div>
+        <div className="grid content-start gap-14">
+          <AiGroup {...common} />
+          <LegalGroup {...common} />
+          <PasswordGroup {...common} />
+        </div>
       </div>
       <SignInAttempts events={events} now={now} onRefresh={() => void reload()} />
     </div>
@@ -271,12 +278,15 @@ function Group({ id, title, status, children }: { id: string; title: string; sta
   );
 }
 
-function Working({ ok, yes, no }: { ok: boolean; yes: string; no: string | null }) {
+function Working({ ok, yes, no, server }: { ok: boolean; yes: string; no: string; server: string | null }) {
   return (
-    <p className="flex items-start gap-2">
+    <div className="flex items-start gap-2">
       <span aria-hidden className={`mt-[0.45rem] h-2 w-2 flex-none rounded-full ${ok ? "bg-[#0ca30c]" : "bg-coral"}`} />
-      <span className={ok ? "text-ivory-2" : "text-ivory"}>{ok ? yes : no}</span>
-    </p>
+      <div className="min-w-0">
+        <p className={ok ? "text-ivory-2" : "text-ivory"}>{ok ? yes : no}</p>
+        {!ok && server ? <p className="mt-0.5 text-[0.8rem] text-ivory-3 [overflow-wrap:anywhere]">The server says: {server}</p> : null}
+      </div>
+    </div>
   );
 }
 
@@ -385,9 +395,11 @@ function SaveMessage({ save }: { save: SaveState }) {
         save.restarting ? "SLOT1 is restarting with the new settings…" : "If a new version is being built right now, this waits until the build is done.",
       );
     case "applied":
-      return save.detail === "restart: none" || !save.detail
-        ? box("border-[#0ca30c]", "Applied.", null)
-        : box("border-[#0ca30c]", "Applied. SLOT1 restarted with the new settings.", null);
+      return save.detail === "restart: apps"
+        ? box("border-[#0ca30c]", "Applied. SLOT1 restarted with the new settings.", null)
+        : save.detail === "restart: web"
+          ? box("border-[#0ca30c]", "Applied. The website restarted with the new details.", null)
+          : box("border-[#0ca30c]", "Applied.", null);
     case "refused":
       return box("border-coral", "The server didn’t accept it, so nothing changed.", save.detail ? `It said: ${save.detail}.` : null);
     case "slow":
@@ -418,7 +430,14 @@ function TwitchGroup({ view, off, busy, save, send }: GroupProps) {
     <Group
       id="settings-twitch"
       title="Twitch app"
-      status={<Working ok={view.working.twitch} yes="Sign in with Twitch is on." no={`Sign in with Twitch is off${view.working.twitchReason ? `: ${view.working.twitchReason}` : ""}.`} />}
+      status={
+        <Working
+          ok={view.working.twitch}
+          yes="Sign in with Twitch is on."
+          no="Sign in with Twitch is off until the app's Client ID and Client Secret are saved."
+          server={view.working.twitchReason}
+        />
+      }
     >
       <p className="max-w-[60ch] text-[0.9rem] text-ivory-2">
         From your app at dev.twitch.tv/console/apps (Manage). Its OAuth Redirect URL must be exactly:
@@ -485,7 +504,11 @@ function AiGroup({ view, off, busy, save, send }: GroupProps) {
   const v = view.values;
   const g = useGroup(["aiEnabled", "anthropicApiKey"], { aiEnabled: v.aiProvider === "anthropic", anthropicApiKey: "" });
   return (
-    <Group id="settings-ai" title="AI" status={<Working ok={view.working.ai} yes="The AI watches streams." no={`The AI is off${view.working.aiReason ? `: ${view.working.aiReason}` : ""}.`} />}>
+    <Group
+      id="settings-ai"
+      title="AI"
+      status={<Working ok={view.working.ai} yes="The AI watches streams." no="The AI is off. Switch it on with an Anthropic key to have it watch streams." server={view.working.aiReason} />}
+    >
       {v.aiProvider === "openai" ? <p className="text-[0.9rem] text-ivory-2">This server uses OpenAI, set on the server. Switching the AI on here uses Anthropic instead.</p> : null}
       <Toggle id={`${id}-on`} label="AI watches streams (Anthropic)" checked={Boolean(g.value("aiEnabled"))} onChange={(x) => g.set("aiEnabled", x)} disabled={off || busy} />
       <Field

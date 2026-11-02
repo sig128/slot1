@@ -481,7 +481,7 @@ export function AdminApp({
         {/* SETTINGS ---------------------------------------------------------------------- */}
         <Section id="settings" title="Settings">
           {initialSettings ? (
-            <SettingsPanel initial={initialSettings} initialEvents={initialSignins} />
+            <SettingsPanel initial={initialSettings} initialEvents={initialSignins} now={now} />
           ) : (
             <p className="text-[0.95rem] text-ivory-3">Couldn’t load the settings. Reload the page.</p>
           )}

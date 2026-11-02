@@ -66,6 +66,8 @@ async function openAdmin(page: Page) {
   await page.goto(adminLink());
   await page.getByRole("button", { name: "Open the admin" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Control room" })).toBeVisible();
+  // Typing before React has taken over the forms would be lost.
+  await expect(page.locator("[data-testid=settings-panel][data-ready]")).toBeAttached();
 }
 
 async function noHorizontalOverflow(page: Page) {
@@ -87,7 +89,6 @@ test.describe("admin settings", () => {
     await expect(alert.getByRole("link", { name: "Settings → Twitch app" })).toHaveAttribute("href", "#settings-twitch");
 
     const settings = page.locator("#settings");
-    await settings.scrollIntoViewIfNeeded();
     await expect(settings.getByRole("heading", { name: "Twitch app" })).toBeVisible();
     await expect(settings.getByTestId("twitch-redirect-url")).toHaveText(new URL(page.url()).origin + "/api/auth/twitch/callback");
 
@@ -131,7 +132,6 @@ test.describe("admin settings", () => {
     writeFileSync(path.join(outbox(), "deploy.log"), "\u001b[1;95m==>\u001b[0m Getting the latest code\n    Version: 0884be8\n==> Checking that SLOT1 answers\n    API: ok\n");
     await openAdmin(page);
     const updates = page.locator("#settings-updates");
-    await updates.scrollIntoViewIfNeeded();
     await expect(updates.getByTestId("settings-deploy")).toContainText("Live");
     await expect(updates.getByTestId("settings-deploy")).toContainText("0884be8");
     await updates.getByText("The last update’s log").click();
