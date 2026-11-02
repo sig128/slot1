@@ -70,7 +70,11 @@ function setupText(ctx: ServerContext, key: CapabilityKey, setupDetails: boolean
   if (!c.reason) return fallback;
   if (!setupDetails || !c.setup) return sentence(c.reason);
   const missing = c.setup.missing.length ? ` Missing ${c.setup.missing.join(", ")}.` : "";
-  const fix = c.setup.command ? ` Fix it on the server: ${c.setup.command}.` : "";
+  const fix = c.setup.settings
+    ? ` Fix it in ${c.setup.settings}${c.setup.command ? ` (or on the server: ${c.setup.command})` : ""}.`
+    : c.setup.command
+      ? ` Fix it on the server: ${c.setup.command}.`
+      : "";
   return `Not set up on the server yet.${missing}${fix}`;
 }
 

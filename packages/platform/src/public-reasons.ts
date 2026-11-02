@@ -38,6 +38,17 @@ export const SETUP_COMMAND: Record<CapabilityKey, string | null> = {
   relay: "slot1 update",
 };
 
+/**
+ * Where an operator fixes each one in the browser (/admin → Settings), when it can be fixed there;
+ * the rest still need the server (scripts/server-setup.sh).
+ */
+export const ADMIN_SETTINGS: Partial<Record<CapabilityKey, string>> = {
+  twitch: "Admin → Settings → Twitch app",
+  bot: "Admin → Settings → Twitch app",
+  eventsub: "Admin → Settings → Twitch app",
+  vision: "Admin → Settings → AI",
+};
+
 /** Said when a text names server settings but isn't one of the known capability reasons. */
 export const PUBLIC_FALLBACK = "This isn't switched on yet on SLOT1";
 
@@ -93,7 +104,7 @@ export function publicText(caps: Capabilities, text: string | null | undefined, 
 /** One capability for this viewer: technical plus the fix for operators, friendly for everyone else. */
 export function capabilityFor<T extends CapabilityStatus>(key: CapabilityKey, c: T, operator: boolean): T {
   if (c.available) return { ...c, setup: null };
-  if (operator) return { ...c, setup: { missing: missingSettings(c.reason), command: SETUP_COMMAND[key] } };
+  if (operator) return { ...c, setup: { missing: missingSettings(c.reason), command: SETUP_COMMAND[key], settings: ADMIN_SETTINGS[key] ?? null } };
   return { ...c, reason: PUBLIC_REASON[key], setup: null };
 }
 

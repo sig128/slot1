@@ -32,7 +32,15 @@ export const CapabilityStatus = z.object({
   reason: z.string().nullable(),
   detail: z.string().nullable(),
   /** Operators only: the exact missing settings and the server command that fixes them. */
-  setup: z.object({ missing: z.array(z.string()), command: z.string().nullable() }).nullable().optional(),
+  setup: z
+    .object({
+      missing: z.array(z.string()),
+      command: z.string().nullable(),
+      /** Where an operator fixes it in the browser ("Admin → Settings → AI"), when that's possible. */
+      settings: z.string().nullable().optional(),
+    })
+    .nullable()
+    .optional(),
 });
 export type CapabilityStatus = z.infer<typeof CapabilityStatus>;
 

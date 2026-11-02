@@ -20,9 +20,9 @@ describe("visitors and creators never read server settings", () => {
   it("gives operators the exact settings and the server command", () => {
     const op = capabilitiesFor(caps, true);
     expect(op.twitch.reason).toBe(caps.twitch.reason);
-    expect(op.twitch.setup).toEqual({ missing: ["TWITCH_CLIENT_ID", "TWITCH_CLIENT_SECRET", "TWITCH_REDIRECT_URI", "SLOT1_TOKEN_ENCRYPTION_KEYS"], command: "slot1 twitch" });
-    expect(op.vision.setup).toEqual({ missing: ["VISION_PROVIDER"], command: "slot1 ai" });
-    expect(op.transcription.setup).toEqual({ missing: ["TRANSCRIPTION_PROVIDER"], command: null });
+    expect(op.twitch.setup).toEqual({ missing: ["TWITCH_CLIENT_ID", "TWITCH_CLIENT_SECRET", "TWITCH_REDIRECT_URI", "SLOT1_TOKEN_ENCRYPTION_KEYS"], command: "slot1 twitch", settings: "Admin → Settings → Twitch app" });
+    expect(op.vision.setup).toEqual({ missing: ["VISION_PROVIDER"], command: "slot1 ai", settings: "Admin → Settings → AI" });
+    expect(op.transcription.setup).toEqual({ missing: ["TRANSCRIPTION_PROVIDER"], command: null, settings: null });
     expect(op.storage.setup).toBeNull(); // available: nothing to fix
   });
 

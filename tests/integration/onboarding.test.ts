@@ -202,14 +202,14 @@ describe("server settings stay with operators", () => {
     await makeOperator(h, op, "Settings Operator");
     const caps = (await op.get("/api/capabilities")).json<Capabilities>();
     expect(caps.twitch.reason).toBe("Twitch not configured: missing TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET, TWITCH_REDIRECT_URI");
-    expect(caps.twitch.setup).toEqual({ missing: ["TWITCH_CLIENT_ID", "TWITCH_CLIENT_SECRET", "TWITCH_REDIRECT_URI"], command: "slot1 twitch" });
-    expect(caps.vision.setup).toEqual({ missing: ["VISION_PROVIDER"], command: "slot1 ai" });
+    expect(caps.twitch.setup).toEqual({ missing: ["TWITCH_CLIENT_ID", "TWITCH_CLIENT_SECRET", "TWITCH_REDIRECT_URI"], command: "slot1 twitch", settings: "Admin → Settings → Twitch app" });
+    expect(caps.vision.setup).toEqual({ missing: ["VISION_PROVIDER"], command: "slot1 ai", settings: "Admin → Settings → AI" });
     expect(caps.ingest.setup?.command).toBe("slot1 update");
     expect(caps.ingest.setup?.missing).toContain("INGEST_GATEWAY");
 
     const o = (await op.get("/api/studio")).json<StudioOverview>();
     expect(step(o, "twitch_connected").detail).toBe(
-      "Not set up on the server yet. Missing TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET, TWITCH_REDIRECT_URI. Fix it on the server: slot1 twitch.",
+      "Not set up on the server yet. Missing TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET, TWITCH_REDIRECT_URI. Fix it in Admin → Settings → Twitch app (or on the server: slot1 twitch).",
     );
     expect(o.usage.costBasis).toMatch(/VISION_PRICE_INPUT_PER_MTOK/);
     const start = await op.get("/api/auth/twitch/start?returnTo=%2Fstudio%3Ftab%3Dstream");
