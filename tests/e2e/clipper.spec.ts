@@ -92,71 +92,85 @@ test.describe("creator clipper", () => {
     const preview = page.locator("video").first();
     await expect.poll(() => preview.evaluate((v: HTMLVideoElement) => v.readyState), { timeout: 30_000 }).toBeGreaterThanOrEqual(1);
 
-    // SLOT1's moments are on the timeline: jump to MISSION PASSED, then mark in and out.
-    await page.getByRole("button", { name: /MISSION PASSED/ }).first().click();
-    await expect(page.getByRole("slider", { name: "Playhead in the source video" })).toHaveAttribute("aria-valuenow", /^2[4-9]\d{3}$/);
-    // Keyboard only from here: I, then two seconds forward (Shift+→ twice), then O.
-    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-    await page.keyboard.press("i");
-    await expect(page.getByText(/In point set at/)).toBeAttached();
-    await page.keyboard.press("Shift+ArrowRight");
-    await page.keyboard.press("Shift+ArrowRight");
-    await page.keyboard.press("o");
-    await expect(page.getByText(/Out point set at/)).toBeAttached();
-    const inMs = Number(await page.getByRole("slider", { name: "In point of the selected segment" }).getAttribute("aria-valuenow"));
-    const outMs = Number(await page.getByRole("slider", { name: "Out point of the selected segment" }).getAttribute("aria-valuenow"));
-    expect(outMs - inMs).toBeGreaterThanOrEqual(1900);
-    expect(outMs - inMs).toBeLessThanOrEqual(2100);
-    expect(inMs).toBeGreaterThan(20_000);
-    // The handles are keyboard sliders too.
-    await page.getByRole("slider", { name: "Out point of the selected segment" }).focus();
-    await page.keyboard.press("Shift+ArrowRight");
-    await expect(page.getByRole("slider", { name: "Out point of the selected segment" })).toHaveAttribute("aria-valuenow", String(outMs + 1000));
+    if (narrow) {
+      // Phones get the simple editor (watch, trim, captions, export). The full editor's tools are
+      // covered at desktop below and in editor-nle.spec.ts.
+      await expect(page.getByText(/The full editor \(tracks, timelines, effects\) opens on screens at least 1024 px wide/)).toBeVisible();
+      await expect(page.getByRole("group", { name: "Edit timeline" })).toHaveCount(0);
+      await noHorizontalOverflow(page);
+      await shot(page, "clipper-editor");
+    } else {
+      // SLOT1's moments are on the timeline: jump to MISSION PASSED, then mark in and out.
+      await page.getByRole("button", { name: /MISSION PASSED/ }).first().click();
+      await expect(page.getByRole("slider", { name: "Playhead in the source video" })).toHaveAttribute("aria-valuenow", /^2[4-9]\d{3}$/);
+      // Keyboard only from here: I, then two seconds forward (Shift+→ twice), then O.
+      await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+      await page.keyboard.press("i");
+      await expect(page.getByText(/In point set at/)).toBeAttached();
+      await page.keyboard.press("Shift+ArrowRight");
+      await page.keyboard.press("Shift+ArrowRight");
+      await page.keyboard.press("o");
+      await expect(page.getByText(/Out point set at/)).toBeAttached();
+      const inMs = Number(await page.getByRole("slider", { name: "In point of the selected segment" }).getAttribute("aria-valuenow"));
+      const outMs = Number(await page.getByRole("slider", { name: "Out point of the selected segment" }).getAttribute("aria-valuenow"));
+      expect(outMs - inMs).toBeGreaterThanOrEqual(1900);
+      expect(outMs - inMs).toBeLessThanOrEqual(2100);
+      expect(inMs).toBeGreaterThan(20_000);
+      // The handles are keyboard sliders too.
+      await page.getByRole("slider", { name: "Out point of the selected segment" }).focus();
+      await page.keyboard.press("Shift+ArrowRight");
+      await expect(page.getByRole("slider", { name: "Out point of the selected segment" })).toHaveAttribute("aria-valuenow", String(outMs + 1000));
 
-    // The multi-track timeline: split at the playhead, then undo and redo it.
-    await page.getByRole("radio", { name: "Program" }).click();
-    const timeline = page.getByRole("group", { name: "Edit timeline" });
-    await expect(timeline.getByRole("button", { name: /^Segment 1,/ })).toBeVisible();
-    await page.getByRole("slider", { name: "Playhead in the edit" }).focus();
-    await page.keyboard.press("Shift+ArrowRight");
-    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-    await page.keyboard.press("Control+k");
-    await expect(timeline.getByRole("button", { name: /^Segment 2,/ })).toBeVisible();
-    await expect(page.getByRole("region", { name: "Segments" }).getByRole("button", { name: /Segment 2/ })).toBeVisible();
-    await page.getByRole("button", { name: "Undo", exact: true }).click();
-    await expect(timeline.getByRole("button", { name: /^Segment 2,/ })).toHaveCount(0);
-    await page.getByRole("button", { name: "Redo", exact: true }).click();
-    await expect(timeline.getByRole("button", { name: /^Segment 2,/ })).toBeVisible();
-    await page.keyboard.press("Control+z");
-    await expect(timeline.getByRole("button", { name: /^Segment 2,/ })).toHaveCount(0);
-    // The shortcuts sheet.
-    await page.keyboard.press("?");
-    await expect(page.getByRole("dialog", { name: "Shortcuts" })).toBeVisible();
-    await page.getByRole("dialog", { name: "Shortcuts" }).getByRole("button", { name: "Close" }).click();
-    await expect(page.getByRole("dialog", { name: "Shortcuts" })).toHaveCount(0);
+      // The multi-track timeline: split at the playhead, then undo and redo it.
+      await page.getByRole("radio", { name: "Program" }).click();
+      const timeline = page.getByRole("group", { name: "Edit timeline" });
+      await expect(timeline.getByRole("button", { name: /^Segment 1,/ })).toBeVisible();
+      await page.getByRole("slider", { name: "Playhead in the edit" }).focus();
+      await page.keyboard.press("Shift+ArrowRight");
+      await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+      await page.keyboard.press("Control+k");
+      await expect(timeline.getByRole("button", { name: /^Segment 2,/ })).toBeVisible();
+      await expect(page.getByRole("region", { name: "Segments" }).getByRole("button", { name: /Segment 2/ })).toBeVisible();
+      await page.getByRole("button", { name: "Undo", exact: true }).click();
+      await expect(timeline.getByRole("button", { name: /^Segment 2,/ })).toHaveCount(0);
+      await page.getByRole("button", { name: "Redo", exact: true }).click();
+      await expect(timeline.getByRole("button", { name: /^Segment 2,/ })).toBeVisible();
+      await page.keyboard.press("Control+z");
+      await expect(timeline.getByRole("button", { name: /^Segment 2,/ })).toHaveCount(0);
+      // The shortcuts sheet.
+      await page.keyboard.press("?");
+      await expect(page.getByRole("dialog", { name: "Shortcuts" })).toBeVisible();
+      await page.getByRole("dialog", { name: "Shortcuts" }).getByRole("button", { name: "Close" }).click();
+      await expect(page.getByRole("dialog", { name: "Shortcuts" })).toHaveCount(0);
 
-    // Presets and text.
-    await page.getByRole("tab", { name: "Format" }).click();
-    await page.getByRole("radio", { name: /Widescreen/ }).click();
-    await expect(page.getByText(/Widescreen 1920×1080, /)).toBeVisible();
-    await page.getByRole("radio", { name: /Vertical/ }).click();
-    await page.getByRole("radio", { name: "Facecam + gameplay" }).click();
-    await expect(page.getByRole("slider", { name: /Camera panel height/ })).toBeVisible();
-    await page.getByRole("radio", { name: "Fill and reframe" }).click();
-    await page.getByRole("tab", { name: "Look" }).click();
-    await page.getByRole("radio", { name: "Vice City night" }).click();
-    await expect(page.getByText(/The preview approximates the final render/)).toBeVisible();
-    await page.getByRole("radio", { name: "None" }).click();
-    await page.getByRole("tab", { name: "Text" }).click();
-    await page.getByRole("button", { name: "Add text at playhead" }).click();
-    await page.getByRole("region", { name: "Text" }).getByLabel("Text", { exact: true }).fill("DOCKS DONE");
-    await expect(timeline.getByRole("button", { name: /Text “DOCKS DONE”/ })).toBeVisible();
-    await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 15_000 });
-    await noHorizontalOverflow(page);
-    await shot(page, "clipper-editor");
+      // Presets and text.
+      await page.getByRole("tab", { name: "Format" }).click();
+      await page.getByRole("radio", { name: /Widescreen/ }).click();
+      await expect(page.getByText(/Widescreen 1920×1080, /)).toBeVisible();
+      await page.getByRole("radio", { name: /Vertical/ }).click();
+      await page.getByRole("radio", { name: "Facecam + gameplay" }).click();
+      await expect(page.getByRole("slider", { name: /Camera panel height/ })).toBeVisible();
+      await page.getByRole("radio", { name: "Fill and reframe" }).click();
+      await page.getByRole("tab", { name: "Look" }).click();
+      await page.getByRole("radio", { name: "Vice City night" }).click();
+      await expect(page.getByText(/The preview approximates the final render/)).toBeVisible();
+      await page.getByRole("radio", { name: "None" }).click();
+      await page.getByRole("tab", { name: "Text" }).click();
+      await page.getByRole("button", { name: "Add text at playhead" }).click();
+      await page.getByRole("region", { name: "Text" }).getByLabel("Text", { exact: true }).fill("DOCKS DONE");
+      await expect(timeline.getByRole("button", { name: /Text “DOCKS DONE”/ })).toBeVisible();
+      await expect(page.getByText("Saved", { exact: true })).toBeVisible({ timeout: 15_000 });
+      await noHorizontalOverflow(page);
+      await shot(page, "clipper-editor");
+    }
 
-    // Render on the server, with progress, into the library.
-    await page.getByRole("button", { name: "Render", exact: true }).click();
+    // Render on the server, with progress, into the library (on a phone: Export → Export).
+    if (narrow) {
+      await page.getByRole("tab", { name: "Export" }).click();
+      await page.getByRole("button", { name: "Export", exact: true }).click();
+    } else {
+      await page.getByRole("button", { name: "Render", exact: true }).click();
+    }
     const renders = page.getByRole("region", { name: "Renders" });
     await expect(renders.getByText(/Rendering|Ready/).first()).toBeVisible();
     await expect(renders.getByText("Ready", { exact: true })).toBeVisible({ timeout: 180_000 });
