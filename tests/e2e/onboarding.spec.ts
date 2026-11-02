@@ -6,7 +6,7 @@ import { startObsStandIn, type ObsStandIn } from "./support/obs-standin";
 /**
  * One-click start and the pages around it, at desktop and 390 px: the home hero's "Get [money
  * bag] Soon", /setup's three video choices and its permission list, the guided OBS setup a new
- * streamer lands in after Connect my Twitch, and plain words (no setting names) when Twitch
+ * streamer lands in after Sign in with Twitch, and plain words (no setting names) when Twitch
  * sign-in isn't open. This stack has no Twitch app: the Twitch-connected views of the guided setup
  * run on stubbed /api/studio answers, and what reaches the API (nothing before Finish) is checked
  * on the requests the page sends. tests/integration/onboarding.test.ts covers the API side.
@@ -116,7 +116,7 @@ test.describe("/setup: video sources and what Twitch is asked for", () => {
   });
 });
 
-test.describe("Studio: the guided setup after Connect my Twitch", () => {
+test.describe("Studio: the guided setup after Sign in with Twitch", () => {
   test.describe.configure({ mode: "serial" });
   test.skip(({ browserName }) => browserName !== "chromium");
 

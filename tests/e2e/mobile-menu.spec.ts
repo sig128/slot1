@@ -68,7 +68,8 @@ test.describe("phone header and menu", () => {
 
     // The bar: the wordmark, the sign-in action and a labelled Menu button; the tab row is tucked away.
     await expect(header.getByRole("link", { name: "SLOT1 home" })).toBeVisible();
-    await expect(header.getByRole("link", { name: "Connect my Twitch" })).toHaveAttribute("href", "/studio");
+    // Sign in goes straight to Twitch, then back into Studio.
+    await expect(header.getByRole("link", { name: "Sign in", exact: true })).toHaveAttribute("href", "/api/auth/twitch/start?returnTo=%2Fstudio");
     await expect(menuButton).toBeVisible();
     await expect(menuButton).toHaveAttribute("aria-expanded", "false");
     await expect(menuButton).toHaveAttribute("aria-haspopup", "dialog");
@@ -97,7 +98,7 @@ test.describe("phone header and menu", () => {
     await expect(onAir).toHaveAttribute("aria-current", "page");
     await expect(onAir).toHaveAccessibleDescription("Live channels and what SLOT1 logs");
     await expect(nav.getByRole("link", { name: "Right now" })).not.toHaveAttribute("aria-current");
-    await expect(menu.getByRole("link", { name: "Connect my Twitch" })).toHaveAttribute("href", "/studio");
+    await expect(menu.getByRole("link", { name: "Sign in with Twitch" })).toHaveAttribute("href", "/api/auth/twitch/start?returnTo=%2Fstudio");
     const more = menu.getByRole("navigation", { name: "More" });
     for (const [name, href] of [
       ["Live demo", "/demo"],
@@ -229,7 +230,7 @@ test.describe("phone header and menu", () => {
     const header = page.locator("header");
     const avatar = header.getByRole("link", { name: "Night Shift" });
     await expect(avatar).toHaveAttribute("href", "/studio");
-    await expect(header.getByRole("link", { name: "Connect my Twitch" })).toHaveCount(0);
+    await expect(header.getByRole("link", { name: /^Sign in/ })).toHaveCount(0);
     await expectTapTargets(avatar);
     await page.getByRole("button", { name: "Menu", exact: true }).click();
     const account = page.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "Night Shift" });
