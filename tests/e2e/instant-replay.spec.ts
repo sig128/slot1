@@ -52,7 +52,7 @@ test.describe("instant replay and timestamps", () => {
   });
   test.afterEach(() => expect(errors, "browser console errors").toEqual([]));
 
-  test("replays a moment beside Twitch's player, then goes back to live", async ({ page }) => {
+  test("replays a moment without hiding the live player, then goes back to live", async ({ page }) => {
     test.setTimeout(120_000);
     await page.goto(`/watch/${creator!.login}`);
     const replay = page.locator(`li[data-observation-id="${moment!.id}"]`).getByRole("button", { name: /^Instant replay: / });
@@ -65,12 +65,21 @@ test.describe("instant replay and timestamps", () => {
     await expect.poll(() => currentTime(page, "section[data-instant-replay] video"), { timeout: 20_000 }).toBeGreaterThan(0.5);
     // Keyboard focus moved into the player.
     expect(await pip.evaluate((el) => el.contains(document.activeElement))).toBe(true);
-    // The dev stack has no WebRTC, so the main player is Twitch's: the replay docks in SLOT1's
-    // rail and never covers it.
-    await expect(pip).toHaveAttribute("data-variant", "dock");
+    // Beside Twitch's player the replay docks in SLOT1's rail and never covers it. Over SLOT1's own
+    // video (here a channel without Twitch, shown with SLOT1's frame feed, on a wide screen) it sits
+    // in the player's corner.
+    const variant = await pip.getAttribute("data-variant");
     const main = (await page.locator("[data-main-player]").boundingBox())!;
     const box = (await pip.boundingBox())!;
-    expect(overlaps(main, box), `replay ${JSON.stringify(box)} over the main player ${JSON.stringify(main)}`).toBe(false);
+    if (variant === "dock") {
+      expect(overlaps(main, box), `replay ${JSON.stringify(box)} over the main player ${JSON.stringify(main)}`).toBe(false);
+    } else {
+      expect(variant).toBe("overlay");
+      expect(box.x, "inside the player").toBeGreaterThanOrEqual(main.x);
+      expect(box.x + box.width, "inside the player").toBeLessThanOrEqual(main.x + main.width + 1);
+      expect(box.y, "inside the player").toBeGreaterThanOrEqual(main.y);
+      expect(box.width, "a corner, not the whole player").toBeLessThan(main.width * 0.6);
+    }
     await noHorizontalOverflow(page);
     await page.screenshot({ path: `tests/e2e/screenshots/${test.info().project.name}/instant-replay.png` });
 
