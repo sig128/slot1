@@ -78,7 +78,7 @@ describe("/admin settings", () => {
       SLOT1_STATE_DIR: dir,
       SLOT1_VERSION: "abc1234",
       SLOT1_LEGAL_NAME: "Old Name AS",
-      SLOT1_OPERATOR_TWITCH_LOGINS: "kechupclan",
+      SLOT1_OPERATOR_TWITCH_LOGINS: "nightcrw",
       TWITCH_CLIENT_ID: "oldclientid000000000000000",
       TWITCH_CLIENT_SECRET: "oldsecret0000000000000000000",
       TWITCH_REDIRECT_URI: `${ORIGIN}/api/auth/twitch/callback`,
@@ -114,7 +114,7 @@ describe("/admin settings", () => {
     expect(v.values).toMatchObject({
       twitchClientId: "oldclientid000000000000000",
       twitchClientSecretSet: true,
-      adminTwitchLogins: "kechupclan",
+      adminTwitchLogins: "nightcrw",
       legalName: "Old Name AS",
       anthropicApiKeySet: false,
       autodeploy: true,
@@ -132,7 +132,7 @@ describe("/admin settings", () => {
     const ok = await admin.request("POST", "/api/admin/settings", {
       json: {
         twitchClientSecret: "newsecret0123456789abcdefghij",
-        adminTwitchLogins: " @KetchupClan ",
+        adminTwitchLogins: " @NightCrew ",
         legalAddress: "Øvre gate 1, 0150 Oslo",
         contactEmail: "",
       },
@@ -146,7 +146,7 @@ describe("/admin settings", () => {
     expect(req!.head).toBe("slot1-settings v1");
     expect(req!.lines).toEqual([
       ["set", "TWITCH_CLIENT_SECRET", "newsecret0123456789abcdefghij"],
-      ["set", "SLOT1_OPERATOR_TWITCH_LOGINS", "ketchupclan"],
+      ["set", "SLOT1_OPERATOR_TWITCH_LOGINS", "nightcrew"],
       ["clear", "SLOT1_CONTACT_EMAIL"],
       ["set", "SLOT1_LEGAL_ADDRESS", "Øvre gate 1, 0150 Oslo"],
     ]);

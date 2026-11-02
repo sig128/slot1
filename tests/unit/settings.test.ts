@@ -36,12 +36,12 @@ const CASES: [SettingKey, string][] = [
   ["TWITCH_CLIENT_ID", LONG(65)],
   ["TWITCH_CLIENT_SECRET", "abcdefghij0123456789abcdefghij"],
   ["TWITCH_CLIENT_SECRET", "abcdefghij0123456789 bcdefghij"],
-  ["SLOT1_OPERATOR_TWITCH_LOGINS", "ketchupclan"],
-  ["SLOT1_OPERATOR_TWITCH_LOGINS", "ketchupclan,second_admin"],
-  ["SLOT1_OPERATOR_TWITCH_LOGINS", "KetchupClan"],
+  ["SLOT1_OPERATOR_TWITCH_LOGINS", "nightcrew"],
+  ["SLOT1_OPERATOR_TWITCH_LOGINS", "nightcrew,second_admin"],
+  ["SLOT1_OPERATOR_TWITCH_LOGINS", "NightCrew"],
   ["SLOT1_OPERATOR_TWITCH_LOGINS", "a,b,c,d,e,f,g,h,i,j"],
   ["SLOT1_OPERATOR_TWITCH_LOGINS", "a,b,c,d,e,f,g,h,i,j,k"],
-  ["SLOT1_OPERATOR_TWITCH_LOGINS", "ketchupclan,"],
+  ["SLOT1_OPERATOR_TWITCH_LOGINS", "nightcrew,"],
   ["SLOT1_BOT_TWITCH_LOGIN", "slot1bot"],
   ["SLOT1_BOT_TWITCH_LOGIN", "slot1 bot"],
   ["ANTHROPIC_API_KEY", `sk-ant-api03-${LONG(40, "x")}_A-9`],
@@ -105,7 +105,7 @@ describe("Settings saved in /admin: the same rules as the server", () => {
 
   it("turns a patch into settings, tidying what people paste", () => {
     const patch = SettingsPatch.parse({
-      adminTwitchLogins: " @KetchupClan, Second_Admin ,",
+      adminTwitchLogins: " @NightCrew, Second_Admin ,",
       googleVerification: '<meta name="google-site-verification" content="abc-DEF_123" />',
       contactEmail: "",
       aiEnabled: true,
@@ -114,7 +114,7 @@ describe("Settings saved in /admin: the same rules as the server", () => {
     expect(settingsEntries(patch)).toEqual({
       ok: true,
       entries: [
-        { key: "SLOT1_OPERATOR_TWITCH_LOGINS", value: "ketchupclan,second_admin" },
+        { key: "SLOT1_OPERATOR_TWITCH_LOGINS", value: "nightcrew,second_admin" },
         { key: "VISION_PROVIDER", value: "anthropic" },
         { key: "SLOT1_AUTODEPLOY", value: "false" },
         { key: "SLOT1_GOOGLE_SITE_VERIFICATION", value: "abc-DEF_123" },
