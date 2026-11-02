@@ -66,7 +66,7 @@ OBS/capture ── RTMP ──► nginx-rtmp or MediaMTX ── hooks ──► 
 worker (BullMQ jobs + live supervisor) ── ffmpeg, tesseract, AI providers, Helix
 ```
 
-- **web**: `apps/web`. App Router, nonce-based CSP, official Twitch embeds only. Pages: On Air, Watch, Replay, Moments, Studio (with the clip editor), Setup, Los Santos right now, creator profiles and shared items, `/admin`, contact, privacy and terms.
+- **web**: `apps/web`. App Router, nonce-based CSP, official Twitch embeds only. Pages: On Air, Watch, Replay, Moments, Studio (with the clip editor), Setup, Los Santos right now, creator profiles and shared items, `/admin` (with Settings), `/status`, contact, privacy and terms.
 - **api**: `apps/api`. Handles sessions and CSRF, Twitch OAuth (state bound to the browser session), EventSub verification, uploads, signed media URLs, the SSE event stream with Last-Event-ID backfill, Studio, and gateway hooks.
 - **worker**: `apps/worker`. Runs upload analysis, live ingest (one Redis lease per source), recording, clips and renders, forwarding, chat commands, EventSub processing, token validation (hourly) and retention.
 - **inference**: `apps/inference`. An optional shared service that runs the GTA model for every stream, batching frames across them ([docs/SCALING.md](docs/SCALING.md)). Without it, each worker runs the model itself.
