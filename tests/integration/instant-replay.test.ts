@@ -274,13 +274,26 @@ describe.skipIf(!hasNginxRtmp)("instant replay through nginx-rtmp", () => {
     const moment = gray(file, Math.round(((r.momentOffsetMs! + 500) * FPS) / 1000));
     expect(diff(moment, gray(SAMPLE, 30 * FPS))).toBeLessThan(diff(moment, gray(SAMPLE, 20 * FPS)) / 3);
 
-    // The same window again is served from the cache, and nothing went into the library.
-    // The cache is proven by the single file below; the time only guards against a recut, with
-    // headroom for a busy machine.
-    const again = await replay(creator, { observationId: o.id });
-    expect(again.ms).toBeLessThan(4000);
+    // The same window again is served from the cache, and nothing went into the library. A cut
+    // that stopped at the live edge (under 4 s after the moment) is cut again, fuller, once the rest
+    // is saved: ask until the window stops growing, then the same window must come from the cache.
     const dir = path.join(h.storageRoot, "storage", "b", broadcasterId, "s", sessionId, "instant-replay");
-    expect((await readdir(dir)).filter((f) => f.endsWith(".mp4"))).toHaveLength(1);
+    const mp4s = async () => (await readdir(dir)).filter((f) => f.endsWith(".mp4")).length;
+    let last = r;
+    for (let i = 0; i < 4; i++) {
+      const next = (await replay(creator, { observationId: o.id })).r;
+      if (next.endMs === last.endMs) break;
+      expect(next.endMs).toBeGreaterThan(last.endMs);
+      expect(next.endMs).toBeLessThanOrEqual(o.mediaStartMs + 4000);
+      last = next;
+    }
+    const files = await mp4s();
+    const again = await replay(creator, { observationId: o.id });
+    expect(again.r.endMs).toBe(last.endMs);
+    expect(await mp4s()).toBe(files);
+    // The time only guards against a recut, with headroom for a busy machine.
+    expect(again.ms).toBeLessThan(4000);
+    if (r.endMs === o.mediaStartMs + 4000) expect(files).toBe(1);
     expect((await h.ctx.db.query(`SELECT count(*)::int AS n FROM evidence_assets WHERE storage_key LIKE '%/instant-replay/%'`)).rows[0].n).toBe(0);
     const lib = (await creator.get("/api/library")).json<{ items: { kind: string }[] }>().items;
     expect(lib.filter((i) => i.kind !== "recording")).toHaveLength(0);
