@@ -78,7 +78,8 @@ test.describe("clipping guides", () => {
     await expect(footer.getByRole("link", { name: "PS5 clips" })).toHaveAttribute("href", "/gta-clips/ps5");
     await expect(footer.getByRole("link", { name: "Xbox clips" })).toHaveAttribute("href", "/gta-clips/xbox");
     await expect(footer.getByRole("link", { name: "GTA 6 clips" })).toHaveAttribute("href", "/gta-6");
-    await expect(page.getByRole("link", { name: "Make GTA clips for TikTok" })).toHaveAttribute("href", "/gta-clips");
+    // The home page's "Auto-clips" row (its label: "Make GTA clips for TikTok") leads to the guides.
+    await expect(page.getByRole("region", { name: "What you get" }).getByRole("link", { name: "Auto-clips", exact: true })).toHaveAttribute("href", "/gta-clips");
 
     await page.goto("/gta-clips/ps5");
     await page.evaluate(() => window.scrollTo(0, 0));
