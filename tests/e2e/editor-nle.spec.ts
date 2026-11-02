@@ -25,6 +25,10 @@ let shared: { cookies: Awaited<ReturnType<ReturnType<Page["context"]>["cookies"]
 
 /** A fresh edit of the first upload; returns its URL and the second upload's session. */
 async function setup(page: Page, name: string): Promise<{ url: string; second: string }> {
+  // The shared creator's cookies go in before the first page load: the page asks /api/me as it
+  // loads, and without a session cookie that request starts an anonymous one that would replace
+  // cookies added afterwards.
+  if (shared) await page.context().addCookies(shared.cookies);
   await page.goto("/");
   const csrf = async () => (await (await page.request.get("/api/me")).json()).csrfToken as string;
   if (!shared) {
@@ -39,8 +43,6 @@ async function setup(page: Page, name: string): Promise<{ url: string; second: s
     const second = await upload("Airport heist");
     await expect.poll(async () => ((await (await page.request.get("/api/editor/sources")).json()).sources ?? []).length, { timeout: 120_000 }).toBe(2);
     shared = { cookies: await page.context().cookies(), first, second };
-  } else {
-    await page.context().addCookies(shared.cookies);
   }
   const p = await page.request.post("/api/projects", { headers: { "x-slot1-csrf": await csrf() }, data: { sessionId: shared.first, inMs: 20_000, outMs: 32_000, title: "Docks run, the jump" } });
   expect(p.ok()).toBe(true);
