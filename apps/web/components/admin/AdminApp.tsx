@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AdminMessagesResponse, AdminOverview, AdminUsage } from "@slot1/contracts";
+import type { AdminMessagesResponse, AdminOverview, AdminSettingsView, AdminUsage, TwitchSignInEvent } from "@slot1/contracts";
 import { api, ApiError } from "@/lib/api";
 import { MessagesInbox } from "./MessagesInbox";
+import { SettingsAlert, SettingsPanel } from "./SettingsPanel";
 import { ago, compact, duration, Health, num, Ranked, Section, size, Stat } from "./parts";
 import { VisitorsChart } from "./VisitorsChart";
 
@@ -35,6 +36,7 @@ const SECTIONS = [
   ["ai", "AI"],
   ["messages", "Messages"],
   ["system", "System"],
+  ["settings", "Settings"],
 ] as const;
 
 function usageLine(rows: AdminUsage[], kind: AdminUsage["kind"]) {
@@ -64,7 +66,7 @@ function AdminSignIns({ login, now }: { login: AdminOverview["system"]["adminLog
         </p>
       ) : null}
       <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4">
-        <Stat label="Admin password" value={login.passwordSet ? "set" : "not set"} note={login.passwordSet ? "Changing it signs everyone out" : "slot1 admin-password on the server"} />
+        <Stat label="Admin password" value={login.passwordSet ? "set" : "not set"} note={login.passwordSet ? "Changing it signs everyone out" : "Set one under Settings below"} />
         <Stat label="Signed in" value={num(login.last7d.succeeded)} note={`${num(login.today.succeeded)} today · ${last(login.lastSucceededAt)}`} />
         <Stat label="Wrong passwords" value={num(login.last7d.failed)} note={`${num(login.today.failed)} today · ${last(login.lastFailedAt)}`} />
         <Stat label="Refused by the limits" value={num(login.last7d.blocked)} note={`${num(login.today.blocked)} today`} />
@@ -73,7 +75,17 @@ function AdminSignIns({ login, now }: { login: AdminOverview["system"]["adminLog
   );
 }
 
-export function AdminApp({ initial, initialMessages }: { initial: AdminOverview; initialMessages: AdminMessagesResponse | null }) {
+export function AdminApp({
+  initial,
+  initialMessages,
+  initialSettings,
+  initialSignins,
+}: {
+  initial: AdminOverview;
+  initialMessages: AdminMessagesResponse | null;
+  initialSettings: AdminSettingsView | null;
+  initialSignins: TwitchSignInEvent[];
+}) {
   const [data, setData] = useState<AdminOverview>(initial);
   const [range, setRange] = useState<7 | 30>(initial.visitors.range.days);
   const [stale, setStale] = useState<string | null>(null);
@@ -169,6 +181,8 @@ export function AdminApp({ initial, initialMessages }: { initial: AdminOverview;
           </a>
         ))}
       </nav>
+
+      <SettingsAlert settings={initialSettings} events={initialSignins} />
 
       {!data.analyticsEnabled && (
         <p className="mt-6 border-l-2 border-apricot pl-3 text-[0.95rem]">Visitor counting is off on this server (SLOT1_ANALYTICS=false). Visitor numbers stay at what was counted before.</p>
@@ -462,6 +476,15 @@ export function AdminApp({ initial, initialMessages }: { initial: AdminOverview;
               )}
             </div>
           </div>
+        </Section>
+
+        {/* SETTINGS ---------------------------------------------------------------------- */}
+        <Section id="settings" title="Settings">
+          {initialSettings ? (
+            <SettingsPanel initial={initialSettings} initialEvents={initialSignins} now={now} />
+          ) : (
+            <p className="text-[0.95rem] text-ivory-3">Couldn’t load the settings. Reload the page.</p>
+          )}
         </Section>
       </div>
     </div>
