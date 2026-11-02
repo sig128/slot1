@@ -50,7 +50,7 @@ Every contact route points to `/contact?topic=privacy|copyright|support|general`
 **What gets indexed.** Only what an anonymous visitor may already open:
 - Public creator profiles and public items, from public channels.
 - Watch pages of SLOT1-connected public channels.
-- `noindex`: watch pages of other Twitch channels (watch-only), unlisted items, private previews, `/m/` links, `/studio`, `/admin` and `/demo`.
+- `noindex`: watch pages of other Twitch channels (watch-only), unlisted items, private previews, `/m/` links, `/studio` and `/admin`. `/demo` redirects to the home page.
 - The sitemap lists only Twitch-connected creators. Local development accounts and SLOT1's demo channel never appear.
 
 **Origin at runtime.** The production image is built without `.env`, so:

@@ -1,5 +1,7 @@
 # Live demo and "What the AI sees"
 
+> **Removed from the site (November 2026).** SLOT1 shows real streams only: `/demo` redirects to the home page, nothing links to it, and `slot1 update` switches `SLOT1_DEMO` off and removes the demo container (`slot1 demo` now just says so). The generator and the backend code below stay in the repository for tests and are not started anywhere. **What the AI sees** stays: it works on every live stream sent to SLOT1.
+
 The demo is a public channel, **SLOT1 Demo** (`/watch/slot1-demo`). It is fed by a test video that SLOT1 generates on its own server and runs through the same pipeline as a real creator's stream. It shows how broadcasting works and what the AI reads, without needing a streamer or OBS.
 
 The demo is **off by default**. Every place it appears says what it is:

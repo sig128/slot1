@@ -66,7 +66,7 @@ OBS/capture ── RTMP ──► nginx-rtmp or MediaMTX ── hooks ──► 
 worker (BullMQ jobs + live supervisor) ── ffmpeg, tesseract, AI providers, Helix
 ```
 
-- **web**: `apps/web`. App Router, nonce-based CSP, official Twitch embeds only. Pages: On Air, Watch, Replay, Moments, Studio (with the clip editor), Setup, Los Santos right now, creator profiles and shared items, `/demo` (the live demo, off by default), `/admin`, contact, privacy and terms.
+- **web**: `apps/web`. App Router, nonce-based CSP, official Twitch embeds only. Pages: On Air, Watch, Replay, Moments, Studio (with the clip editor), Setup, Los Santos right now, creator profiles and shared items, `/admin`, contact, privacy and terms.
 - **api**: `apps/api`. Handles sessions and CSRF, Twitch OAuth (state bound to the browser session), EventSub verification, uploads, signed media URLs, the SSE event stream with Last-Event-ID backfill, Studio, and gateway hooks.
 - **worker**: `apps/worker`. Runs upload analysis, live ingest (one Redis lease per source), recording, clips and renders, forwarding, chat commands, EventSub processing, token validation (hourly) and retention.
 - **inference**: `apps/inference`. An optional shared service that runs the GTA model for every stream, batching frames across them ([docs/SCALING.md](docs/SCALING.md)). Without it, each worker runs the model itself.
@@ -287,7 +287,7 @@ docs/           one document per feature, plus the capability matrix, asset mani
 - [docs/LOS_SANTOS_NOW.md](docs/LOS_SANTOS_NOW.md): the "Los Santos right now" page of public streams and what SLOT1 saw on each
 - [docs/GTA_MODEL.md](docs/GTA_MODEL.md): training SLOT1's own GTA model from opted-in streams, and the model registry
 - [docs/SCALING.md](docs/SCALING.md): the shared inference service for many streams, GPU notes, and CPU-only load measurements
-- [docs/DEMO.md](docs/DEMO.md): the live demo broadcast and the "What the AI sees" panel
+- [docs/DEMO.md](docs/DEMO.md): the demo broadcast (removed from the site) and the "What the AI sees" panel
 - [docs/ADMIN.md](docs/ADMIN.md): the `/admin` dashboard, cookieless visitor statistics, the contact form and the one-time admin link
 - [docs/LEGAL_AND_SEO.md](docs/LEGAL_AND_SEO.md): the Privacy Policy and Terms, and search metadata, sitemap, share cards and structured data
 - [docs/DEPLOY_HETZNER.md](docs/DEPLOY_HETZNER.md): running SLOT1 on one server, the `slot1` command, and what the deploy path verified
