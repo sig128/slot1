@@ -45,7 +45,8 @@ import {
   recordLoginSuccess,
   verifyAdminPassword,
 } from "../lib/admin-password";
-import { consumeLink, endAdminSession, linkUnused, readAdminSession, readLinkToken, startAdminSession, trackAdminPasswordHash } from "../lib/admin-session";
+import { adminAccess, requireAdmin as requireAdminAccess } from "../lib/admin-access";
+import { consumeLink, endAdminSession, linkUnused, readLinkToken, startAdminSession, trackAdminPasswordHash } from "../lib/admin-session";
 import { ApiProblem, conflict, notFound } from "../lib/errors";
 import { ONLINE_WINDOW_SEC, readPresence } from "../lib/visitors";
 
@@ -253,18 +254,8 @@ export const adminRoutes =
       await bull.conn.quit().catch(() => undefined);
     });
 
-    async function access(req: FastifyRequest): Promise<Access | null> {
-      if (req.auth.user?.is_operator) return "operator";
-      const session = await readAdminSession(ctx.redis, req);
-      if (session) return session.via === "password" ? "admin_password" : "admin_link";
-      return null;
-    }
-    async function requireAdmin(req: FastifyRequest, reply: FastifyReply): Promise<Access> {
-      const a = await access(req);
-      if (!a) throw notFound();
-      reply.header("cache-control", "no-store").header("x-robots-tag", "noindex, nofollow");
-      return a;
-    }
+    const access = (req: FastifyRequest): Promise<Access | null> => adminAccess(ctx, req);
+    const requireAdmin = (req: FastifyRequest, reply: FastifyReply): Promise<Access> => requireAdminAccess(ctx, req, reply);
 
     async function queueCounts(): Promise<{ list: AdminQueue[]; worker: AdminHealth }> {
       try {

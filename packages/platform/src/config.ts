@@ -164,6 +164,20 @@ const EnvSchema = z.object({
   SLOT1_VERSION: optStr,
   /** scrypt hash of the /admin password (docs/ADMIN.md); `slot1 admin-password` sets it. Never the password itself. */
   SLOT1_ADMIN_PASSWORD_HASH: optStr,
+  /**
+   * The server's state folder shared with the `slot1` command (docs/DEPLOY_HETZNER.md): the deploy
+   * status is read from outbox/, settings saved in /admin are left in inbox/ for the server.
+   */
+  SLOT1_STATE_DIR: z.string().default("/srv/slot1-state"),
+  /** Automatic updates on the server (the `slot1` command acts on it; /admin shows and changes it). */
+  SLOT1_AUTODEPLOY: bool(true),
+  /** Read by the website for the legal pages and search-engine verification; here only so /admin → Settings can show them. */
+  SLOT1_LEGAL_NAME: optStr,
+  SLOT1_LEGAL_ADDRESS: optStr,
+  SLOT1_CONTACT_EMAIL: optStr,
+  SLOT1_GOVERNING_LAW: optStr,
+  SLOT1_GOOGLE_SITE_VERIFICATION: optStr,
+  SLOT1_BING_SITE_VERIFICATION: optStr,
 });
 
 export type Env = z.infer<typeof EnvSchema>;

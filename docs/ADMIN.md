@@ -8,6 +8,9 @@
 - **AI:** vision, OCR, speech-to-text and GTA model status, plus provider calls and estimated cost.
 - **Messages:** what people sent through `/contact`.
 - **System:** version, uptime, database, Redis, free disk, admin sign-ins, job queues and recent failures.
+- **Settings:** the server's settings, changed in the browser (below), the automatic updates and their last log, the admin password, and recent "Sign in with Twitch" attempts with Twitch's own words.
+
+The public `/status` page shows, for anyone, whether the website, accounts, sign-in with Twitch, streaming and the AI work, and which version runs. It shows no settings, no Twitch error texts and no visitor numbers.
 
 Every number is counted from the database, Redis or the running services. Where something isn't measured, the page says so. It refreshes every 10 seconds while the tab is visible.
 
@@ -127,6 +130,15 @@ A hidden honeypot field catches bots: a message with it filled in gets a normal 
 - **Storage:** messages are stored in `contact_messages`. Operators read, close, reopen and delete them in `/admin` → Messages.
 - **Retention:** the retention sweep deletes messages 24 months after they were sent.
 
+## Settings in the browser
+
+The API can't edit the server's `.env`. When an admin saves a group in `/admin` → Settings, the page first checks every value with the same rules the server uses (`packages/contracts/src/settings.ts` mirrors `setting_ok` in `scripts/server-setup.sh`; `tests/unit/settings.test.ts` runs both on the same values). Then the API leaves one request in the shared state folder: `state/inbox/<id>.settings` on the server, `SLOT1_STATE_DIR/inbox` in the API container. Within a minute, `slot1 tick` checks it again, writes `.env`, answers in `state/outbox/settings-<id>.json` and restarts what reads the settings: only the website for the legal and search-engine fields, otherwise the API, worker, GTA model service and website (about 30 seconds). The page follows the request until the answer arrives.
+
+- What can be changed: the Twitch app (Client ID, Client Secret), the admin Twitch usernames, the chat bot account, the Anthropic key and the AI switch, the legal-page details, the search-engine codes, automatic updates and the admin password. Database passwords, session and encryption secrets and the domain can't be changed that way.
+- Secrets (Client Secret, Anthropic key) are write-only: the page only says whether one is saved. The API logs which keys a request changes, never the values, and keeps only "saved" for secrets.
+- A new admin password needs the current one, except when none is set yet. The API hashes it (scrypt), so the request holds only the hash. Once applied, every admin session ends.
+- A server installed without the setup script has no shared folder; the page then says saving isn't available and the forms are off.
+
 ## Endpoints
 
 | Endpoint | Access |
@@ -140,6 +152,13 @@ A hidden honeypot field catches bots: a message with it filled in gets a normal 
 | `POST /api/admin/login` `{password}` | anyone, with CSRF; the limits above. 200 starts an admin session; 401 wrong password; 409 no password set; 429 limited, with `Retry-After` |
 | `GET` and `POST /api/admin/link` | the one-time link page and its button |
 | `POST /api/admin/logout` | ends an admin session |
+| `GET /api/admin/settings` | operators and admin sessions: current values (secrets only as saved or not), whether saving works here, the last deploy and the server's recent answers |
+| `POST /api/admin/settings` `{field: value, …}` | operators and admin sessions, with CSRF; 10 per minute. 200 `{id}`; 422 with `fields` when a value would be refused; 409 when this server can't take settings |
+| `GET /api/admin/settings/requests/:id` | operators and admin sessions: `pending`, `applied`, `refused` or `unknown` |
+| `POST /api/admin/password` `{current, next}` | operators and admin sessions, with CSRF; 5 per minute; 401 wrong current password |
+| `GET /api/admin/deploy-log` | operators and admin sessions: the last 200 lines of the last automatic update |
+| `GET /api/admin/signins` | operators and admin sessions: the last 20 "Sign in with Twitch" attempts |
+| `GET /api/status` | anyone: what `/status` shows; cached 15 seconds |
 
 ## Configuration
 
@@ -149,7 +168,8 @@ A hidden honeypot field catches bots: a message with it filled in gets a normal 
 | `SLOT1_ANALYTICS` | `true` | `false` stops visitor counting |
 | `SLOT1_CONTACT_EMAIL` | empty | Public contact address shown on `/contact` (web, read at request time) |
 | `SLOT1_VERSION` | empty | Version or commit shown under System. The server script can set it on each update. |
-| `SLOT1_ADMIN_PASSWORD_HASH` | empty | scrypt hash of the admin password (`slot1 admin-password`). Empty or malformed: no password sign-in. Changing it signs out every admin session. |
+| `SLOT1_ADMIN_PASSWORD_HASH` | empty | scrypt hash of the admin password (`slot1 admin-password`, or `/admin` → Settings). Empty or malformed: no password sign-in. Changing it signs out every admin session. |
+| `SLOT1_STATE_DIR` | `/srv/slot1-state` | The server's state folder as the API container sees it (`inbox/` read-write, `outbox/` read-only; docker-compose.yml mounts it). |
 
 ## Verified, and not
 
@@ -164,6 +184,10 @@ A hidden honeypot field catches bots: a message with it filled in gets a normal 
   - `/api/admin/*` answers 404 to anonymous visitors and non-operators
   - the admin link: single use, expiry, tampering and cross-site refusal; the CLI in production mode with Secure cookies; an admin session can't reach operator-only routes
   - contact: validation, honeypot, hourly limit, inbox actions, pagination and 24-month retention
+- **Settings in the browser** (`tests/unit/settings.test.ts`, `tests/integration/settings.test.ts`, `tests/e2e/admin-settings.spec.ts`):
+  - the page's and API's rules give the same answer as the server script's own check on 53 values (run in bash in the C locale like `slot1 tick`, and never more lenient than in a UTF-8 terminal), including `$`, quotes, backslash, `#`, newlines, UTF-8 addresses and byte limits; the same settings can be emptied
+  - the request file's exact content and atomic write; 404 for visitors and creators; CSRF; 422 naming the field; secrets never returned; the first password and a change needing the current one; no shared folder means saving is off
+  - in a browser at 1440 and 390 px: a refused value caught on the page, a request in the inbox, the server's answer shown, the update log, and `/status`
 - **Admin password** (`tests/integration/admin-password.test.ts`, real API, SQL and Redis; `tests/unit/admin-password.test.ts`):
   - the hash format and parameters, verification, Unicode normalization and malformed values; the CLI reading stdin only, its 12-character minimum and its output line
   - right and wrong passwords, the generic answer and its minimum delay, and the session it starts (12 hours, HttpOnly, SameSite=Strict, Secure in production)

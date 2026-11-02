@@ -53,7 +53,7 @@ function notice(search: URLSearchParams, origin: string): Omit<SignInNotice, "co
           tone: "warn",
           title: "Sign in with Twitch isn't open yet.",
           body: "It opens as soon as the site's Twitch app is connected.",
-          owner: "Site owner: create the app at dev.twitch.tv/console and save its Client ID and Secret on the server.",
+          owner: "Site owner: create the app at dev.twitch.tv/console, then save its Client ID and Secret in Admin → Settings → Twitch app.",
           retry: false,
         };
       case "app_secret":
@@ -61,7 +61,7 @@ function notice(search: URLSearchParams, origin: string): Omit<SignInNotice, "co
           tone: "error",
           title: "Twitch didn't accept this site's app secret.",
           body: "Sign-in can't finish until it's fixed. It's a setting on SLOT1's side; nothing is wrong with your Twitch account.",
-          owner: "Site owner: in the Twitch developer console, open the app, click New Secret, and save the new secret on the server.",
+          owner: "Site owner: in the Twitch developer console, open the app and click New Secret, then paste it in Admin → Settings → Twitch app.",
           retry: true,
         };
       case "app_client":
@@ -69,7 +69,7 @@ function notice(search: URLSearchParams, origin: string): Omit<SignInNotice, "co
           tone: "error",
           title: "Twitch doesn't recognize this site's app.",
           body: "Sign-in can't finish until it's fixed. Nothing is wrong with your Twitch account.",
-          owner: "Site owner: the Client ID saved on the server doesn't match the app in the Twitch developer console.",
+          owner: "Site owner: copy the Client ID from the Twitch developer console into Admin → Settings → Twitch app.",
           retry: true,
         };
       case "redirect":
