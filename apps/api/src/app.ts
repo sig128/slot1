@@ -78,12 +78,14 @@ export async function buildApp({ ctx, hub }: AppDeps): Promise<FastifyInstance> 
 
   app.setErrorHandler(async (err, req, reply) => {
     if (err instanceof ApiProblem) {
-      // Requirements can name server settings: only operators see those (lib/setup-details.ts).
-      // Everyone else's friendly version can be the message itself; then it isn't said twice.
+      // Messages and requirements can name server settings: only operators see those
+      // (lib/setup-details.ts). Everyone else's friendly version can be the message itself; then it
+      // isn't said twice.
+      const message = (await textForRequest(ctx, req, err.message)) ?? err.message;
       const text = await textForRequest(ctx, req, err.requirement);
       const same = (x: string) => x.trim().replace(/[.!?]$/, "").toLowerCase();
-      const requirement = text && same(text) !== same(err.message) ? text : null;
-      return reply.status(err.status).send({ error: { code: err.code, message: err.message, requirement } });
+      const requirement = text && same(text) !== same(message) ? text : null;
+      return reply.status(err.status).send({ error: { code: err.code, message, requirement } });
     }
     if (err instanceof ZodError) {
       const issue = err.issues[0];

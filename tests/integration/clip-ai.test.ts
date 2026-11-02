@@ -495,10 +495,11 @@ describe("AI clip tools", () => {
     const someone = new Browser(plain);
     await someone.signInLocal("No Key Creator");
     const status = (await someone.get("/api/clip-ai/status")).json<ClipAiStatusResponse>();
-    expect(status.textModel).toMatchObject({ available: false, reason: "No AI key is set on this server. On the server, run: slot1 ai" });
+    // A creator gets plain words; the server command is for whoever runs SLOT1 (operators).
+    expect(status.textModel).toMatchObject({ available: false, reason: "No AI key is set on this server." });
     const r = await someone.request("POST", "/api/clip-ai/edit", { json: { request: "faster", edl } });
     expect(r.status).toBe(503);
-    expect(r.json().error).toMatchObject({ code: "unavailable", message: "AI writing isn't set up on this server", requirement: "No AI key is set on this server. On the server, run: slot1 ai" });
+    expect(r.json().error).toMatchObject({ code: "unavailable", message: "AI writing isn't set up on this server", requirement: "No AI key is set on this server." });
     expect((await someone.request("POST", "/api/clip-ai/post", { json: { edl, platforms: ["x"] } })).status).toBe(503);
   });
 });

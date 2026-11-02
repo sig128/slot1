@@ -273,8 +273,10 @@ describe("pro clip editor", () => {
   it("says exactly what's missing when captions can't be generated", async () => {
     const r = await creator.request("POST", `/api/projects/${projectId}/captions`);
     expect(r.status).toBe(409);
-    expect(r.json().error.message).toContain("TRANSCRIPTION_PROVIDER");
-    expect(r.json().error.requirement).toContain("TRANSCRIPTION_MODEL");
+    // A creator gets plain words; server settings are for whoever runs SLOT1 (operators).
+    expect(r.json().error.message).toBe("Captions can't be generated on this server.");
+    expect(r.json().error.requirement).toBe("You can still type captions by hand.");
+    expect(JSON.stringify(r.json())).not.toMatch(/TRANSCRIPTION_|slot1 /);
     expect((await creator.get(`/api/projects/${projectId}/captions`)).json()).toEqual({ status: "none", error: null, cues: [], sequenceId: "main" });
   });
 

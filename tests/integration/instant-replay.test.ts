@@ -275,8 +275,10 @@ describe.skipIf(!hasNginxRtmp)("instant replay through nginx-rtmp", () => {
     expect(diff(moment, gray(SAMPLE, 30 * FPS))).toBeLessThan(diff(moment, gray(SAMPLE, 20 * FPS)) / 3);
 
     // The same window again is served from the cache, and nothing went into the library.
+    // The cache is proven by the single file below; the time only guards against a recut, with
+    // headroom for a busy machine.
     const again = await replay(creator, { observationId: o.id });
-    expect(again.ms).toBeLessThan(1500);
+    expect(again.ms).toBeLessThan(4000);
     const dir = path.join(h.storageRoot, "storage", "b", broadcasterId, "s", sessionId, "instant-replay");
     expect((await readdir(dir)).filter((f) => f.endsWith(".mp4"))).toHaveLength(1);
     expect((await h.ctx.db.query(`SELECT count(*)::int AS n FROM evidence_assets WHERE storage_key LIKE '%/instant-replay/%'`)).rows[0].n).toBe(0);

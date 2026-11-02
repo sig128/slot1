@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { loadStudioAssetManifest, ProviderError } from "@slot1/analysis";
 import {
@@ -39,6 +39,7 @@ import {
 } from "@slot1/services";
 import { ApiProblem, notFound } from "../lib/errors";
 import { requireBroadcaster } from "../lib/session";
+import { textForRequest } from "../lib/setup-details";
 
 const IdParam = z.object({ id: z.string().uuid() });
 
@@ -85,14 +86,20 @@ export const clipAiRoutes =
   (ctx: ServerContext): FastifyPluginAsync =>
   async (app) => {
     /** What the tools can use on this server: the text model and the Studio library. */
+    /** The text model's state for this viewer: server settings and commands only for operators. */
+    const textModelFor = async (req: FastifyRequest) => {
+      const s = textModelStatus(ctx.config);
+      return { ...s, reason: await textForRequest(ctx, req, s.reason, "AI writing isn't switched on yet on SLOT1") };
+    };
+
     app.get("/api/clip-ai/status", async (req): Promise<ClipAiStatusResponse> => {
       requireBroadcaster(req);
-      return { textModel: textModelStatus(ctx.config), libraryAssets: loadStudioAssetManifest().assets.length };
+      return { textModel: await textModelFor(req), libraryAssets: loadStudioAssetManifest().assets.length };
     });
 
     app.get("/api/clip-ai/sessions", async (req): Promise<ClipAiSessionsResponse> => {
       const b = requireBroadcaster(req);
-      return { sessions: await listClipAiSessions(ctx, b.id), textModel: textModelStatus(ctx.config), libraryAssets: loadStudioAssetManifest().assets.length };
+      return { sessions: await listClipAiSessions(ctx, b.id), textModel: await textModelFor(req), libraryAssets: loadStudioAssetManifest().assets.length };
     });
 
     /** Start the one-time loudness analysis of a session's stored video. */
