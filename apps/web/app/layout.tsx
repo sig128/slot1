@@ -38,6 +38,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/setup" className="hover:text-ivory">
                 How SLOT1 works
               </Link>
+              <Link href="/gta-clips" className="hover:text-ivory">
+                GTA clips for TikTok
+              </Link>
+              <Link href="/gta-clips/ps5" className="hover:text-ivory">
+                PS5 clips
+              </Link>
+              <Link href="/gta-clips/xbox" className="hover:text-ivory">
+                Xbox clips
+              </Link>
+              <Link href="/gta-6" className="hover:text-ivory">
+                GTA 6 clips
+              </Link>
               <Link href="/privacy" className="hover:text-ivory">
                 Privacy
               </Link>

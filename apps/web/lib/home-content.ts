@@ -15,8 +15,8 @@ export const FEATURES: Feature[] = [
   {
     name: "Auto-clips",
     body: "Big moments are cut into clips while you play. Trim, caption and share them to TikTok, YouTube or Instagram from your phone.",
-    href: "/studio#library",
-    cta: "Open Studio",
+    href: "/gta-clips",
+    cta: "Make GTA clips for TikTok",
   },
   {
     name: "Instant replay",

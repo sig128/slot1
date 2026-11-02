@@ -1,0 +1,217 @@
+/*
+ * The clipping guides (/gta-clips, /gta-clips/ps5, /gta-clips/xbox, /gta-clips/pc, /gta-6): the
+ * /setup pause-menu frame (setup.css) plus the few pieces a guide adds: the breadcrumb, panels
+ * side by side, questions that open in place and the guide links. Colours as in setup.css.
+ */
+
+.cg-crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 0;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+}
+.cg-crumbs li {
+  display: inline-flex;
+  align-items: center;
+  color: #b8b0a4;
+}
+.cg-crumbs li + li::before {
+  content: "/";
+  margin: 0 8px;
+  color: rgb(244 237 226 / 0.35);
+}
+.cg-crumbs a {
+  color: #e9e1d6;
+  text-decoration: underline;
+  text-decoration-color: rgb(244 237 226 / 0.3);
+  text-underline-offset: 3px;
+}
+.cg-crumbs a:hover {
+  color: #ffc94d;
+}
+.cg-crumbs [aria-current="page"] {
+  color: #ffc94d;
+}
+
+.cg-title {
+  max-width: 22ch;
+  font-size: clamp(2.2rem, 6.4vw, 3.6rem);
+  text-wrap: balance;
+}
+
+.cg-intro {
+  max-width: 68ch;
+}
+
+/* Panels: one column on phones, two on tablets, three side by side when there are three. */
+.cg-panels {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+@media (min-width: 720px) {
+  .cg-panels {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1100px) {
+  .cg-three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.cg-panel {
+  display: flex;
+  flex-direction: column;
+}
+.cg-panel-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+.cg-panel-body {
+  margin-top: 8px;
+  color: #d8d0c4;
+  line-height: 1.55;
+}
+.cg-panel-link {
+  margin-top: auto;
+  padding-top: 12px;
+  align-self: flex-start;
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-weight: 800;
+  font-size: 1.08rem;
+  color: #ffc94d;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+.cg-panel-link:hover {
+  color: #fbf4ea;
+}
+
+/* All steps in one row on wide screens (3 to 5 of them), not 4 and a straggler. */
+@media (min-width: 1024px) {
+  .su-objectives.cg-steps {
+    grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
+  }
+}
+
+/* Questions: each opens in place; the answer is in the page either way. */
+.cg-faq {
+  display: grid;
+  gap: 8px;
+  max-width: 64rem;
+  margin-top: 16px;
+}
+.cg-q {
+  background: rgb(12 7 17 / 0.82);
+  border: 1px solid rgb(244 237 226 / 0.1);
+}
+.cg-q[open] {
+  border-color: rgb(255 201 77 / 0.4);
+}
+.cg-q summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 52px;
+  padding: 10px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+.cg-q summary::-webkit-details-marker {
+  display: none;
+}
+.cg-q summary::after {
+  content: "+";
+  flex: none;
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-weight: 800;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #ffc94d;
+}
+.cg-q[open] summary::after {
+  content: "–";
+}
+.cg-q summary:focus-visible {
+  outline: 2px solid #ffc94d;
+  outline-offset: 2px;
+}
+.cg-q h3 {
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-weight: 800;
+  font-size: 1.22rem;
+  line-height: 1.15;
+  color: #fbf4ea;
+}
+.cg-q p {
+  padding: 0 16px 14px;
+  max-width: 72ch;
+  color: #d8d0c4;
+  line-height: 1.6;
+}
+
+/* The other guides. */
+.cg-related {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 0;
+  list-style: none;
+}
+@media (min-width: 720px) {
+  .cg-related {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1100px) {
+  .cg-related {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.cg-related a {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  height: 100%;
+  padding: 14px 16px;
+  background: rgb(12 7 17 / 0.82);
+  border: 1px solid rgb(244 237 226 / 0.1);
+  transition: border-color 0.15s ease;
+}
+.cg-related a:hover,
+.cg-related a:focus-visible {
+  border-color: #ffc94d;
+}
+.cg-related b {
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-weight: 800;
+  font-size: 1.2rem;
+  color: #fbf4ea;
+}
+.cg-related span {
+  font-size: 0.9rem;
+  color: #b8b0a4;
+}
+
+.cg-end-line {
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-weight: 800;
+  font-size: 1.35rem;
+  color: #fbf4ea;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cg-related a {
+    transition: none;
+  }
+}

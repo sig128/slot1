@@ -63,11 +63,36 @@ export function webApplication(origin: string, description: string): Thing {
   };
 }
 
-export function faqPage(origin: string, items: { q: string; a: string }[]): Thing {
+export function faqPage(origin: string, items: { q: string; a: string }[], path = "/"): Thing {
   return {
     "@type": "FAQPage",
-    "@id": abs(origin, "/#faq"),
+    "@id": abs(origin, `${path}#faq`),
     mainEntity: items.map((i) => ({ "@type": "Question", name: i.q, acceptedAnswer: { "@type": "Answer", text: i.a } })),
+  };
+}
+
+/** One article-like page of the site (a guide), part of the website. */
+export function webPage(origin: string, p: { path: string; name: string; description: string; breadcrumb?: boolean }): Thing {
+  return {
+    "@type": "WebPage",
+    "@id": abs(origin, `${p.path}#page`),
+    url: abs(origin, p.path),
+    name: p.name,
+    description: p.description,
+    inLanguage: "en",
+    isPartOf: { "@id": abs(origin, "/#website") },
+    about: { "@id": abs(origin, "/#app") },
+    ...(p.breadcrumb ? { breadcrumb: { "@id": abs(origin, `${p.path}#breadcrumb`) } } : {}),
+  };
+}
+
+/** Home › … › this page, for search results that show the path. */
+export function breadcrumbList(origin: string, path: string, trail: { name: string; path: string }[]): Thing {
+  const items = [{ name: "Home", path: "/" }, ...trail];
+  return {
+    "@type": "BreadcrumbList",
+    "@id": abs(origin, `${path}#breadcrumb`),
+    itemListElement: items.map((t, i) => ({ "@type": "ListItem", position: i + 1, name: t.name, item: abs(origin, t.path) })),
   };
 }
 

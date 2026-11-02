@@ -13,6 +13,12 @@ const STATIC: { path: string; changeFrequency: "always" | "daily" | "weekly" | "
   { path: "/los-santos", changeFrequency: "always", priority: 0.9 },
   { path: "/moments", changeFrequency: "daily", priority: 0.6 },
   { path: "/setup", changeFrequency: "monthly", priority: 0.7 },
+  // The clipping guides (lib/clip-guides.ts): what people search for when they want GTA clips.
+  { path: "/gta-clips", changeFrequency: "weekly", priority: 0.9 },
+  { path: "/gta-clips/ps5", changeFrequency: "weekly", priority: 0.9 },
+  { path: "/gta-clips/xbox", changeFrequency: "weekly", priority: 0.9 },
+  { path: "/gta-clips/pc", changeFrequency: "weekly", priority: 0.8 },
+  { path: "/gta-6", changeFrequency: "weekly", priority: 0.9 },
   { path: "/contact", changeFrequency: "yearly", priority: 0.3 },
   { path: "/privacy", changeFrequency: "yearly", priority: 0.3 },
   { path: "/terms", changeFrequency: "yearly", priority: 0.3 },

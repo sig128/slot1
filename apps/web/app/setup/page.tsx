@@ -249,6 +249,10 @@ export default function SetupPage() {
             Video sources
           </h2>
           <VideoSources />
+          <p className="su-note">
+            Step by step, from the console to a posted clip: <Link href="/gta-clips/ps5">PS5</Link>, <Link href="/gta-clips/xbox">Xbox</Link> and{" "}
+            <Link href="/gta-clips/pc">PC</Link>.
+          </p>
         </section>
 
         <section id="stream" className="su-section" aria-labelledby="stream-h">
