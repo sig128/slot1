@@ -100,11 +100,12 @@ test.describe("phone header and menu", () => {
     await expect(nav.getByRole("link", { name: "Right now" })).not.toHaveAttribute("aria-current");
     await expect(menu.getByRole("link", { name: "Sign in with Twitch" })).toHaveAttribute("href", "/api/auth/twitch/start?returnTo=%2Fstudio");
     const more = menu.getByRole("navigation", { name: "More" });
+    await expect(more.getByRole("link", { name: /demo/i })).toHaveCount(0);
     for (const [name, href] of [
-      ["Live demo", "/demo"],
       ["Privacy", "/privacy"],
       ["Terms", "/terms"],
       ["Contact", "/contact"],
+      ["System status", "/status"],
     ] as const) {
       await expect(more.getByRole("link", { name })).toHaveAttribute("href", href);
     }

@@ -27,6 +27,7 @@ export const MORE_NAV: { href: string; label: string }[] = [
   { href: "/privacy", label: "Privacy" },
   { href: "/terms", label: "Terms" },
   { href: "/contact", label: "Contact" },
+  { href: "/status", label: "System status" },
 ];
 
 /** Where the tab row takes over from the menu (Tailwind's `md`): the row needs about 680 px. */
