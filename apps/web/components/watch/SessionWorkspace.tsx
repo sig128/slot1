@@ -64,9 +64,12 @@ interface Props {
   initialMomentId?: string | null;
   /** Live: open the "What the AI sees" panel on load (the demo page does). */
   aiViewOpen?: boolean;
+  /** The channel name's heading level: h2 where the page already has an h1 (the home page's Live now). */
+  nameAs?: "h1" | "h2";
 }
 
 export function SessionWorkspace(p: Props) {
+  const Name = p.nameAs ?? "h1";
   const now = useNow(1000);
   const stream = useSessionStream(
     p.session?.id ?? null,
@@ -90,7 +93,8 @@ export function SessionWorkspace(p: Props) {
   const [selected, setSelected] = useState<string | null>(p.initialMomentId ?? null);
   const [tab, setTab] = useState("log");
   const [theater, setTheater] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
+  // Twitch chat shows by default next to the live player; it can be hidden.
+  const [chatOpen, setChatOpen] = useState(true);
   const [position, setPosition] = useState<number | null>(null);
   const [panel, setPanel] = useState<null | "moment" | "clip">(null);
   const aiViewAvailable = p.mode === "live" && Boolean(p.session) && !p.watchOnly && !p.fixture;
@@ -182,7 +186,7 @@ export function SessionWorkspace(p: Props) {
             </span>
           )}
           <div className="min-w-0">
-            <h1 className="poster-title text-[length:var(--text-display-md)] font-black leading-[0.92]">{p.identity.displayName}</h1>
+            <Name className="poster-title text-[length:var(--text-display-md)] font-black leading-[0.92]">{p.identity.displayName}</Name>
             {p.identity.title && <p className="mt-1.5 max-w-[70ch] text-[1.02rem] text-ivory-2">{p.identity.title}</p>}
             <div className="mt-1 flex flex-wrap gap-x-5 text-sm text-ivory-3">
               {p.identity.category && <span title="Category set by the creator on Twitch">{p.identity.category}</span>}

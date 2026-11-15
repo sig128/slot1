@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ClipView, ObservationPage, WatchChannelResponse } from "@slot1/contracts";
 import { clipEmbedUrl, EMBED_MIN_WIDTH } from "@slot1/twitch/url";
+import { compactNumber } from "@/lib/format";
 import { AiFramePlayer } from "./AiView";
 import { LivePlayerSwitch } from "./LivePlayerSwitch";
 import { SessionWorkspace } from "./SessionWorkspace";
@@ -16,6 +17,7 @@ export function WatchClient({
   clipSlug,
   momentId = null,
   aiViewOpen = false,
+  nameAs = "h1",
 }: {
   watch: WatchChannelResponse;
   page: ObservationPage | null;
@@ -26,6 +28,8 @@ export function WatchClient({
   momentId?: string | null;
   /** Open "What the AI sees" on load (the demo page). */
   aiViewOpen?: boolean;
+  /** The channel name's heading level (h2 on the home page). */
+  nameAs?: "h1" | "h2";
 }) {
   const c = watch.channel;
   const session = watch.session;
@@ -107,8 +111,10 @@ export function WatchClient({
         avatarUrl: c.avatarUrl,
         title: c.broadcast.title,
         category: c.broadcast.category,
+        subtitle: typeof c.followers === "number" ? `${compactNumber(c.followers)} ${c.followers === 1 ? "follower" : "followers"}` : undefined,
         twitchUrl: onTwitch ? c.twitchUrl : null,
       }}
+      nameAs={nameAs}
       broadcast={c.broadcast.state}
       fallbackStatus={c.analysis}
       livePlayer={player}

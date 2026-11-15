@@ -253,3 +253,63 @@ export async function disconnectBroadcaster(ctx: ServerContext, broadcasterId: s
     ctx.log.warn({ err: sanitizeErrorMessage((err as Error).message) }, "eventsub cleanup failed"),
   );
 }
+
+/* ------------------------------------------------------------------------------------------ */
+/* Follower counts                                                                             */
+/* ------------------------------------------------------------------------------------------ */
+
+const FOLLOWERS_TTL_SEC = 600;
+const followersKey = (twitchUserId: string) => `slot1:followers:${twitchUserId}`;
+
+/**
+ * Whose token reads follower totals. Twitch answers Get Channel Followers to user tokens only (an
+ * app token is refused); with no scope it returns just the public total. Preference: SLOT1's bot
+ * account, then an operator's own account, then any connected account, so the counts work as soon
+ * as one Twitch account is connected. Read-only, public numbers.
+ */
+async function followerReader(ctx: ServerContext): Promise<{ role: "bot" | "broadcaster"; twitchUserId: string } | null> {
+  const bot = await getBotGrant(ctx.db);
+  if (bot && bot.status === "active") return { role: "bot", twitchUserId: bot.twitch_user_id };
+  const grants = (await listActiveGrants(ctx.db)).filter((g) => g.role === "broadcaster");
+  const pick = grants.find((g) => ctx.config.operatorLogins.has(g.twitch_login.toLowerCase())) ?? grants[0];
+  return pick ? { role: "broadcaster", twitchUserId: pick.twitch_user_id } : null;
+}
+
+/**
+ * Twitch follower totals by Twitch user id, cached for 10 minutes. Ids Twitch couldn't answer for
+ * are left out (shown as unknown, never as 0).
+ */
+export async function followerTotals(ctx: ServerContext, twitchUserIds: (string | null | undefined)[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  const want = [...new Set(twitchUserIds.filter((x): x is string => typeof x === "string" && /^\d{1,20}$/.test(x)))].slice(0, 50);
+  if (want.length === 0 || !ctx.helix) return out;
+  const cached = await ctx.redis.mget(...want.map(followersKey)).catch(() => want.map(() => null));
+  const missing: string[] = [];
+  want.forEach((id, i) => {
+    const v = cached[i];
+    if (typeof v === "string" && /^\d+$/.test(v)) out.set(id, Number(v));
+    else missing.push(id);
+  });
+  if (missing.length === 0) return out;
+  let token: string;
+  try {
+    const reader = await followerReader(ctx);
+    if (!reader) return out;
+    token = (await userToken(ctx, reader.role, reader.twitchUserId)).token;
+  } catch {
+    return out;
+  }
+  const helix = ctx.helix;
+  await Promise.all(
+    missing.slice(0, 20).map(async (id) => {
+      try {
+        const total = await helix.getFollowerTotal(token, id);
+        out.set(id, total);
+        await ctx.redis.set(followersKey(id), String(total), "EX", FOLLOWERS_TTL_SEC);
+      } catch {
+        /* unknown: left out */
+      }
+    }),
+  );
+  return out;
+}

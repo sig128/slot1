@@ -174,6 +174,10 @@ export class MockTwitch {
   streamKeys = new Map<string, string>();
   /** When true, Get Stream Key answers 503 like a Twitch outage. */
   streamKeyOutage = false;
+  /** login → the stream Get Streams reports for it (none listed: offline). */
+  liveStreams = new Map<string, { title: string; game: string; viewers: number }>();
+  /** user id → follower total served by Get Channel Followers (user tokens only, like Twitch). */
+  followers = new Map<string, number>();
   requests: string[] = [];
   /** Answers the next token requests with these errors, the way Twitch words them. */
   tokenFailures: { status: number; message: string }[] = [];
@@ -300,7 +304,27 @@ export class MockTwitch {
       if (!this.streamKeys.has(b)) this.streamKeys.set(b, `live_${b}_${randomUUID().replace(/-/g, "").slice(0, 24)}`);
       return send(200, { data: [{ stream_key: this.streamKeys.get(b) }] });
     }
-    if (p === "streams") return send(200, { data: [], pagination: {} });
+    if (p === "streams") {
+      const ids = url.searchParams.getAll("user_id");
+      const logins = url.searchParams.getAll("user_login").map((l) => l.toLowerCase());
+      const data = [...this.users.values()]
+        .filter((u) => this.liveStreams.has(u.login) && (ids.includes(u.id) || logins.includes(u.login)))
+        .map((u) => {
+          const st = this.liveStreams.get(u.login)!;
+          return {
+            id: `s${u.id}`, user_id: u.id, user_login: u.login, user_name: u.displayName, game_id: "32982", game_name: st.game, type: "live",
+            title: st.title, viewer_count: st.viewers, started_at: new Date(Date.now() - 3_600_000).toISOString(),
+            thumbnail_url: `https://static-cdn.jtvnw.net/previews-ttv/live_user_${u.login}-{width}x{height}.jpg`,
+          };
+        });
+      return send(200, { data, pagination: {} });
+    }
+    if (p === "channels/followers" && req.method === "GET") {
+      // Twitch refuses app tokens here; any user token gets the total (the list only for the broadcaster or a moderator).
+      if (tokenUser === "app") return send(401, { status: 401, message: "Missing User OAUTH Token" });
+      const b = url.searchParams.get("broadcaster_id") ?? "";
+      return send(200, { total: this.followers.get(b) ?? 0, data: [], pagination: {} });
+    }
     if (p === "clips" && req.method === "POST") {
       const b = url.searchParams.get("broadcaster_id") ?? "";
       if (tokenUser !== b || this.clipsDisabled) return send(403, { status: 403, message: "User does not have permission" });

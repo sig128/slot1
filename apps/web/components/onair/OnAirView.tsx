@@ -1,5 +1,6 @@
 import "@/components/home/intro.css";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import type { Capabilities, ChannelCard, DirectoryResponse } from "@slot1/contracts";
 import { ScenePlayback } from "@/components/brand/ScenePlayback";
 import { SkylineArt } from "@/components/brand/SkylineArt";
@@ -20,7 +21,7 @@ import { ChannelAvatar, LiveDirectory } from "./LiveDirectory";
  * JavaScript); only the directory search, the link opener and the playback control are client
  * code. The sequence is in components/home/intro.css.
  */
-export function OnAirView({ directory, capabilities }: { directory: DirectoryResponse; capabilities: Capabilities | null }) {
+export function OnAirView({ directory, capabilities, liveNow }: { directory: DirectoryResponse; capabilities: Capabilities | null; liveNow?: ReactNode }) {
   const listed = directory.channels;
   const live = listed.filter((c) => c.broadcast.state === "live");
   const mode = listed.length === 0 ? "empty" : "live";
@@ -77,8 +78,9 @@ export function OnAirView({ directory, capabilities }: { directory: DirectoryRes
         </>
       ) : (
         <>
-          {/* People are live: the channels come first, then how it works. */}
-          <LiveDirectory directory={directory} fallbackArt={<SkylineArt idPrefix="skf" className="h-full w-full" />} />
+          {/* People are live: the first live channel plays here, then every channel, then how it works. */}
+          {liveNow}
+          <LiveDirectory directory={directory} />
           <IntroSteps />
         </>
       )}
@@ -113,8 +115,8 @@ function LiveStatus({ live, listed }: { live: ChannelCard[]; listed: number }) {
             No one is live right now
           </span>
         )}
-        <a href="#on-air" className="underline decoration-line-strong underline-offset-4 hover:text-ivory">
-          {listed === 1 ? "See the channel" : `See all ${listed} channels`}
+        <a href={n > 0 ? "#live-now" : "#on-air"} className="underline decoration-line-strong underline-offset-4 hover:text-ivory">
+          {n > 0 ? "Watch now" : listed === 1 ? "See the channel" : `See all ${listed} channels`}
         </a>
       </p>
       {n > 0 && (
@@ -128,6 +130,7 @@ function LiveStatus({ live, listed }: { live: ChannelCard[]; listed: number }) {
                 <ChannelAvatar c={c} size={30} />
                 <span className="max-w-[11rem] truncate font-display text-[1.05rem] font-semibold">{c.displayName}</span>
                 {c.broadcast.viewerCount !== null && <span className="tnum text-[0.82rem] text-ivory-3">{compactNumber(c.broadcast.viewerCount)}</span>}
+                {c.preview && <span className="text-[0.78rem] text-apricot">Preview</span>}
               </Link>
             </li>
           ))}

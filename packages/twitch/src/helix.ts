@@ -173,6 +173,20 @@ export class HelixClient {
     return r.json?.data ?? [];
   }
 
+  /**
+   * Get Channel Followers, asking for the total only. Twitch answers this to user tokens only; a
+   * token that isn't the broadcaster's or a moderator's gets just the total, which is all we read.
+   */
+  async getFollowerTotal(userToken: string, broadcasterId: string): Promise<number> {
+    const r = await this.request<{ total?: number }>(userToken, "GET", "channels/followers", [
+      ["broadcaster_id", broadcasterId],
+      ["first", "1"],
+    ]);
+    const total = r.json?.total;
+    if (typeof total !== "number" || !Number.isFinite(total)) throw new HelixError("Get Channel Followers returned no total", r.status, "channels/followers");
+    return total;
+  }
+
   async getChannels(token: string, broadcasterIds: string[]): Promise<HelixChannel[]> {
     if (broadcasterIds.length === 0) return [];
     const r = await this.request<{ data: HelixChannel[] }>(token, "GET", "channels", broadcasterIds.map((id) => ["broadcaster_id", id] as [string, string]));

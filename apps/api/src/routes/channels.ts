@@ -16,6 +16,7 @@ import {
 import {
   analysisStatus,
   canViewSession,
+  followerTotals,
   isOwner,
   liveSnapshots,
   sessionSummary,
@@ -27,7 +28,9 @@ import {
   type ServerContext,
 } from "@slot1/services";
 import { channelUrl, parseTwitchUrl, sizeThumbnail } from "@slot1/twitch";
+import { adminAccess } from "../lib/admin-access";
 import { badRequest, notFound } from "../lib/errors";
+import { getPreviewLogins, previewCards } from "../lib/preview-channels";
 import { reasonForRequest } from "../lib/setup-details";
 
 const NO_SOURCE_STATUS = (visionConfigured: boolean) => ({
@@ -71,8 +74,11 @@ async function demoSending(ctx: ServerContext): Promise<boolean> {
 export const channelRoutes =
   (ctx: ServerContext): FastifyPluginAsync =>
   async (app) => {
-    /** ON AIR directory: only creators who connected AND opted in. Never padded with fake channels. */
-    app.get("/api/channels", { config: { rateLimit: { max: 120, timeWindow: "1 minute" } } }, async (req): Promise<DirectoryResponse> => {
+    /**
+     * ON AIR directory: only creators who connected AND opted in. Never padded with fake channels:
+     * the one addition is Admin → Preview channels, sent to admins only and marked `preview`.
+     */
+    app.get("/api/channels", { config: { rateLimit: { max: 120, timeWindow: "1 minute" } } }, async (req, reply): Promise<DirectoryResponse> => {
       const { q } = z.object({ q: z.string().trim().max(80).optional() }).parse(req.query);
       const list = await listDirectoryBroadcasters(ctx.db);
       const snaps = await liveSnapshots(ctx, list);
@@ -82,6 +88,20 @@ export const channelRoutes =
         const session = await getCurrentLiveSession(ctx.db, b.id);
         const visible = session && canViewSession({ userId: null, broadcasterId: null, isOperator: false }, session, settings) ? session : null;
         cards.push(await channelCard(ctx, b, snaps.get(b.id)!, visible, settings.publicAnalysis));
+      }
+      const followers = await followerTotals(ctx, list.map((b) => b.twitch_user_id));
+      cards.forEach((c, i) => {
+        const id = list[i]!.twitch_user_id;
+        c.followers = id ? (followers.get(id) ?? null) : null;
+      });
+      if (await adminAccess(ctx, req)) {
+        const listed = new Set(cards.map((c) => c.login.toLowerCase()));
+        const logins = (await getPreviewLogins(ctx)).filter((l) => !listed.has(l));
+        if (logins.length) {
+          cards.push(...(await previewCards(ctx, logins)));
+          // This answer is for one admin only.
+          reply.header("cache-control", "private, no-store");
+        }
       }
       const needle = q?.toLowerCase();
       const filtered = needle
@@ -93,6 +113,10 @@ export const channelRoutes =
         const la = a.broadcast.state === "live" ? 1 : 0;
         const lb = b.broadcast.state === "live" ? 1 : 0;
         if (la !== lb) return lb - la;
+        // Connected channels before previews.
+        const pa = a.preview ? 1 : 0;
+        const pb = b.preview ? 1 : 0;
+        if (pa !== pb) return pa - pb;
         return (b.broadcast.viewerCount ?? -1) - (a.broadcast.viewerCount ?? -1);
       });
       const refreshed = filtered.map((c) => c.broadcast.lastRefreshedAt).filter((x): x is string => Boolean(x)).sort().pop() ?? null;
@@ -160,6 +184,7 @@ export const channelRoutes =
         let snapshot: BroadcastSnapshot = { state: "unknown", title: null, category: null, thumbnailUrl: null, viewerCount: null, startedAt: null, lastRefreshedAt: null };
         let displayName = login;
         let avatar: string | null = null;
+        let followers: number | null = null;
         if (ctx.helix) {
           const helix = ctx.helix;
           try {
@@ -170,6 +195,7 @@ export const channelRoutes =
             if (users[0]) {
               displayName = users[0].display_name;
               avatar = users[0].profile_image_url || null;
+              followers = (await followerTotals(ctx, [users[0].id])).get(users[0].id) ?? null;
             }
             const s = streams[0];
             snapshot = {
@@ -195,6 +221,7 @@ export const channelRoutes =
             broadcast: snapshot,
             analysis: NO_SOURCE_STATUS(ctx.config.capabilities.vision.available),
             publicAnalysis: false,
+            followers,
           },
           authorized: false,
           session: null,
@@ -232,8 +259,10 @@ export const channelRoutes =
       const canAsk =
         Boolean(visibleSession) &&
         (owner || settings.viewerQuestions === "anyone" || (settings.viewerQuestions === "signed_in" && viewer.userId !== null));
+      const card = await channelCard(ctx, b, snaps.get(b.id)!, visibleSession, settings.publicAnalysis);
+      if (b.twitch_user_id) card.followers = (await followerTotals(ctx, [b.twitch_user_id])).get(b.twitch_user_id) ?? null;
       return {
-        channel: await channelCard(ctx, b, snaps.get(b.id)!, visibleSession, settings.publicAnalysis),
+        channel: card,
         authorized,
         session: summary,
         viewer: { isCreator: owner, canAsk, askPolicy: settings.viewerQuestions },

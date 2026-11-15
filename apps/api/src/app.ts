@@ -28,6 +28,7 @@ import { studioRoutes } from "./routes/studio";
 import { trainingRoutes } from "./routes/training";
 import { uploadRoutes } from "./routes/uploads";
 import { adminRoutes } from "./routes/admin";
+import { previewRoutes } from "./routes/preview";
 import { analyticsRoutes } from "./routes/analytics";
 import { contactRoutes } from "./routes/contact";
 import { aiViewRoutes } from "./routes/aiview";
@@ -125,6 +126,7 @@ export async function buildApp({ ctx, hub }: AppDeps): Promise<FastifyInstance> 
   await app.register(analyticsRoutes(ctx));
   await app.register(contactRoutes(ctx));
   await app.register(adminRoutes(ctx));
+  await app.register(previewRoutes(ctx));
   await app.register(aiViewRoutes(ctx));
   await app.register(demoRoutes(ctx));
   await app.register(clipAiRoutes(ctx));

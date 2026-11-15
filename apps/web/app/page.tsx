@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { Capabilities, DirectoryResponse } from "@slot1/contracts";
 import { HomeLanding } from "@/components/home/HomeLanding";
+import { LiveNow } from "@/components/onair/LiveNow";
 import { OnAirView } from "@/components/onair/OnAirView";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { ServiceDown } from "@/components/ui/ServiceDown";
@@ -25,9 +26,15 @@ export default async function OnAirPage() {
     webApplication(origin, SITE.description),
     faqPage(origin, FAQ),
   );
+  // The first live Twitch channel plays on the home page, with its panels and chat.
+  const top = dir.ok ? dir.data.channels.find((c) => c.broadcast.state === "live" && c.twitchUrl) : undefined;
   return (
     <>
-      {dir.ok ? <OnAirView directory={dir.data} capabilities={caps.ok ? caps.data : null} /> : <ServiceDown message={dir.message} requirement={dir.requirement} />}
+      {dir.ok ? (
+        <OnAirView directory={dir.data} capabilities={caps.ok ? caps.data : null} liveNow={top ? <LiveNow channel={top} /> : null} />
+      ) : (
+        <ServiceDown message={dir.message} requirement={dir.requirement} />
+      )}
       <HomeLanding />
       <JsonLd data={structured} />
     </>
