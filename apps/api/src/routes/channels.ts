@@ -28,7 +28,6 @@ import {
   type ServerContext,
 } from "@slot1/services";
 import { channelUrl, parseTwitchUrl, sizeThumbnail } from "@slot1/twitch";
-import { adminAccess } from "../lib/admin-access";
 import { badRequest, notFound } from "../lib/errors";
 import { getPreviewLogins, previewCards } from "../lib/preview-channels";
 import { reasonForRequest } from "../lib/setup-details";
@@ -75,10 +74,11 @@ export const channelRoutes =
   (ctx: ServerContext): FastifyPluginAsync =>
   async (app) => {
     /**
-     * ON AIR directory: only creators who connected AND opted in. Never padded with fake channels:
-     * the one addition is Admin → Preview channels, sent to admins only and marked `preview`.
+     * ON AIR directory: creators who connected AND opted in, plus the real Twitch channels an admin
+     * features under Admin → Featured channels, marked `preview` (watch-only: not on SLOT1, nothing
+     * analyzed). Never padded with made-up channels.
      */
-    app.get("/api/channels", { config: { rateLimit: { max: 120, timeWindow: "1 minute" } } }, async (req, reply): Promise<DirectoryResponse> => {
+    app.get("/api/channels", { config: { rateLimit: { max: 120, timeWindow: "1 minute" } } }, async (req): Promise<DirectoryResponse> => {
       const { q } = z.object({ q: z.string().trim().max(80).optional() }).parse(req.query);
       const list = await listDirectoryBroadcasters(ctx.db);
       const snaps = await liveSnapshots(ctx, list);
@@ -94,15 +94,9 @@ export const channelRoutes =
         const id = list[i]!.twitch_user_id;
         c.followers = id ? (followers.get(id) ?? null) : null;
       });
-      if (await adminAccess(ctx, req)) {
-        const listed = new Set(cards.map((c) => c.login.toLowerCase()));
-        const logins = (await getPreviewLogins(ctx)).filter((l) => !listed.has(l));
-        if (logins.length) {
-          cards.push(...(await previewCards(ctx, logins)));
-          // This answer is for one admin only.
-          reply.header("cache-control", "private, no-store");
-        }
-      }
+      const listed = new Set(cards.map((c) => c.login.toLowerCase()));
+      const featured = (await getPreviewLogins(ctx)).filter((l) => !listed.has(l));
+      if (featured.length) cards.push(...(await previewCards(ctx, featured)));
       const needle = q?.toLowerCase();
       const filtered = needle
         ? cards.filter((c) =>
@@ -180,7 +174,8 @@ export const channelRoutes =
       if (!b && login.includes("-")) throw notFound("Channel not found");
       const viewer = req.auth.viewer;
       if (!b) {
-        // Watch-only: a public Twitch channel that is not a SLOT1 channel.
+        // Watch-only: a public Twitch channel that is not a SLOT1 channel (`preview` when featured).
+        const featured = (await getPreviewLogins(ctx)).includes(login.toLowerCase());
         let snapshot: BroadcastSnapshot = { state: "unknown", title: null, category: null, thumbnailUrl: null, viewerCount: null, startedAt: null, lastRefreshedAt: null };
         let displayName = login;
         let avatar: string | null = null;
@@ -222,6 +217,7 @@ export const channelRoutes =
             analysis: NO_SOURCE_STATUS(ctx.config.capabilities.vision.available),
             publicAnalysis: false,
             followers,
+            ...(featured ? { preview: true } : {}),
           },
           authorized: false,
           session: null,

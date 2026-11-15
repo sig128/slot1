@@ -130,7 +130,6 @@ function LiveStatus({ live, listed }: { live: ChannelCard[]; listed: number }) {
                 <ChannelAvatar c={c} size={30} />
                 <span className="max-w-[11rem] truncate font-display text-[1.05rem] font-semibold">{c.displayName}</span>
                 {c.broadcast.viewerCount !== null && <span className="tnum text-[0.82rem] text-ivory-3">{compactNumber(c.broadcast.viewerCount)}</span>}
-                {c.preview && <span className="text-[0.78rem] text-apricot">Preview</span>}
               </Link>
             </li>
           ))}

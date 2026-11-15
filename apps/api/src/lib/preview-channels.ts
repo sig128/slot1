@@ -4,16 +4,16 @@ import { channelUrl, parseTwitchUrl, sizeThumbnail } from "@slot1/twitch";
 import { badRequest } from "./errors";
 
 /**
- * Admin → Preview channels: up to five Twitch channels that have NOT connected SLOT1, listed in
- * On air for admins only, so they can see the home page with live channels in it before creators
- * join. Visitors never get them, and each card says "Preview". Kept in Redis, so a change shows on
- * the next page load without a restart.
+ * Admin → Featured channels: up to five Twitch channels shown on the home page (Live now and On air)
+ * for everyone, like any other channel. They haven't connected SLOT1, so they carry `preview`:
+ * Twitch's own player and chat, nothing analyzed or recorded, no bot in their chat. Kept in Redis,
+ * so a change shows on the next page load without a restart.
  */
 const KEY = "slot1:admin:preview-channels";
 const LOGIN_RE = /^[a-z0-9_]{1,25}$/;
 
 /** The list until an admin saves one (saving an empty list clears it for good). */
-export const DEFAULT_PREVIEW_LOGINS: readonly string[] = ["vader", "darkviperau", "missmikkaa"];
+export const DEFAULT_PREVIEW_LOGINS: readonly string[] = ["vader", "darkviperau", "missmikkaa", "darkzelk"];
 
 export async function getPreviewLogins(ctx: ServerContext): Promise<string[]> {
   const raw = await ctx.redis.get(KEY);
@@ -86,7 +86,7 @@ export async function previewCards(ctx: ServerContext, logins: string[]): Promis
           },
           analysis: {
             state: "no_source",
-            reason: "Preview only: this channel hasn’t connected SLOT1",
+            reason: "SLOT1 isn’t reading this stream",
             sourceLabel: null,
             lastReceivedFrameAt: null,
             lastAnalyzedFrameAt: null,

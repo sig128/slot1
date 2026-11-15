@@ -5,8 +5,7 @@ import { embedParents, serverApi } from "@/lib/server";
 
 /**
  * The home page's "Live now": the first live channel with the same player, panels (live log, Ask
- * SLOT1, session) and Twitch chat as its watch page. A preview channel (Admin → Preview channels,
- * shown to admins only) says so.
+ * SLOT1, session) and Twitch chat as its watch page.
  */
 export async function LiveNow({ channel }: { channel: ChannelCard }) {
   const watch = await serverApi<WatchChannelResponse>(`/api/channels/${encodeURIComponent(channel.login)}/watch`);
@@ -29,12 +28,6 @@ export async function LiveNow({ channel }: { channel: ChannelCard }) {
           Open {channel.displayName}’s page
         </Link>
       </div>
-      {channel.preview && (
-        <p className="mx-auto mt-3 flex max-w-[1600px] flex-wrap items-center gap-x-3 gap-y-1 px-4 text-sm text-ivory-2 sm:px-6 lg:px-10" data-testid="preview-note">
-          <span className="chip chip-muted">Preview</span>
-          Only you see this. {channel.displayName} is in Admin → Preview channels and hasn’t connected SLOT1.
-        </p>
-      )}
       <WatchClient watch={watch.data} page={page} clips={clips} embedParents={embedParents()} clipSlug={null} nameAs="h2" />
     </section>
   );

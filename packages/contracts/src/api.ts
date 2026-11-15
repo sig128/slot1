@@ -133,14 +133,14 @@ export const ChannelCard = z.object({
   /** Twitch follower total (up to 10 minutes old); null when Twitch couldn't say. */
   followers: z.number().int().nonnegative().nullable().optional(),
   /**
-   * A Twitch channel that has NOT connected SLOT1, listed only for an admin who added it under
-   * Admin → Preview channels, to see the page with live channels in it. Never sent to visitors.
+   * A Twitch channel featured by an admin (Admin → Featured channels) that hasn't connected SLOT1:
+   * shown like any channel, with Twitch's player and chat; nothing analyzed or recorded.
    */
   preview: z.boolean().optional(),
 });
 export type ChannelCard = z.infer<typeof ChannelCard>;
 
-/** Admin → Preview channels: Twitch channels shown in On air to admins only (layout testing). */
+/** Admin → Featured channels: Twitch channels shown on the home page like any channel. */
 export const PREVIEW_CHANNELS_MAX = 5;
 export const PreviewChannels = z.object({ logins: z.array(z.string()).max(PREVIEW_CHANNELS_MAX) });
 export type PreviewChannels = z.infer<typeof PreviewChannels>;

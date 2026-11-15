@@ -40,10 +40,12 @@ export default async function Image({ params }: { params: Promise<{ channel: str
   const login = w?.channel.login ?? channel.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 40);
   const name = truncate(drawable(w?.channel.displayName, login), 20);
   const connected = Boolean(w?.authorized);
+  // Featured channels (Admin → Featured channels) show like any channel: Twitch's title, game and thumbnail.
+  const shown = connected || Boolean(w?.channel.preview);
   const live = w?.channel.broadcast.state === "live";
-  const title = connected && w?.channel.broadcast.title ? truncate(drawable(w.channel.broadcast.title, ""), 80) : "";
-  const category = connected && w?.channel.broadcast.category ? truncate(drawable(w.channel.broadcast.category, ""), 40) : "";
-  const thumb = connected && live ? await thumbnail(w!.channel.broadcast.thumbnailUrl) : null;
+  const title = shown && w?.channel.broadcast.title ? truncate(drawable(w.channel.broadcast.title, ""), 80) : "";
+  const category = shown && w?.channel.broadcast.category ? truncate(drawable(w.channel.broadcast.category, ""), 40) : "";
+  const thumb = shown && live ? await thumbnail(w!.channel.broadcast.thumbnailUrl) : null;
   // The name must fit its column: narrower when the live thumbnail takes the right side.
   const nameSize = thumb ? (name.length <= 9 ? 96 : name.length <= 12 ? 80 : 64) : name.length <= 12 ? 96 : name.length <= 16 ? 80 : 66;
 
@@ -92,7 +94,7 @@ export default async function Image({ params }: { params: Promise<{ channel: str
                   borderRadius: 4,
                 }}
               >
-                {live ? "LIVE" : connected ? "OFFLINE" : "WATCH ONLY"}
+                {live ? "LIVE" : shown ? "OFFLINE" : "WATCH ONLY"}
               </div>
             </div>
             <div style={{ display: "flex", marginTop: 18, fontFamily: "Passion One", fontWeight: 900, fontSize: nameSize, lineHeight: 0.95, color: C.ivory, textShadow: inkOutline(4, 6) }}>

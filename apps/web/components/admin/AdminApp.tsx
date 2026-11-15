@@ -37,7 +37,7 @@ const SECTIONS = [
   ["ai", "AI"],
   ["messages", "Messages"],
   ["system", "System"],
-  ["preview-channels", "Preview channels"],
+  ["preview-channels", "Featured channels"],
   ["settings", "Settings"],
 ] as const;
 
@@ -480,8 +480,8 @@ export function AdminApp({
           </div>
         </Section>
 
-        {/* PREVIEW CHANNELS --------------------------------------------------------------- */}
-        <Section id="preview-channels" title="Preview channels">
+        {/* FEATURED CHANNELS -------------------------------------------------------------- */}
+        <Section id="preview-channels" title="Featured channels">
           <PreviewChannelsPanel />
         </Section>
 

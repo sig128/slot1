@@ -4,9 +4,10 @@ import { clearPreviewCache, DEFAULT_PREVIEW_LOGINS } from "../../apps/api/src/li
 import { Browser, MockTwitch, startHarness, type Harness } from "./harness";
 
 /**
- * Admin → Preview channels and follower counts, against the real API, SQL and Redis with a mock
- * Twitch: a preview reaches admins only and says so, visitors' On air is unchanged, and follower
- * totals are read with a user token (Twitch refuses app tokens for them) and cached.
+ * Admin → Featured channels and follower counts, against the real API, SQL and Redis with a mock
+ * Twitch: only an admin can change the list, everyone sees the featured channels (marked `preview`
+ * in the data), and follower totals are read with a user token (Twitch refuses app tokens for them)
+ * and cached.
  */
 const OWNER = { id: "5001", login: "siteowner", displayName: "SiteOwner", scopes: ["channel:bot", "clips:edit"] };
 const VADER = { id: "5002", login: "vader", displayName: "Vader", scopes: [] };
@@ -66,17 +67,15 @@ describe("Preview channels and follower counts", () => {
     expect(PreviewChannels.parse((await owner.get("/api/admin/preview-channels")).json()).logins).toEqual(["vader"]);
   });
 
-  it("lists the preview in On air for the admin only, marked, with Twitch's live data and followers", async () => {
-    const mine = await owner.get("/api/channels");
-    expect(mine.status).toBe(200);
-    expect(mine.headers["cache-control"]).toContain("no-store");
-    const card = DirectoryResponse.parse(mine.json()).channels.find((c) => c.login === "vader");
-    expect(card).toMatchObject({ preview: true, displayName: "Vader", publicAnalysis: false, followers: 512345 });
-    expect(card!.broadcast).toMatchObject({ state: "live", title: "SUNDAY STREAM - ROLEPLAY", category: "Grand Theft Auto V", viewerCount: 1234 });
-    expect(card!.analysis.state).toBe("no_source");
-
-    const theirs = DirectoryResponse.parse((await visitor.get("/api/channels")).json());
-    expect(theirs.channels.some((c) => c.login === "vader" || c.preview)).toBe(false);
+  it("lists featured channels in everyone's On air, with Twitch's live data and followers", async () => {
+    for (const who of [visitor, owner]) {
+      const res = await who.get("/api/channels");
+      expect(res.status).toBe(200);
+      const card = DirectoryResponse.parse(res.json()).channels.find((c) => c.login === "vader");
+      expect(card).toMatchObject({ preview: true, displayName: "Vader", publicAnalysis: false, followers: 512345 });
+      expect(card!.broadcast).toMatchObject({ state: "live", title: "SUNDAY STREAM - ROLEPLAY", category: "Grand Theft Auto V", viewerCount: 1234 });
+      expect(card!.analysis.state).toBe("no_source");
+    }
   });
 
   it("puts follower totals on the watch page, read with a user token and cached for later visitors", async () => {
@@ -84,7 +83,11 @@ describe("Preview channels and follower counts", () => {
     const before = followerCalls();
     const w = WatchChannelResponse.parse((await visitor.get("/api/channels/vader/watch")).json());
     expect(w.authorized).toBe(false);
+    expect(w.channel.preview).toBe(true);
     expect(w.channel.followers).toBe(512345);
+    // A pasted link to a channel that isn't featured stays plain watch-only.
+    const other = WatchChannelResponse.parse((await visitor.get("/api/channels/someone_else/watch")).json());
+    expect(other.channel.preview).toBeUndefined();
     await visitor.get("/api/channels/vader/watch");
     expect(followerCalls()).toBe(before + 1);
   });
@@ -93,7 +96,7 @@ describe("Preview channels and follower counts", () => {
     const r = await owner.request("PUT", "/api/admin/preview-channels", { json: { logins: [] } });
     expect(PreviewChannels.parse(r.json()).logins).toEqual([]);
     clearPreviewCache();
-    expect(DirectoryResponse.parse((await owner.get("/api/channels")).json()).channels.some((c) => c.preview)).toBe(false);
+    expect(DirectoryResponse.parse((await visitor.get("/api/channels")).json()).channels.some((c) => c.preview)).toBe(false);
     expect(PreviewChannels.parse((await owner.get("/api/admin/preview-channels")).json()).logins).toEqual([]);
   });
 });

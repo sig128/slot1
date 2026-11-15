@@ -8,9 +8,8 @@ import { api, ApiError } from "@/lib/api";
 const names = (l: string[]) => (l.length <= 1 ? l.join("") : `${l.slice(0, -1).join(", ")} and ${l[l.length - 1]}`);
 
 /**
- * Admin → Preview channels: Twitch channels that haven't connected SLOT1, shown on the home page
- * to admins only (in Live now and On air, marked "Preview"), so the page can be seen with live
- * channels in it before creators join. Visitors never see them; nothing is analyzed or recorded.
+ * Admin → Featured channels: Twitch channels shown on the home page for everyone (Live now and On
+ * air) like any channel, with Twitch's player and chat. Nothing is analyzed or recorded.
  */
 export function PreviewChannelsPanel() {
   const id = useId();
@@ -25,7 +24,7 @@ export function PreviewChannelsPanel() {
         setSaved(r.logins);
         setText(r.logins.join(", "));
       })
-      .catch(() => setNote({ ok: false, text: "Couldn’t load the preview channels. Reload the page." }));
+      .catch(() => setNote({ ok: false, text: "Couldn’t load the featured channels. Reload the page." }));
   }, []);
 
   async function save(value: string) {
@@ -38,7 +37,7 @@ export function PreviewChannelsPanel() {
       setText(r.logins.join(", "));
       setNote({
         ok: true,
-        text: r.logins.length ? `Saved. ${names(r.logins)} now show${r.logins.length === 1 ? "s" : ""} on the home page for you.` : "Cleared. The home page lists connected channels only.",
+        text: r.logins.length ? `Saved. ${names(r.logins)} now show${r.logins.length === 1 ? "s" : ""} on the home page when live.` : "Cleared. The home page lists connected channels only.",
       });
     } catch (e) {
       setNote({ ok: false, text: e instanceof ApiError ? e.message : "Couldn’t save. Try again." });
@@ -50,8 +49,8 @@ export function PreviewChannelsPanel() {
   return (
     <div className="max-w-[44rem]">
       <p className="text-[0.95rem] text-ivory-2">
-        See the home page with live channels in it before creators connect. Channels you add here show in Live now and On air, marked Preview, only while
-        you’re signed in to Admin. Visitors never see them, and nothing is analyzed or recorded.
+        Twitch channels to show on the home page. When they’re live they appear in Live now and On air for everyone, with Twitch’s player and
+        chat.
       </p>
       <form
         className="mt-5"

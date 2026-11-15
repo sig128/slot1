@@ -56,6 +56,8 @@ interface Props {
   notice?: React.ReactNode;
   /** Public channel that hasn't connected SLOT1: Twitch player only, no analysis UI. */
   watchOnly?: boolean;
+  /** Admin → Featured channels: a watch-only channel shown like any channel (no "Not analyzed" chip). */
+  featured?: boolean;
   /** Design demo only: fixtures, no network. */
   fixture?: { details: Record<string, ObservationDetail>; answer: (q: string) => AskResponse };
   /** `?t=`: the moment to land on in a replay (playback starts 3 s before it). */
@@ -226,10 +228,12 @@ export function SessionWorkspace(p: Props) {
                 <span className="text-[0.78rem] text-ivory-3">Broadcast</span>
                 <BroadcastChip state={broadcastState} />
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[0.78rem] text-ivory-3">Analysis</span>
-                <span className="chip chip-muted">Not analyzed</span>
-              </div>
+              {!p.featured && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[0.78rem] text-ivory-3">Analysis</span>
+                  <span className="chip chip-muted">Not analyzed</span>
+                </div>
+              )}
             </div>
           ) : (
             <StatusPair broadcast={broadcastState} analysis={status} platform={p.identity.twitchUrl || p.fixture ? "twitch" : "slot1"} />

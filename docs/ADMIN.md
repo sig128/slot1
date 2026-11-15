@@ -139,9 +139,9 @@ The API can't edit the server's `.env`. When an admin saves a group in `/admin` 
 - A new admin password needs the current one, except when none is set yet. The API hashes it (scrypt), so the request holds only the hash. Once applied, every admin session ends.
 - A server installed without the setup script has no shared folder; the page then says saving isn't available and the forms are off.
 
-## Preview channels
+## Featured channels
 
-`/admin` → Preview channels lists up to five Twitch channels that have **not** connected SLOT1, to see the home page with live channels in it before creators join. They are added to `GET /api/channels` only for an admin (an operator or an admin session) and marked `preview`, so the home page shows them in Live now (player, panels and Twitch chat) and On air, each with a "Preview" tag. Visitors never get them, and nothing about them is analyzed or recorded. The list lives in Redis (`slot1:admin:preview-channels`), so a change shows on the next page load. Until an admin saves a list it is `vader, darkviperau, missmikkaa`; saving an empty list clears it.
+`/admin` → Featured channels lists up to five Twitch channels to show on the home page for everyone. When one is live it plays in Live now (Twitch's player, the panels and the Twitch chat) and has a card in On air, like any other channel, with no watch-only notes. SLOT1 analyzes only channels whose creator connected, so a featured channel's live log stays empty and the SLOT1 bot isn't in its Twitch chat (Twitch requires the creator's `channel:bot` permission) until that creator connects. The API marks them `preview`. The list lives in Redis (`slot1:admin:preview-channels`), so a change shows on the next page load. Until an admin saves a list it is `vader, darkviperau, missmikkaa, darkzelk`; saving an empty list clears it.
 
 Follower counts on the home page and watch pages come from Twitch's Get Channel Followers, which only answers user tokens: SLOT1 uses its bot account, else an operator's connected account, else any connected account. Totals are cached for 10 minutes and left out when Twitch can't say.
 
@@ -165,7 +165,7 @@ Follower counts on the home page and watch pages come from Twitch's Get Channel 
 | `GET /api/admin/deploy-log` | operators and admin sessions: the last 200 lines of the last automatic update |
 | `GET /api/admin/signins` | operators and admin sessions: the last 20 "Sign in with Twitch" attempts |
 | `GET /api/status` | anyone: what `/status` shows; cached 15 seconds |
-| `GET` and `PUT /api/admin/preview-channels` `{logins}` | operators and admin sessions (PUT with CSRF): channel names or twitch.tv links, up to 5; 400 names a bad entry |
+| `GET` and `PUT /api/admin/preview-channels` `{logins}` | operators and admin sessions (PUT with CSRF): featured channel names or twitch.tv links, up to 5; 400 names a bad entry |
 
 ## Configuration
 

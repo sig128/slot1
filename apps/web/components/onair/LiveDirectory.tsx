@@ -38,11 +38,6 @@ function Tile({ c }: { c: ChannelCard }) {
           )}
           <div className="absolute left-2.5 top-2.5 flex flex-wrap gap-1.5">
             <BroadcastChip state={c.broadcast.state} />
-            {c.preview && (
-              <span className="chip chip-muted" title="Only admins see this channel here (Admin → Preview channels)">
-                Preview
-              </span>
-            )}
             {c.publicAnalysis && <AnalysisChip status={c.analysis} />}
           </div>
           {live && c.broadcast.viewerCount !== null && (

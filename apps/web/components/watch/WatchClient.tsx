@@ -35,6 +35,8 @@ export function WatchClient({
   const session = watch.session;
   // SLOT1-only channels (the demo) have no Twitch channel, player or chat.
   const onTwitch = Boolean(c.twitchUrl);
+  // Admin → Featured channels: shown like any channel, without the watch-only notes.
+  const featured = !watch.authorized && Boolean(c.preview);
   const player = clipSlug ? (
     <div className="w-full" style={{ minWidth: 0 }}>
       <iframe
@@ -69,7 +71,12 @@ export function WatchClient({
     <TwitchPlayer login={c.login} displayName={c.displayName} parents={embedParents} thumbnailUrl={c.broadcast.thumbnailUrl} twitchUrl={c.twitchUrl} />
   );
 
-  const empty = !watch.authorized ? (
+  const empty = featured ? (
+    <div className="space-y-2 text-sm text-ivory-2">
+      <p className="font-display text-xl font-bold text-ivory">Live log</p>
+      <p>Nothing logged for this stream yet.</p>
+    </div>
+  ) : !watch.authorized ? (
     <div className="space-y-3 text-sm text-ivory-2">
       <p className="font-display text-xl font-bold text-ivory">Watch-only</p>
       <p>{c.displayName} hasn’t connected SLOT1, so nothing on this page is analyzed or recorded. You’re watching Twitch’s own player.</p>
@@ -125,10 +132,11 @@ export function WatchClient({
       embedParents={embedParents}
       emptyState={empty}
       watchOnly={!watch.authorized}
+      featured={featured}
       initialMomentId={momentId}
       aiViewOpen={aiViewOpen}
       notice={
-        !watch.authorized ? (
+        featured ? null : !watch.authorized ? (
           <p className="mt-5 border-l-2 border-apricot pl-3 text-sm text-ivory-2">
             Watch-only. Pasting a link doesn’t connect a channel or allow recording. Only the creator can do that from their own Twitch account.
           </p>
