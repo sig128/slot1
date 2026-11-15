@@ -198,6 +198,7 @@ export function SettingsPanel({ initial, initialEvents, now }: { initial: AdminS
       <div className="grid gap-x-14 gap-y-14 xl:grid-cols-2">
         <div className="grid content-start gap-14">
           <TwitchGroup {...common} />
+          <KickGroup {...common} />
           <SeoGroup {...common} />
           <UpdatesGroup {...common} now={now} />
         </div>
@@ -493,6 +494,61 @@ function TwitchGroup({ view, off, busy, save, send }: GroupProps) {
         onSave={() => {
           const p = g.patch();
           if (p && Object.keys(p).length) void send("twitch", "/api/admin/settings", p).then((ok) => ok && g.forget(["twitchClientSecret"]));
+        }}
+      />
+    </Group>
+  );
+}
+
+function KickGroup({ view, off, busy, save, send }: GroupProps) {
+  const id = useId();
+  const v = view.values;
+  const g = useGroup(["kickClientId", "kickClientSecret"], { kickClientId: v.kickClientId ?? "", kickClientSecret: "" });
+  const str = (f: SettingsField) => String(g.value(f) ?? "");
+  return (
+    <Group
+      id="settings-kick"
+      title="Kick app"
+      status={
+        <Working
+          ok={view.working.kick}
+          yes="Featured Kick channels show their live status, viewers and title."
+          no="Featured Kick channels play, but their live status stays unknown until the app's Client ID and Client Secret are saved."
+          server={null}
+        />
+      }
+    >
+      <p className="max-w-[60ch] text-[0.9rem] text-ivory-2">
+        From your app on kick.com: Settings → Developer. Kick asks for two-factor sign-in before it lets you create one.
+      </p>
+      <Field label="Client ID" htmlFor={`${id}-kid`} error={g.errors.kickClientId}>
+        <TextInput id={`${id}-kid`} value={str("kickClientId")} onChange={(x) => g.set("kickClientId", x)} disabled={off || busy} error={g.errors.kickClientId} />
+      </Field>
+      <Field
+        label="Client Secret"
+        htmlFor={`${id}-ksecret`}
+        error={g.errors.kickClientSecret}
+        hint={v.kickClientSecretSet ? "Saved. It's never shown again. Paste a new one to replace it." : "Not saved yet. Paste the Client Secret from your Kick app."}
+      >
+        <TextInput
+          id={`${id}-ksecret`}
+          type="password"
+          value={str("kickClientSecret")}
+          onChange={(x) => g.set("kickClientSecret", x)}
+          disabled={off || busy}
+          placeholder={v.kickClientSecretSet ? "•••••••• saved, paste a new one to replace it" : "Paste the Client Secret"}
+          autoComplete="new-password"
+          error={g.errors.kickClientSecret}
+        />
+      </Field>
+      <SaveRow
+        group="kick"
+        label="Save Kick app"
+        save={save}
+        disabled={off || busy}
+        onSave={() => {
+          const p = g.patch();
+          if (p && Object.keys(p).length) void send("kick", "/api/admin/settings", p).then((ok) => ok && g.forget(["kickClientSecret"]));
         }}
       />
     </Group>

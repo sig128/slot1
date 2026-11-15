@@ -37,7 +37,7 @@ function Tile({ c }: { c: ChannelCard }) {
             </span>
           )}
           <div className="absolute left-2.5 top-2.5 flex flex-wrap gap-1.5">
-            <BroadcastChip state={c.broadcast.state} />
+            <BroadcastChip state={c.broadcast.state} platform={c.platform === "kick" ? "kick" : "twitch"} />
             {c.publicAnalysis && <AnalysisChip status={c.analysis} />}
           </div>
           {live && c.broadcast.viewerCount !== null && (

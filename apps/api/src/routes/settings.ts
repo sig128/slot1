@@ -23,7 +23,7 @@ const STARTED_AT = new Date(Date.now() - Math.round(process.uptime() * 1000));
 
 /** What a saved request changes, kept so /admin shows it before the API itself restarts. */
 const shownKey = (id: string) => `slot1:settings:req:${id}`;
-const SECRET_KEYS = new Set(["TWITCH_CLIENT_SECRET", "ANTHROPIC_API_KEY", "SLOT1_ADMIN_PASSWORD_HASH"]);
+const SECRET_KEYS = new Set(["TWITCH_CLIENT_SECRET", "KICK_CLIENT_SECRET", "ANTHROPIC_API_KEY", "SLOT1_ADMIN_PASSWORD_HASH"]);
 
 type Values = AdminSettingsView["values"];
 
@@ -43,6 +43,12 @@ function overlay(values: Values, entries: { key: string; value: string | null }[
         break;
       case "SLOT1_BOT_TWITCH_LOGIN":
         v.botTwitchLogin = value;
+        break;
+      case "KICK_CLIENT_ID":
+        v.kickClientId = value;
+        break;
+      case "KICK_CLIENT_SECRET":
+        v.kickClientSecretSet = Boolean(value);
         break;
       case "ANTHROPIC_API_KEY":
         v.anthropicApiKeySet = Boolean(value);
@@ -110,6 +116,8 @@ export const settingsRoutes =
         twitchClientSecretSet: Boolean(env.TWITCH_CLIENT_SECRET),
         adminTwitchLogins: [...ctx.config.operatorLogins].join(","),
         botTwitchLogin: env.SLOT1_BOT_TWITCH_LOGIN,
+        kickClientId: env.KICK_CLIENT_ID ?? null,
+        kickClientSecretSet: Boolean(env.KICK_CLIENT_SECRET),
         anthropicApiKeySet: Boolean(env.ANTHROPIC_API_KEY),
         aiProvider: env.VISION_PROVIDER,
         autodeploy: env.SLOT1_AUTODEPLOY,
@@ -142,6 +150,7 @@ export const settingsRoutes =
           twitchReason: caps.twitch.available ? null : caps.twitch.reason,
           ai: caps.vision.available,
           aiReason: caps.vision.available ? null : caps.vision.reason,
+          kick: Boolean(env.KICK_CLIENT_ID && env.KICK_CLIENT_SECRET),
         },
         twitchRedirectUrl: `${ctx.config.publicOrigin}/api/auth/twitch/callback`,
         version: env.SLOT1_VERSION,

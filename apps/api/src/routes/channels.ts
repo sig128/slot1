@@ -29,7 +29,7 @@ import {
 } from "@slot1/services";
 import { channelUrl, parseTwitchUrl, sizeThumbnail } from "@slot1/twitch";
 import { badRequest, notFound } from "../lib/errors";
-import { getPreviewLogins, previewCards } from "../lib/preview-channels";
+import { getPreviewLogins, isFeatured, previewCards } from "../lib/preview-channels";
 import { reasonForRequest } from "../lib/setup-details";
 
 const NO_SOURCE_STATUS = (visionConfigured: boolean) => ({
@@ -168,7 +168,13 @@ export const channelRoutes =
     /** Data for the WATCH page. Analysis is included only where the viewer is allowed to see it. */
     app.get("/api/channels/:login/watch", async (req): Promise<WatchChannelResponse> => {
       // "-" only occurs in SLOT1's own demo login; Twitch logins never contain it.
-      const { login } = z.object({ login: z.string().min(2).max(25).regex(/^[a-zA-Z0-9_-]+$/) }).parse(req.params);
+      const { login } = z.object({ login: z.string().min(2).max(32).regex(/^[a-zA-Z0-9_-]+$/) }).parse(req.params);
+      if (/^kick-/i.test(login)) {
+        // A featured Kick channel ("kick-<slug>"): Kick's player and public data only.
+        const card = (await isFeatured(ctx, login)) ? (await previewCards(ctx, await getPreviewLogins(ctx))).find((c) => c.login === login.toLowerCase()) : undefined;
+        if (!card) throw notFound("Channel not found");
+        return { channel: card, authorized: false, session: null, viewer: { isCreator: false, canAsk: false, askPolicy: "off" }, recentReplays: [] };
+      }
       const b = await getBroadcasterByLogin(ctx.db, login);
       if (b && hiddenDemo(ctx.config, b)) throw notFound("The demo broadcast is off on this server");
       if (!b && login.includes("-")) throw notFound("Channel not found");

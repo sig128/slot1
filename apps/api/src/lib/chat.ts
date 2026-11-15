@@ -18,7 +18,7 @@ import { RedisLimiter } from "@slot1/platform";
 import { analysisStatus, answerQuestion, gatherEvidence, hiddenDemo, isOwner, isPublicStream, type ServerContext } from "@slot1/services";
 import { parseChatCommand, sanitizeReply } from "@slot1/twitch";
 import type { FastifyRequest } from "fastify";
-import { getPreviewLogins, previewCards } from "./preview-channels";
+import { getPreviewLogins, isFeatured, previewCards } from "./preview-channels";
 
 /**
  * SLOT1 chat: one shared chat per channel page, next to the Twitch chat. Messages live in a Redis
@@ -182,8 +182,8 @@ export type ChatRoom =
  */
 export async function resolveChatRoom(ctx: ServerContext, req: FastifyRequest, rawLogin: string): Promise<ChatRoom | null> {
   const login = rawLogin.toLowerCase();
-  if (!/^[a-z0-9_-]{2,25}$/.test(login)) return null;
-  const b = await getBroadcasterByLogin(ctx.db, login);
+  if (!/^[a-z0-9_-]{2,32}$/.test(login)) return null;
+  const b = login.startsWith("kick-") ? null : await getBroadcasterByLogin(ctx.db, login);
   if (b && !hiddenDemo(ctx.config, b)) {
     const settings = await getSettings(ctx.db, b.id);
     const owner = isOwner(req.auth.viewer, b.id);
@@ -192,9 +192,9 @@ export async function resolveChatRoom(ctx: ServerContext, req: FastifyRequest, r
       return { kind: "slot1", login, displayName: b.display_name, broadcaster: b, settings, owner };
     }
   }
-  if ((await getPreviewLogins(ctx)).includes(login)) {
+  if (await isFeatured(ctx, login)) {
     const card = await featuredCard(ctx, login);
-    return { kind: "featured", login, displayName: card?.displayName ?? login };
+    return { kind: "featured", login, displayName: card?.displayName ?? login.replace(/^kick-/, "") };
   }
   return null;
 }
@@ -243,9 +243,11 @@ export function featuredReply(card: ChannelCard | null, displayName: string, tex
   const b = card?.broadcast;
   const live = b?.state === "live";
   const name = card?.displayName ?? displayName;
+  const platform = card?.platform === "kick" ? "Kick" : "Twitch";
+  if (card && b?.state === "unknown") return `${name} streams on ${platform}. Their live info isn't available here right now.`;
   const up = live ? uptime(b?.startedAt ?? null, now) : null;
   const nowLine = !card
-    ? `I can't reach Twitch for ${name}'s live info right now.`
+    ? `I can't reach ${platform} for ${name}'s live info right now.`
     : live
       ? `${name} is live${b?.category ? ` in ${b.category}` : ""}${b?.title ? `: “${b.title}”` : ""}${up ? ` · live ${up}` : ""}${typeof b?.viewerCount === "number" ? ` · ${compact(b.viewerCount)} watching` : ""}.`
       : `${name} is offline right now.`;
@@ -256,17 +258,17 @@ export function featuredReply(card: ChannelCard | null, displayName: string, tex
     case "uptime":
       return live ? (up ? `${name} has been live for ${up}.` : `${name} is live.`) : `${name} is offline right now.`;
     case "game":
-      return live && b?.category ? `${name} is playing ${b.category}.` : live ? `Twitch doesn't list a game for ${name} right now.` : `${name} is offline right now.`;
+      return live && b?.category ? `${name} is playing ${b.category}.` : live ? `${platform} doesn't list a game for ${name} right now.` : `${name} is offline right now.`;
     case "title":
       return live && b?.title ? `“${b.title}”` : `${name} is offline right now.`;
     case "viewers":
-      return live && typeof b?.viewerCount === "number" ? `${compact(b.viewerCount)} watching ${name} on Twitch right now.` : `${name} is offline right now.`;
+      return live && typeof b?.viewerCount === "number" ? `${compact(b.viewerCount)} watching ${name} on ${platform} right now.` : `${name} is offline right now.`;
     case "followers":
-      return typeof card?.followers === "number" ? `${name} has ${compact(card.followers)} followers on Twitch.` : `Twitch didn't give a follower count for ${name}.`;
+      return typeof card?.followers === "number" ? `${name} has ${compact(card.followers)} followers on ${platform}.` : `${platform} didn't give a follower count for ${name}.`;
     case "help":
       return "SLOT1 here: !slot1 now · uptime · game · title · viewers · followers";
     default:
-      if (m?.[0]?.startsWith("@") || ["ask", "find", "recap", "clip"].includes(sub)) return `I can't see the game on this stream, only Twitch's live info. ${nowLine}`;
+      if (m?.[0]?.startsWith("@") || ["ask", "find", "recap", "clip"].includes(sub)) return `I can't see the game on this stream, only ${platform}'s live info. ${nowLine}`;
       return "SLOT1 here: !slot1 now · uptime · game · title · viewers · followers";
   }
 }

@@ -20,6 +20,8 @@ export const SETTING_KEYS = [
   "TWITCH_CLIENT_SECRET",
   "SLOT1_OPERATOR_TWITCH_LOGINS",
   "SLOT1_BOT_TWITCH_LOGIN",
+  "KICK_CLIENT_ID",
+  "KICK_CLIENT_SECRET",
   "ANTHROPIC_API_KEY",
   "VISION_PROVIDER",
   "SLOT1_AUTODEPLOY",
@@ -37,6 +39,8 @@ export type SettingKey = (typeof SETTING_KEYS)[number];
 export const CLEARABLE_SETTINGS: ReadonlySet<SettingKey> = new Set<SettingKey>([
   "SLOT1_OPERATOR_TWITCH_LOGINS",
   "SLOT1_BOT_TWITCH_LOGIN",
+  "KICK_CLIENT_ID",
+  "KICK_CLIENT_SECRET",
   "ANTHROPIC_API_KEY",
   "SLOT1_GOOGLE_SITE_VERIFICATION",
   "SLOT1_BING_SITE_VERIFICATION",
@@ -56,6 +60,9 @@ export function settingValueOk(key: SettingKey, v: string): boolean {
       return /^[a-z0-9_]{1,25}(,[a-z0-9_]{1,25}){0,9}$/.test(v);
     case "SLOT1_BOT_TWITCH_LOGIN":
       return /^[a-z0-9_]{1,25}$/.test(v);
+    case "KICK_CLIENT_ID":
+    case "KICK_CLIENT_SECRET":
+      return /^[A-Za-z0-9]{10,128}$/.test(v);
     case "ANTHROPIC_API_KEY":
       return /^[A-Za-z0-9_-]{20,300}$/.test(v);
     case "VISION_PROVIDER":
@@ -109,6 +116,8 @@ export const SettingsPatch = z
     twitchClientSecret: trimmed.optional(),
     adminTwitchLogins: logins.optional(),
     botTwitchLogin: logins.optional(),
+    kickClientId: trimmed.optional(),
+    kickClientSecret: trimmed.optional(),
     anthropicApiKey: trimmed.optional(),
     aiEnabled: z.boolean().optional(),
     autodeploy: z.boolean().optional(),
@@ -130,6 +139,8 @@ export const FIELD_KEYS: Record<SettingsField, SettingKey> = {
   twitchClientSecret: "TWITCH_CLIENT_SECRET",
   adminTwitchLogins: "SLOT1_OPERATOR_TWITCH_LOGINS",
   botTwitchLogin: "SLOT1_BOT_TWITCH_LOGIN",
+  kickClientId: "KICK_CLIENT_ID",
+  kickClientSecret: "KICK_CLIENT_SECRET",
   anthropicApiKey: "ANTHROPIC_API_KEY",
   aiEnabled: "VISION_PROVIDER",
   autodeploy: "SLOT1_AUTODEPLOY",
@@ -147,6 +158,8 @@ export const FIELD_RULES: Record<SettingsField, string> = {
   twitchClientSecret: "20 to 64 lowercase letters and digits, as the Twitch developer console shows it.",
   adminTwitchLogins: "Twitch usernames (letters, digits, underscores), up to 10, separated by commas.",
   botTwitchLogin: "One Twitch username (letters, digits, underscores).",
+  kickClientId: "The Client ID of your Kick developer app (letters and digits).",
+  kickClientSecret: "The Client Secret of your Kick developer app (letters and digits).",
   anthropicApiKey: "The key from console.anthropic.com (letters, digits, - and _).",
   aiEnabled: "On or off.",
   autodeploy: "On or off.",
@@ -232,6 +245,8 @@ export interface AdminSettingsView {
     twitchClientSecretSet: boolean;
     adminTwitchLogins: string;
     botTwitchLogin: string | null;
+    kickClientId: string | null;
+    kickClientSecretSet: boolean;
     anthropicApiKeySet: boolean;
     aiProvider: "none" | "anthropic" | "openai";
     autodeploy: boolean;
@@ -244,7 +259,7 @@ export interface AdminSettingsView {
     adminPasswordSet: boolean;
   };
   /** Whether each part works right now (from the settings the API started with). */
-  working: { twitch: boolean; twitchReason: string | null; ai: boolean; aiReason: string | null };
+  working: { twitch: boolean; twitchReason: string | null; ai: boolean; aiReason: string | null; kick: boolean };
   /** The OAuth Redirect URL the Twitch app must list, exactly. */
   twitchRedirectUrl: string;
   version: string | null;

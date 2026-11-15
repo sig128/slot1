@@ -24,7 +24,7 @@ export default async function WatchPage({ params, searchParams }: { params: Prom
   const sp = await searchParams;
   const { clip } = sp;
   // "-" only occurs in SLOT1's own demo login (Twitch logins never contain it).
-  if (!/^[a-zA-Z0-9_-]{2,25}$/.test(channel)) notFound();
+  if (!/^[a-zA-Z0-9_-]{2,32}$/.test(channel)) notFound();
   const watch = await serverApi<WatchChannelResponse>(`/api/channels/${encodeURIComponent(channel)}/watch`);
   if (!watch.ok) {
     if (watch.status === 400 || watch.status === 404) notFound();

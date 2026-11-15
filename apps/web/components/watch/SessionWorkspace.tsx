@@ -36,6 +36,8 @@ export interface WorkspaceIdentity {
   title: string | null;
   category: string | null;
   twitchUrl: string | null;
+  /** A featured Kick channel's page on Kick. */
+  kickUrl?: string | null;
   subtitle?: string;
 }
 
@@ -231,6 +233,11 @@ export function SessionWorkspace(p: Props) {
               Open on Twitch
             </a>
           )}
+          {p.identity.kickUrl && (
+            <a href={p.identity.kickUrl} target="_blank" rel="noreferrer noopener" className="btn btn-ghost btn-sm">
+              Open on Kick
+            </a>
+          )}
           <button type="button" className="btn btn-quiet btn-sm hidden lg:inline-flex" aria-pressed={theater} onClick={() => setTheater((t) => !t)}>
             {theater ? "Exit theater" : "Theater mode"}
           </button>
@@ -255,7 +262,7 @@ export function SessionWorkspace(p: Props) {
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-[0.78rem] text-ivory-3">Broadcast</span>
-                <BroadcastChip state={broadcastState} />
+                <BroadcastChip state={broadcastState} platform={p.identity.kickUrl ? "kick" : "twitch"} />
               </div>
               {!p.featured && (
                 <div className="flex items-center gap-2">

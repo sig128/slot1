@@ -4,7 +4,7 @@ import { ANALYSIS_STATE_LABEL, SOURCE_LABEL_TEXT, type AnalysisStatus, type Broa
  * Broadcast status — Twitch platform data only. `platform="slot1"` is for channels without a
  * Twitch channel (SLOT1's demo): there "live" means the source is sending to SLOT1.
  */
-export function BroadcastChip({ state, platform = "twitch" }: { state: BroadcastSnapshot["state"]; platform?: "twitch" | "slot1" }) {
+export function BroadcastChip({ state, platform = "twitch" }: { state: BroadcastSnapshot["state"]; platform?: "twitch" | "kick" | "slot1" }) {
   if (platform === "slot1") {
     return state === "live" ? (
       <span className="chip chip-live" title="The source is sending video to SLOT1">
@@ -15,15 +15,17 @@ export function BroadcastChip({ state, platform = "twitch" }: { state: Broadcast
       <span className="chip chip-muted" title="The source isn't sending video to SLOT1">Not sending</span>
     );
   }
+  const name = platform === "kick" ? "Kick" : "Twitch";
   if (state === "live")
     return (
-      <span className="chip chip-live" title="Twitch reports this channel is live">
+      <span className="chip chip-live" title={`${name} reports this channel is live`}>
         <span className="live-dot" aria-hidden />
-        Live on Twitch
+        Live on {name}
       </span>
     );
-  if (state === "offline") return <span className="chip chip-muted" title="Twitch reports this channel is offline">Offline</span>;
-  if (state === "error") return <span className="chip chip-error" title="Twitch data is temporarily unavailable">Twitch unavailable</span>;
+  if (state === "offline") return <span className="chip chip-muted" title={`${name} reports this channel is offline`}>Offline</span>;
+  if (state === "error") return <span className="chip chip-error" title={`${name} data is temporarily unavailable`}>{name} unavailable</span>;
+  if (platform === "kick") return <span className="chip chip-muted" title="Kick's live status isn't available right now">On Kick</span>;
   return <span className="chip chip-muted" title="Broadcast status unknown: Twitch isn't connected to SLOT1 yet">Status unknown</span>;
 }
 

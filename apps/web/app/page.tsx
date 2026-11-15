@@ -27,7 +27,7 @@ export default async function OnAirPage() {
     faqPage(origin, FAQ),
   );
   // The first live Twitch channel plays on the home page, with its panels and chat.
-  const top = dir.ok ? dir.data.channels.find((c) => c.broadcast.state === "live" && c.twitchUrl) : undefined;
+  const top = dir.ok ? dir.data.channels.find((c) => c.broadcast.state === "live" && (c.twitchUrl || c.platform === "kick")) : undefined;
   return (
     <>
       {dir.ok ? (

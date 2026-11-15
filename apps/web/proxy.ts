@@ -29,12 +29,12 @@ export function proxy(request: NextRequest) {
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
     // React style attributes (timeline positions) need inline styles; scripts stay nonce-only.
     `style-src 'self' 'unsafe-inline'`,
-    `img-src 'self' blob: data: https://static-cdn.jtvnw.net https://clips-media-assets2.twitch.tv ${mediaOrigins}`.trim(),
+    `img-src 'self' blob: data: https://static-cdn.jtvnw.net https://clips-media-assets2.twitch.tv https://*.kick.com ${mediaOrigins}`.trim(),
     `media-src 'self' blob: ${mediaOrigins}`.trim(),
     `font-src 'self'`,
     // Sharing a clip fetches its file, which may live on the S3 media origin.
     `connect-src ${["'self'", webrtcOrigin, mediaOrigins, obsLocal].filter(Boolean).join(" ")}`,
-    `frame-src https://player.twitch.tv https://clips.twitch.tv https://www.twitch.tv`,
+    `frame-src https://player.twitch.tv https://clips.twitch.tv https://www.twitch.tv https://player.kick.com`,
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self' https://id.twitch.tv`,

@@ -133,15 +133,17 @@ export const ChannelCard = z.object({
   /** Twitch follower total (up to 10 minutes old); null when Twitch couldn't say. */
   followers: z.number().int().nonnegative().nullable().optional(),
   /**
-   * A Twitch channel featured by an admin (Admin → Featured channels) that hasn't connected SLOT1:
-   * shown like any channel, with Twitch's player and chat; nothing analyzed or recorded.
+   * A Twitch or Kick channel featured by an admin (Admin → Featured channels) that hasn't connected
+   * SLOT1: shown like any channel, with its platform's player; nothing analyzed or recorded.
    */
   preview: z.boolean().optional(),
+  /** Where the broadcast is: Twitch (default) or Kick (featured Kick channels, login "kick-<slug>"). */
+  platform: z.enum(["twitch", "kick"]).optional(),
 });
 export type ChannelCard = z.infer<typeof ChannelCard>;
 
-/** Admin → Featured channels: Twitch channels shown on the home page like any channel. */
-export const PREVIEW_CHANNELS_MAX = 5;
+/** Admin → Featured channels: Twitch and Kick channels shown on the home page like any channel. */
+export const PREVIEW_CHANNELS_MAX = 12;
 export const PreviewChannels = z.object({ logins: z.array(z.string()).max(PREVIEW_CHANNELS_MAX) });
 export type PreviewChannels = z.infer<typeof PreviewChannels>;
 

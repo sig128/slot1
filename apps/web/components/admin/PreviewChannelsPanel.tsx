@@ -8,7 +8,7 @@ import { api, ApiError } from "@/lib/api";
 const names = (l: string[]) => (l.length <= 1 ? l.join("") : `${l.slice(0, -1).join(", ")} and ${l[l.length - 1]}`);
 
 /**
- * Admin → Featured channels: Twitch channels shown on the home page for everyone (Live now and On
+ * Admin → Featured channels: Twitch and Kick channels shown on the home page for everyone (Live now and On
  * air) like any channel, with Twitch's player and chat. Nothing is analyzed or recorded.
  */
 export function PreviewChannelsPanel() {
@@ -49,8 +49,8 @@ export function PreviewChannelsPanel() {
   return (
     <div className="max-w-[44rem]">
       <p className="text-[0.95rem] text-ivory-2">
-        Twitch channels to show on the home page. When they’re live they appear in Live now and On air for everyone, with Twitch’s player and
-        chat.
+        Twitch and Kick channels to show on the home page. When they’re live they appear in Live now and On air for everyone, with their platform’s player, Twitch chat for Twitch channels, and SLOT1
+        chat for all of them.
       </p>
       <form
         className="mt-5"
@@ -60,10 +60,10 @@ export function PreviewChannelsPanel() {
         }}
       >
         <label htmlFor={`${id}-logins`} className="block text-[0.9rem] font-semibold text-ivory">
-          Twitch channels
+          Twitch and Kick channels
         </label>
         <p id={`${id}-help`} className="mt-0.5 text-[0.85rem] text-ivory-3">
-          Channel names or twitch.tv links, separated by commas. Up to {PREVIEW_CHANNELS_MAX}.
+          Twitch names or twitch.tv links, and kick.com links (or kick:name), separated by commas. Up to {PREVIEW_CHANNELS_MAX}.
         </p>
         <div className="mt-2 flex flex-wrap gap-2">
           <input

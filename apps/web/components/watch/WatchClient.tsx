@@ -7,6 +7,7 @@ import { compactNumber } from "@/lib/format";
 import { AiFramePlayer } from "./AiView";
 import { LivePlayerSwitch } from "./LivePlayerSwitch";
 import { SessionWorkspace } from "./SessionWorkspace";
+import { KickPlayer } from "./KickPlayer";
 import { TwitchPlayer } from "./TwitchPlayer";
 
 export function WatchClient({
@@ -35,10 +36,13 @@ export function WatchClient({
   const session = watch.session;
   // SLOT1-only channels (the demo) have no Twitch channel, player or chat.
   const onTwitch = Boolean(c.twitchUrl);
+  // Featured Kick channels ("kick-<slug>"): Kick's player, no Twitch chat.
+  const onKick = c.platform === "kick";
+  const kickSlug = c.login.replace(/^kick-/, "");
   // Admin → Featured channels: shown like any channel, without the watch-only notes.
   const featured = !watch.authorized && Boolean(c.preview);
   // SLOT1 chat: on SLOT1 channels this visitor can watch, and on featured channels.
-  const chatRoom = (watch.authorized || featured) && /^[a-z0-9_-]{2,25}$/i.test(c.login) ? c.login.toLowerCase() : null;
+  const chatRoom = (watch.authorized || featured) && /^[a-z0-9_-]{2,32}$/i.test(c.login) ? c.login.toLowerCase() : null;
   const player = clipSlug ? (
     <div className="w-full" style={{ minWidth: 0 }}>
       <iframe
@@ -65,6 +69,8 @@ export function WatchClient({
       title={`Live video from ${c.displayName}`}
       twitch={<TwitchPlayer login={c.login} displayName={c.displayName} parents={embedParents} thumbnailUrl={c.broadcast.thumbnailUrl} twitchUrl={c.twitchUrl} />}
     />
+  ) : onKick ? (
+    <KickPlayer slug={kickSlug} displayName={c.displayName} />
   ) : !onTwitch ? (
     <div className="grid aspect-video w-full place-items-center bg-graphite-800 p-6 text-center text-sm text-ivory-2">
       {c.displayName} isn’t sending video to SLOT1 right now.
@@ -122,6 +128,7 @@ export function WatchClient({
         category: c.broadcast.category,
         subtitle: typeof c.followers === "number" ? `${compactNumber(c.followers)} ${c.followers === 1 ? "follower" : "followers"}` : undefined,
         twitchUrl: onTwitch ? c.twitchUrl : null,
+        kickUrl: onKick ? `https://kick.com/${kickSlug}` : null,
       }}
       nameAs={nameAs}
       broadcast={c.broadcast.state}

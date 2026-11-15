@@ -66,6 +66,12 @@ const EnvSchema = z.object({
   SLOT1_BOT_TWITCH_LOGIN: optStr,
   SLOT1_OPERATOR_TWITCH_LOGINS: z.string().default(""),
 
+  // Kick's public API (featured Kick channels' live state). A Kick developer app, Admin → Settings.
+  KICK_CLIENT_ID: optStr,
+  KICK_CLIENT_SECRET: optStr,
+  KICK_API_BASE: z.url().default("https://api.kick.com/public/v1"),
+  KICK_ID_BASE: z.url().default("https://id.kick.com"),
+
   VISION_PROVIDER: z.enum(["none", "anthropic", "openai"]).default("none"),
   ANTHROPIC_API_KEY: optStr,
   ANTHROPIC_BASE_URL: z.string().default("https://api.anthropic.com"),

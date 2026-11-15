@@ -30,7 +30,7 @@ describe("content security policy", () => {
     expect(directive("connect-src")).toBe("connect-src 'self'");
   });
 
-  it("keeps frames limited to Twitch's official embeds", () => {
-    expect(directive("frame-src")).toBe("frame-src https://player.twitch.tv https://clips.twitch.tv https://www.twitch.tv");
+  it("keeps frames limited to Twitch's and Kick's official embeds", () => {
+    expect(directive("frame-src")).toBe("frame-src https://player.twitch.tv https://clips.twitch.tv https://www.twitch.tv https://player.kick.com");
   });
 });

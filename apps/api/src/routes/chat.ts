@@ -37,8 +37,8 @@ import {
 import { ApiProblem, badRequest, forbidden, notFound, unauthorized } from "../lib/errors";
 import type { EventHub } from "../lib/hub";
 
-const LoginParam = z.object({ login: z.string().min(2).max(25) });
-const MessageParam = z.object({ login: z.string().min(2).max(25), id: ChatMessageId });
+const LoginParam = z.object({ login: z.string().min(2).max(32) });
+const MessageParam = z.object({ login: z.string().min(2).max(32), id: ChatMessageId });
 const tooFast = (msg: string) => new ApiProblem(429, "rate_limited", msg);
 
 async function room(ctx: ServerContext, req: FastifyRequest, login: string): Promise<ChatRoom> {

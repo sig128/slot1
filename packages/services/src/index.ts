@@ -13,3 +13,4 @@ export * from "./instant-replay";
 export * from "./ai-view";
 export * from "./demo";
 export * from "./clip-ai";
+export * from "./kick";

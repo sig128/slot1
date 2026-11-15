@@ -59,8 +59,11 @@ describe("Preview channels and follower counts", () => {
     const bad = await owner.request("PUT", "/api/admin/preview-channels", { json: { logins: ["vader", "not a channel!"] } });
     expect(bad.status).toBe(400);
     expect(bad.body).toContain("not a channel!");
-    const many = await owner.request("PUT", "/api/admin/preview-channels", { json: { logins: ["aa_1", "bb_2", "cc_3", "dd_4", "ee_5", "ff_6"] } });
+    const many = await owner.request("PUT", "/api/admin/preview-channels", { json: { logins: Array.from({ length: 13 }, (_, i) => `chan_${i}`) } });
     expect(many.status).toBe(400);
+    // Kick channels as kick.com links or kick:name, kept as "kick:<slug>".
+    const kick = await owner.request("PUT", "/api/admin/preview-channels", { json: { logins: ["https://kick.com/Manny_Xers", "kick:lazenxd", "vader"] } });
+    expect(PreviewChannels.parse(kick.json()).logins).toEqual(["kick:manny_xers", "kick:lazenxd", "vader"]);
     const ok = await owner.request("PUT", "/api/admin/preview-channels", { json: { logins: ["https://www.twitch.tv/Vader", "vader"] } });
     expect(ok.status).toBe(200);
     expect(PreviewChannels.parse(ok.json()).logins).toEqual(["vader"]);
