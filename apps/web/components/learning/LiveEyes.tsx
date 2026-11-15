@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import type { NowResponse, NowStream } from "@slot1/contracts";
 import { relativeAge } from "@/lib/format";
 
@@ -49,33 +48,9 @@ function Eye({ s, now }: { s: NowStream; now: number }) {
 
 /**
  * What the AI is looking at right now on every stream sent to SLOT1, and one feed of everything it
- * caught across them. Same public snapshot as "Right now", polled while the tab is visible.
+ * caught across them. The page polls the same public snapshot as "Right now" and passes it in.
  */
-export function LiveEyes({ initial }: { initial: NowResponse | null }) {
-  const [data, setData] = useState<NowResponse | null>(initial);
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const tick = async () => {
-      if (document.visibilityState === "visible") {
-        try {
-          const r = await fetch("/api/now", { cache: "no-store" });
-          if (r.ok) setData((await r.json()) as NowResponse);
-        } catch {
-          // Keep the last snapshot; the next tick tries again.
-        }
-        setNow(Date.now());
-      }
-      timer = setTimeout(tick, data?.refreshMs ?? 5000);
-    };
-    timer = setTimeout(tick, initial?.refreshMs ?? 5000);
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+export function LiveEyes({ data, now }: { data: NowResponse | null; now: number }) {
   const watched = (data?.streams ?? []).filter((s) => s.kind === "slot1" && s.activity);
   const feed = watched
     .flatMap((s) => s.recent.map((e) => ({ ...e, who: s.displayName, path: s.watchPath })))

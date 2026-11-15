@@ -59,3 +59,23 @@
     transition: none;
   }
 }
+
+/* The globe's stage: a deep field behind the network, and a fade so the numbers sit on it. */
+.learn-stage {
+  margin-top: -2.5rem;
+  background:
+    radial-gradient(ellipse 60% 55% at 50% 50%, color-mix(in oklab, var(--color-signal) 7%, transparent), transparent 70%),
+    radial-gradient(ellipse 90% 70% at 50% 60%, var(--color-graphite-900), var(--color-graphite) 80%);
+}
+.learn-hud {
+  background: linear-gradient(to top, var(--color-graphite) 30%, transparent);
+  padding-top: 4rem;
+}
+.learn-tip {
+  min-width: 11rem;
+  max-width: 16rem;
+  padding: 0.6rem 0.8rem;
+  background: rgb(11 11 14 / 0.92);
+  border: 1px solid var(--color-line-strong);
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.45);
+}
