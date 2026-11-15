@@ -2,11 +2,11 @@ import type { MediaTools } from "./media";
 import { TesseractOcr, type OcrEngine } from "./ocr";
 import { AnthropicQaProvider, OpenAIQaProvider, type QaProvider } from "./providers/qa";
 import { ElevenLabsTranscription, OpenAICompatibleTranscription, type TranscriptionProvider } from "./providers/transcription";
-import { AnthropicVisionProvider, OpenAIVisionProvider, type VisionProvider } from "./providers/vision";
+import { AnthropicVisionProvider, NvidiaVisionProvider, OpenAIVisionProvider, type VisionProvider } from "./providers/vision";
 
 /** Subset of environment configuration needed to build providers. */
 export interface ProviderEnv {
-  VISION_PROVIDER: "none" | "anthropic" | "openai";
+  VISION_PROVIDER: "none" | "anthropic" | "openai" | "nvidia";
   ANTHROPIC_API_KEY: string | null;
   ANTHROPIC_BASE_URL: string;
   ANTHROPIC_VISION_MODEL: string | null;
@@ -15,6 +15,9 @@ export interface ProviderEnv {
   OPENAI_BASE_URL: string;
   OPENAI_VISION_MODEL: string | null;
   OPENAI_TEXT_MODEL: string | null;
+  NVIDIA_API_KEY: string | null;
+  NVIDIA_BASE_URL: string;
+  NVIDIA_VISION_MODEL: string;
   TRANSCRIPTION_PROVIDER: "none" | "openai_compatible" | "elevenlabs";
   TRANSCRIPTION_BASE_URL: string;
   TRANSCRIPTION_API_KEY: string | null;
@@ -30,11 +33,15 @@ export function createVisionProvider(env: ProviderEnv): VisionProvider | null {
   if (env.VISION_PROVIDER === "openai" && env.OPENAI_API_KEY && env.OPENAI_VISION_MODEL) {
     return new OpenAIVisionProvider(env.OPENAI_API_KEY, env.OPENAI_VISION_MODEL, env.OPENAI_BASE_URL);
   }
+  if (env.VISION_PROVIDER === "nvidia" && env.NVIDIA_VISION_MODEL) {
+    return new NvidiaVisionProvider(env.NVIDIA_API_KEY, env.NVIDIA_VISION_MODEL, env.NVIDIA_BASE_URL);
+  }
   return null;
 }
 
 export function createQaProvider(env: ProviderEnv): QaProvider | null {
-  if (env.VISION_PROVIDER === "anthropic" && env.ANTHROPIC_API_KEY) {
+  // Cosmos describes video; questions in words stay with Claude when its key is there.
+  if ((env.VISION_PROVIDER === "anthropic" || env.VISION_PROVIDER === "nvidia") && env.ANTHROPIC_API_KEY) {
     const model = env.ANTHROPIC_TEXT_MODEL ?? env.ANTHROPIC_VISION_MODEL;
     if (model) return new AnthropicQaProvider(env.ANTHROPIC_API_KEY, model, env.ANTHROPIC_BASE_URL);
   }

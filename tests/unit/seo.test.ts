@@ -154,6 +154,10 @@ describe("legal settings", () => {
     expect(aiProcessors({ VISION_PROVIDER: "anthropic", ANTHROPIC_VISION_MODEL: "m" })).toEqual([]);
     expect(aiProcessors({ VISION_PROVIDER: "anthropic", ANTHROPIC_API_KEY: "k", ANTHROPIC_VISION_MODEL: "m" }).map((p) => p.name)).toEqual(["Anthropic"]);
     expect(aiProcessors({ VISION_PROVIDER: "openai", OPENAI_API_KEY: "k", OPENAI_VISION_MODEL: "m" }).map((p) => p.name)).toEqual(["OpenAI"]);
+    // NVIDIA's API is named; the model on SLOT1's own server isn't a third party; Claude still answers questions.
+    expect(aiProcessors({ VISION_PROVIDER: "nvidia", NVIDIA_API_KEY: "k" }).map((p) => p.name)).toEqual(["NVIDIA"]);
+    expect(aiProcessors({ VISION_PROVIDER: "nvidia", NVIDIA_API_KEY: "k", ANTHROPIC_API_KEY: "a" }).map((p) => p.name)).toEqual(["NVIDIA", "Anthropic"]);
+    expect(aiProcessors({ VISION_PROVIDER: "nvidia", NVIDIA_BASE_URL: "http://10.0.0.5:8000/v1" })).toEqual([]);
     expect(aiProcessors({ TRANSCRIPTION_PROVIDER: "openai_compatible", TRANSCRIPTION_MODEL: "w" }).map((p) => p.name)).toEqual(["OpenAI"]);
     expect(aiProcessors({ TRANSCRIPTION_PROVIDER: "openai_compatible", TRANSCRIPTION_MODEL: "w", TRANSCRIPTION_BASE_URL: "https://stt.example.net/v1" })[0]!.name).toBe(
       "the speech-to-text service at stt.example.net",

@@ -24,6 +24,9 @@ export const SETTING_KEYS = [
   "KICK_CLIENT_SECRET",
   "ANTHROPIC_API_KEY",
   "VISION_PROVIDER",
+  "NVIDIA_API_KEY",
+  "NVIDIA_BASE_URL",
+  "NVIDIA_VISION_MODEL",
   "TRANSCRIPTION_PROVIDER",
   "TRANSCRIPTION_BASE_URL",
   "TRANSCRIPTION_API_KEY",
@@ -46,6 +49,7 @@ export const CLEARABLE_SETTINGS: ReadonlySet<SettingKey> = new Set<SettingKey>([
   "KICK_CLIENT_ID",
   "KICK_CLIENT_SECRET",
   "ANTHROPIC_API_KEY",
+  "NVIDIA_API_KEY",
   "TRANSCRIPTION_API_KEY",
   "SLOT1_GOOGLE_SITE_VERIFICATION",
   "SLOT1_BING_SITE_VERIFICATION",
@@ -71,7 +75,13 @@ export function settingValueOk(key: SettingKey, v: string): boolean {
     case "ANTHROPIC_API_KEY":
       return /^[A-Za-z0-9_-]{20,300}$/.test(v);
     case "VISION_PROVIDER":
-      return v === "anthropic" || v === "none";
+      return v === "anthropic" || v === "nvidia" || v === "none";
+    case "NVIDIA_API_KEY":
+      return /^[A-Za-z0-9_-]{20,300}$/.test(v);
+    case "NVIDIA_BASE_URL":
+      return /^https?:\/\/[A-Za-z0-9.-]{1,200}(:[0-9]{2,5})?(\/[A-Za-z0-9._~/-]{0,200})?$/.test(v);
+    case "NVIDIA_VISION_MODEL":
+      return /^[A-Za-z0-9._:/-]{1,100}$/.test(v);
     case "TRANSCRIPTION_PROVIDER":
       return v === "none" || v === "openai_compatible" || v === "elevenlabs";
     case "TRANSCRIPTION_BASE_URL":
@@ -160,6 +170,12 @@ export const SettingsPatch = z
     kickClientSecret: trimmed.optional(),
     anthropicApiKey: trimmed.optional(),
     aiEnabled: z.boolean().optional(),
+    /** Which AI watches streams: Claude (Anthropic), NVIDIA Cosmos, or none. */
+    aiProvider: z.enum(["none", "anthropic", "nvidia"]).optional(),
+    nvidiaApiKey: trimmed.optional(),
+    /** Where Cosmos runs: NVIDIA's API, or our own GPU server later. */
+    nvidiaBaseUrl: trimmed.optional(),
+    nvidiaModel: trimmed.optional(),
     /** Which speech-to-text service transcribes live speech (any language); "off" turns it off. */
     speechService: z.enum(SPEECH_SERVICES).optional(),
     speechApiKey: trimmed.optional(),
@@ -189,6 +205,10 @@ export const FIELD_KEYS: Record<SettingsField, SettingKey> = {
   kickClientSecret: "KICK_CLIENT_SECRET",
   anthropicApiKey: "ANTHROPIC_API_KEY",
   aiEnabled: "VISION_PROVIDER",
+  aiProvider: "VISION_PROVIDER",
+  nvidiaApiKey: "NVIDIA_API_KEY",
+  nvidiaBaseUrl: "NVIDIA_BASE_URL",
+  nvidiaModel: "NVIDIA_VISION_MODEL",
   speechService: "TRANSCRIPTION_PROVIDER",
   speechApiKey: "TRANSCRIPTION_API_KEY",
   speechBaseUrl: "TRANSCRIPTION_BASE_URL",
@@ -212,6 +232,10 @@ export const FIELD_RULES: Record<SettingsField, string> = {
   kickClientSecret: "The Client Secret of your Kick developer app (letters and digits).",
   anthropicApiKey: "The key from console.anthropic.com (letters, digits, - and _).",
   aiEnabled: "On or off.",
+  aiProvider: "Off, Claude or NVIDIA Cosmos.",
+  nvidiaApiKey: "The key from build.nvidia.com, starting nvapi- (letters, digits, - and _).",
+  nvidiaBaseUrl: "The address, starting with http:// or https:// (for example https://integrate.api.nvidia.com/v1).",
+  nvidiaModel: "The model name the server expects (letters, digits and . _ : / -).",
   speechService: "Off, Groq, OpenAI, ElevenLabs or your own server.",
   speechApiKey: "The API key from the speech service (letters, digits, - _ and .).",
   speechBaseUrl: "The server's address, starting with http:// or https:// (for example https://whisper.example.com/v1).",
@@ -311,7 +335,10 @@ export interface AdminSettingsView {
     kickClientId: string | null;
     kickClientSecretSet: boolean;
     anthropicApiKeySet: boolean;
-    aiProvider: "none" | "anthropic" | "openai";
+    aiProvider: "none" | "anthropic" | "openai" | "nvidia";
+    nvidiaApiKeySet: boolean;
+    nvidiaBaseUrl: string;
+    nvidiaModel: string;
     speechService: SpeechService;
     speechApiKeySet: boolean;
     speechBaseUrl: string | null;

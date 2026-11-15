@@ -165,6 +165,33 @@ describe("/admin settings", () => {
     expect(await inboxRequests(dir)).toEqual([]);
   });
 
+  it("switches the AI to NVIDIA Cosmos with its key, and never shows the key", async () => {
+    const admin = await adminBrowser(h);
+    await clearInbox(dir);
+    const before = (await admin.get("/api/admin/settings")).json<AdminSettingsView>().values;
+    expect(before).toMatchObject({ nvidiaApiKeySet: false, nvidiaBaseUrl: "https://integrate.api.nvidia.com/v1", nvidiaModel: "nvidia/cosmos3-nano-reasoner" });
+    const ok = await admin.request("POST", "/api/admin/settings", { json: { aiProvider: "nvidia", nvidiaApiKey: "nvapi-0123456789abcdefghijklmnopqrstuvwxyz" } });
+    expect(ok.status).toBe(200);
+    const [req] = await inboxRequests(dir);
+    expect(req!.lines).toEqual([
+      ["set", "VISION_PROVIDER", "nvidia"],
+      ["set", "NVIDIA_API_KEY", "nvapi-0123456789abcdefghijklmnopqrstuvwxyz"],
+    ]);
+    // Later, our own GPU server takes over by address; a malformed one is refused here first.
+    await clearInbox(dir);
+    expect((await admin.request("POST", "/api/admin/settings", { json: { nvidiaBaseUrl: "http://10.0.0.5:8000/v1", nvidiaModel: "nvidia/Cosmos-Reason2-8B" } })).status).toBe(200);
+    expect((await inboxRequests(dir))[0]!.lines).toEqual([
+      ["set", "NVIDIA_BASE_URL", "http://10.0.0.5:8000/v1"],
+      ["set", "NVIDIA_VISION_MODEL", "nvidia/Cosmos-Reason2-8B"],
+    ]);
+    await clearInbox(dir);
+    const bad = await admin.request("POST", "/api/admin/settings", { json: { nvidiaBaseUrl: "javascript:alert(1)", aiProvider: "openai" } });
+    expect(bad.status).toBe(400);
+    expect(await inboxRequests(dir)).toEqual([]);
+    expect((await admin.get("/api/admin/settings")).body).not.toContain("nvapi-0123456789");
+    await clearRateLimits(h);
+  });
+
   it("follows the request to the server's answer and shows the new values right away", async () => {
     const admin = await adminBrowser(h);
     await clearInbox(dir);

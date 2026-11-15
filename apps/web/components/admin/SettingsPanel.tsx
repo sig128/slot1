@@ -678,35 +678,113 @@ function SpeechGroup({ view, off, busy, save, send }: GroupProps) {
   );
 }
 
+const AI_CHOICES: { id: "anthropic" | "nvidia" | "none"; name: string; note: string }[] = [
+  { id: "anthropic", name: "Claude (Anthropic)", note: "Looks at the frames and writes the live log. Anthropic bills the usage." },
+  {
+    id: "nvidia",
+    name: "NVIDIA Cosmos Reason",
+    note: "NVIDIA's video model. A free key from build.nvidia.com is a trial with limited requests; our own GPU server later takes over by address.",
+  },
+  { id: "none", name: "Off", note: "No AI looks at the picture. Text on screen is still read." },
+];
+
+/** Which AI watches streams, and its key. Claude also answers questions when its key is saved. */
 function AiGroup({ view, off, busy, save, send }: GroupProps) {
   const id = useId();
   const v = view.values;
-  const g = useGroup(["aiEnabled", "anthropicApiKey"], { aiEnabled: v.aiProvider === "anthropic", anthropicApiKey: "" });
+  const g = useGroup(["aiProvider", "anthropicApiKey", "nvidiaApiKey", "nvidiaBaseUrl", "nvidiaModel"], {
+    aiProvider: v.aiProvider === "openai" ? "none" : v.aiProvider,
+    anthropicApiKey: "",
+    nvidiaApiKey: "",
+    nvidiaBaseUrl: v.nvidiaBaseUrl,
+    nvidiaModel: v.nvidiaModel,
+  });
+  const choice = String(g.value("aiProvider") ?? "none");
   return (
     <Group
       id="settings-ai"
       title="AI"
-      status={<Working ok={view.working.ai} yes="The AI watches streams." no="The AI is off. Switch it on with an Anthropic key to have it watch streams." server={view.working.aiReason} />}
+      status={<Working ok={view.working.ai} yes="The AI watches streams." no="The AI is off. Choose Claude or NVIDIA Cosmos and paste its key." server={view.working.aiReason} />}
     >
-      {v.aiProvider === "openai" ? <p className="text-[0.9rem] text-ivory-2">This server uses OpenAI, set on the server. Switching the AI on here uses Anthropic instead.</p> : null}
-      <Toggle id={`${id}-on`} label="AI watches streams (Anthropic)" checked={Boolean(g.value("aiEnabled"))} onChange={(x) => g.set("aiEnabled", x)} disabled={off || busy} />
-      <Field
-        label="Anthropic API key"
-        htmlFor={`${id}-key`}
-        error={g.errors.anthropicApiKey}
-        hint={v.anthropicApiKeySet ? "Saved. It's never shown again. Paste a new one to replace it. Anthropic bills the usage." : "From console.anthropic.com. Anthropic bills the usage."}
-      >
-        <TextInput
-          id={`${id}-key`}
-          type="password"
-          value={String(g.value("anthropicApiKey") ?? "")}
-          onChange={(x) => g.set("anthropicApiKey", x)}
-          disabled={off || busy}
-          placeholder={v.anthropicApiKeySet ? "•••••••• saved, paste a new one to replace it" : "sk-ant-..."}
-          autoComplete="new-password"
+      {v.aiProvider === "openai" ? <p className="text-[0.9rem] text-ivory-2">This server uses OpenAI, set on the server. Choosing here replaces it.</p> : null}
+      <fieldset className="grid gap-2" disabled={off || busy}>
+        <legend className="sr-only">Which AI watches streams</legend>
+        {AI_CHOICES.map((c) => (
+          <label key={c.id} htmlFor={`${id}-${c.id}`} className="flex cursor-pointer items-start gap-3">
+            <input
+              id={`${id}-${c.id}`}
+              type="radio"
+              name={`${id}-ai`}
+              className="mt-1 h-4 w-4 accent-[var(--color-coral)]"
+              checked={choice === c.id}
+              onChange={() => g.set("aiProvider", c.id)}
+            />
+            <span>
+              <span className="block font-display text-[1.08rem] font-semibold">{c.name}</span>
+              <span className="block text-[0.85rem] text-ivory-3">{c.note}</span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
+      {choice === "nvidia" && (
+        <>
+          <Field
+            label="NVIDIA API key"
+            htmlFor={`${id}-nvkey`}
+            error={g.errors.nvidiaApiKey}
+            hint={v.nvidiaApiKeySet ? "Saved. It's never shown again. Paste a new one to replace it." : "From build.nvidia.com (Get API Key). It starts with nvapi-. Not needed for our own server."}
+          >
+            <TextInput
+              id={`${id}-nvkey`}
+              type="password"
+              value={String(g.value("nvidiaApiKey") ?? "")}
+              onChange={(x) => g.set("nvidiaApiKey", x)}
+              disabled={off || busy}
+              placeholder={v.nvidiaApiKeySet ? "•••••••• saved, paste a new one to replace it" : "nvapi-..."}
+              autoComplete="new-password"
+              error={g.errors.nvidiaApiKey}
+            />
+          </Field>
+          <Field
+            label="Address"
+            htmlFor={`${id}-nvurl`}
+            error={g.errors.nvidiaBaseUrl}
+            hint="NVIDIA's API is https://integrate.api.nvidia.com/v1. Change it to our own GPU server's address once it runs the model."
+          >
+            <TextInput id={`${id}-nvurl`} value={String(g.value("nvidiaBaseUrl") ?? "")} onChange={(x) => g.set("nvidiaBaseUrl", x)} disabled={off || busy} error={g.errors.nvidiaBaseUrl} />
+          </Field>
+          <Field label="Model" htmlFor={`${id}-nvmodel`} error={g.errors.nvidiaModel} hint="The model name, as build.nvidia.com or our own server lists it.">
+            <TextInput id={`${id}-nvmodel`} value={String(g.value("nvidiaModel") ?? "")} onChange={(x) => g.set("nvidiaModel", x)} disabled={off || busy} error={g.errors.nvidiaModel} />
+          </Field>
+        </>
+      )}
+      {choice !== "none" && (
+        <Field
+          label="Anthropic API key"
+          htmlFor={`${id}-key`}
           error={g.errors.anthropicApiKey}
-        />
-      </Field>
+          hint={
+            choice === "nvidia"
+              ? v.anthropicApiKeySet
+                ? "Saved. Claude still answers questions (Ask SLOT1, the chat bot) while Cosmos watches."
+                : "Optional with Cosmos: with it, Claude answers questions (Ask SLOT1, the chat bot)."
+              : v.anthropicApiKeySet
+                ? "Saved. It's never shown again. Paste a new one to replace it. Anthropic bills the usage."
+                : "From console.anthropic.com. Anthropic bills the usage."
+          }
+        >
+          <TextInput
+            id={`${id}-key`}
+            type="password"
+            value={String(g.value("anthropicApiKey") ?? "")}
+            onChange={(x) => g.set("anthropicApiKey", x)}
+            disabled={off || busy}
+            placeholder={v.anthropicApiKeySet ? "•••••••• saved, paste a new one to replace it" : "sk-ant-..."}
+            autoComplete="new-password"
+            error={g.errors.anthropicApiKey}
+          />
+        </Field>
+      )}
       <SaveRow
         group="ai"
         label="Save AI"
@@ -714,7 +792,7 @@ function AiGroup({ view, off, busy, save, send }: GroupProps) {
         disabled={off || busy}
         onSave={() => {
           const p = g.patch();
-          if (p && Object.keys(p).length) void send("ai", "/api/admin/settings", p).then((ok) => ok && g.forget(["anthropicApiKey"]));
+          if (p && Object.keys(p).length) void send("ai", "/api/admin/settings", p).then((ok) => ok && g.forget(["anthropicApiKey", "nvidiaApiKey"]));
         }}
       />
     </Group>

@@ -72,7 +72,7 @@ const EnvSchema = z.object({
   KICK_API_BASE: z.url().default("https://api.kick.com/public/v1"),
   KICK_ID_BASE: z.url().default("https://id.kick.com"),
 
-  VISION_PROVIDER: z.enum(["none", "anthropic", "openai"]).default("none"),
+  VISION_PROVIDER: z.enum(["none", "anthropic", "openai", "nvidia"]).default("none"),
   ANTHROPIC_API_KEY: optStr,
   ANTHROPIC_BASE_URL: z.string().default("https://api.anthropic.com"),
   ANTHROPIC_VISION_MODEL: optStr,
@@ -81,6 +81,13 @@ const EnvSchema = z.object({
   OPENAI_BASE_URL: z.string().default("https://api.openai.com/v1"),
   OPENAI_VISION_MODEL: optStr,
   OPENAI_TEXT_MODEL: optStr,
+  /**
+   * NVIDIA Cosmos Reason through any OpenAI-compatible chat API: NVIDIA's hosted API (a free trial,
+   * key from build.nvidia.com) or our own GPU server running the open model (vLLM), by address.
+   */
+  NVIDIA_API_KEY: optStr,
+  NVIDIA_BASE_URL: z.string().default("https://integrate.api.nvidia.com/v1"),
+  NVIDIA_VISION_MODEL: z.string().default("nvidia/cosmos3-nano-reasoner"),
   VISION_PRICE_INPUT_PER_MTOK: optStr,
   VISION_PRICE_OUTPUT_PER_MTOK: optStr,
   VISION_FRAMES_PER_CALL: int(4),
@@ -314,6 +321,17 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     visionModel = env.OPENAI_VISION_MODEL;
     if (!env.OPENAI_API_KEY) visionReason = "OPENAI_API_KEY is not set";
     else if (!env.OPENAI_VISION_MODEL) visionReason = "OPENAI_VISION_MODEL is not set";
+  } else if (env.VISION_PROVIDER === "nvidia") {
+    visionProvider = "nvidia";
+    visionModel = env.NVIDIA_VISION_MODEL;
+    // NVIDIA's own API needs a key; our own server running the model may not.
+    let host = "";
+    try {
+      host = new URL(env.NVIDIA_BASE_URL).hostname;
+    } catch {
+      visionReason = "NVIDIA_BASE_URL is not a valid address";
+    }
+    if (!visionReason && !env.NVIDIA_API_KEY && /(^|\.)api\.nvidia\.com$/i.test(host)) visionReason = "NVIDIA_API_KEY is not set";
   } else {
     visionReason = "AI not configured: set VISION_PROVIDER and the provider's API key and vision model";
   }

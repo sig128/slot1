@@ -52,6 +52,22 @@ export function aiProcessors(env: Record<string, string | undefined> = process.e
     out.push({ name: "Anthropic", purpose: "describes sampled video frames (AI vision) and phrases answers to questions from the stored evidence" });
   if (env.VISION_PROVIDER === "openai" && set(env.OPENAI_API_KEY) && set(env.OPENAI_VISION_MODEL))
     out.push({ name: "OpenAI", purpose: "describes sampled video frames (AI vision) and phrases answers to questions from the stored evidence" });
+  if (env.VISION_PROVIDER === "nvidia") {
+    let host = "integrate.api.nvidia.com";
+    try {
+      host = new URL(env.NVIDIA_BASE_URL || "https://integrate.api.nvidia.com/v1").host;
+    } catch {
+      /* keep the default */
+    }
+    // NVIDIA's own API is a processor; the model on SLOT1's own server isn't a third party.
+    if (/(^|\.)nvidia\.com$/i.test(host)) {
+      if (set(env.NVIDIA_API_KEY)) out.push({ name: "NVIDIA", purpose: "describes sampled video frames (AI vision, Cosmos Reason)" });
+    } else if (!/^(localhost|127\.|10\.|192\.168\.)/.test(host)) {
+      out.push({ name: `the AI vision service at ${host}`, purpose: "describes sampled video frames (AI vision, Cosmos Reason)" });
+    }
+    // Questions in words stay with Claude when its key is there.
+    if (set(env.ANTHROPIC_API_KEY)) out.push({ name: "Anthropic", purpose: "phrases answers to questions from the stored evidence" });
+  }
   if (env.TRANSCRIPTION_PROVIDER === "openai_compatible" && set(env.TRANSCRIPTION_MODEL)) {
     let host = "api.openai.com";
     try {

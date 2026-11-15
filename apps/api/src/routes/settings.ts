@@ -24,7 +24,7 @@ const STARTED_AT = new Date(Date.now() - Math.round(process.uptime() * 1000));
 
 /** What a saved request changes, kept so /admin shows it before the API itself restarts. */
 const shownKey = (id: string) => `slot1:settings:req:${id}`;
-const SECRET_KEYS = new Set(["TWITCH_CLIENT_SECRET", "KICK_CLIENT_SECRET", "ANTHROPIC_API_KEY", "TRANSCRIPTION_API_KEY", "SLOT1_ADMIN_PASSWORD_HASH"]);
+const SECRET_KEYS = new Set(["TWITCH_CLIENT_SECRET", "KICK_CLIENT_SECRET", "ANTHROPIC_API_KEY", "NVIDIA_API_KEY", "TRANSCRIPTION_API_KEY", "SLOT1_ADMIN_PASSWORD_HASH"]);
 
 type Values = AdminSettingsView["values"];
 
@@ -72,7 +72,16 @@ function overlay(values: Values, entries: { key: string; value: string | null }[
         v.anthropicApiKeySet = Boolean(value);
         break;
       case "VISION_PROVIDER":
-        if (value === "anthropic" || value === "none") v.aiProvider = value;
+        if (value === "anthropic" || value === "nvidia" || value === "none") v.aiProvider = value;
+        break;
+      case "NVIDIA_API_KEY":
+        v.nvidiaApiKeySet = Boolean(value);
+        break;
+      case "NVIDIA_BASE_URL":
+        if (value) v.nvidiaBaseUrl = value;
+        break;
+      case "NVIDIA_VISION_MODEL":
+        if (value) v.nvidiaModel = value;
         break;
       case "SLOT1_AUTODEPLOY":
         v.autodeploy = value !== "false";
@@ -142,6 +151,9 @@ export const settingsRoutes =
         kickClientSecretSet: Boolean(env.KICK_CLIENT_SECRET),
         anthropicApiKeySet: Boolean(env.ANTHROPIC_API_KEY),
         aiProvider: env.VISION_PROVIDER,
+        nvidiaApiKeySet: Boolean(env.NVIDIA_API_KEY),
+        nvidiaBaseUrl: env.NVIDIA_BASE_URL,
+        nvidiaModel: env.NVIDIA_VISION_MODEL,
         speechService: speechServiceOf(env.TRANSCRIPTION_PROVIDER, env.TRANSCRIPTION_BASE_URL),
         speechApiKeySet: Boolean(env.TRANSCRIPTION_API_KEY),
         speechBaseUrl: env.TRANSCRIPTION_BASE_URL,

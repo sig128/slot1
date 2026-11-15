@@ -771,7 +771,10 @@ setting_ok() {
     SLOT1_BOT_TWITCH_LOGIN) [[ "$v" =~ ^[a-z0-9_]{1,25}$ ]] ;;
     KICK_CLIENT_ID | KICK_CLIENT_SECRET) [[ "$v" =~ ^[A-Za-z0-9]{10,128}$ ]] ;;
     ANTHROPIC_API_KEY) [[ "$v" =~ ^[A-Za-z0-9_-]{20,300}$ ]] ;;
-    VISION_PROVIDER) [[ "$v" =~ ^(anthropic|none)$ ]] ;;
+    VISION_PROVIDER) [[ "$v" =~ ^(anthropic|nvidia|none)$ ]] ;;
+    NVIDIA_API_KEY) [[ "$v" =~ ^[A-Za-z0-9_-]{20,300}$ ]] ;;
+    NVIDIA_BASE_URL) [[ "$v" =~ ^https?://[A-Za-z0-9.-]{1,200}(:[0-9]{2,5})?(/[A-Za-z0-9._~/-]{0,200})?$ ]] ;;
+    NVIDIA_VISION_MODEL) [[ "$v" =~ ^[A-Za-z0-9._:/-]{1,100}$ ]] ;;
     TRANSCRIPTION_PROVIDER) [[ "$v" =~ ^(none|openai_compatible|elevenlabs)$ ]] ;;
     TRANSCRIPTION_BASE_URL) [[ "$v" =~ ^https?://[A-Za-z0-9.-]{1,200}(:[0-9]{2,5})?(/[A-Za-z0-9._~/-]{0,200})?$ ]] ;;
     TRANSCRIPTION_API_KEY) [[ "$v" =~ ^[A-Za-z0-9_.-]{10,300}$ ]] ;;
@@ -789,7 +792,7 @@ setting_ok() {
 # password can only be replaced).
 setting_clearable() {
   case "$1" in
-    SLOT1_OPERATOR_TWITCH_LOGINS | SLOT1_BOT_TWITCH_LOGIN | ANTHROPIC_API_KEY | KICK_CLIENT_ID | KICK_CLIENT_SECRET | TRANSCRIPTION_API_KEY) return 0 ;;
+    SLOT1_OPERATOR_TWITCH_LOGINS | SLOT1_BOT_TWITCH_LOGIN | ANTHROPIC_API_KEY | NVIDIA_API_KEY | KICK_CLIENT_ID | KICK_CLIENT_SECRET | TRANSCRIPTION_API_KEY) return 0 ;;
     SLOT1_GOOGLE_SITE_VERIFICATION | SLOT1_BING_SITE_VERIFICATION | SLOT1_CONTACT_EMAIL) return 0 ;;
     SLOT1_LEGAL_NAME | SLOT1_LEGAL_ADDRESS | SLOT1_GOVERNING_LAW) return 0 ;;
     *) return 1 ;;
