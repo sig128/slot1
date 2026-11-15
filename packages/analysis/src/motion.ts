@@ -1,4 +1,3 @@
-import sharp from "sharp";
 import type { EvidenceRef } from "@slot1/contracts";
 import type { FrameRef } from "./candidates";
 import type { Candidate } from "./fusion";
@@ -43,11 +42,20 @@ export class MotionRule {
   }
 }
 
+type Sharp = typeof import("sharp").default;
+let sharpLoad: Promise<Sharp> | null = null;
+/**
+ * sharp is loaded on first use, never at import: only the worker measures motion, and the API
+ * bundles this package without shipping sharp (an import here would stop the API from starting).
+ */
+const loadSharp = () => (sharpLoad ??= import("sharp").then((m) => m.default));
+
 export class MotionMeter {
   private prev: Uint8Array | null = null;
   private readonly rule = new MotionRule();
 
   async measure(jpeg: Buffer): Promise<FrameChange> {
+    const sharp = await loadSharp();
     const { data } = await sharp(jpeg).resize(W, H, { fit: "fill" }).greyscale().raw().toBuffer({ resolveWithObject: true });
     const cur = new Uint8Array(data);
     const prev = this.prev;
