@@ -170,6 +170,7 @@ async function kickCards(ctx: ServerContext, slugs: string[], now: string): Prom
       analysis: notAnalyzed(ctx),
       publicAnalysis: false,
       followers: null,
+      subscribers: k?.subscribers ?? null,
       preview: true,
       platform: "kick",
     });

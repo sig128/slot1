@@ -18,6 +18,8 @@ export interface KickChannel {
   viewers: number | null;
   thumbnailUrl: string | null;
   startedAt: string | null;
+  /** Active paid subscribers (Kick's public API has no follower total). */
+  subscribers: number | null;
 }
 
 export class KickApiError extends Error {
@@ -74,6 +76,7 @@ interface ApiChannel {
   stream_title?: string | null;
   category?: { name?: string | null } | null;
   stream?: { is_live?: boolean; viewer_count?: number | null; thumbnail?: string | null; start_time?: string | null } | null;
+  active_subscribers_count?: number | null;
 }
 interface ApiUser {
   user_id?: number;
@@ -115,6 +118,7 @@ export async function kickChannels(ctx: ServerContext, slugs: string[]): Promise
       viewers: live && typeof c.stream?.viewer_count === "number" ? c.stream.viewer_count : null,
       thumbnailUrl: live ? httpsOrNull(c.stream?.thumbnail) : null,
       startedAt: live ? (c.stream?.start_time ?? null) : null,
+      subscribers: typeof c.active_subscribers_count === "number" ? c.active_subscribers_count : null,
     });
   }
   return out;

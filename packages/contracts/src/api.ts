@@ -139,6 +139,8 @@ export const ChannelCard = z.object({
   preview: z.boolean().optional(),
   /** Where the broadcast is: Twitch (default) or Kick (featured Kick channels, login "kick-<slug>"). */
   platform: z.enum(["twitch", "kick"]).optional(),
+  /** Kick's paid subscriber count: Kick's official API publishes no follower total. */
+  subscribers: z.number().int().nonnegative().nullable().optional(),
 });
 export type ChannelCard = z.infer<typeof ChannelCard>;
 

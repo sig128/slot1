@@ -28,9 +28,21 @@ function Tile({ c }: { c: ChannelCard }) {
       <Link href={`/watch/${c.login}`} className="group block">
         <div className="relative aspect-video overflow-hidden border hairline bg-graphite-800 transition-colors group-hover:border-ivory-2">
           {c.broadcast.thumbnailUrl ? (
-            // Twitch's own thumbnail: the list never autoplays embeds.
+            // The platform's own thumbnail: the list never autoplays embeds when there is one.
             // eslint-disable-next-line @next/next/no-img-element
             <img src={c.broadcast.thumbnailUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+          ) : c.platform === "kick" && c.broadcast.state === "unknown" ? (
+            // No data from Kick (no Kick app saved yet): Kick's own player, muted, as the preview.
+            // The card stays one link: the player takes no clicks.
+            <iframe
+              title={`${c.displayName} on Kick`}
+              src={`https://player.kick.com/${encodeURIComponent(c.login.replace(/^kick-/, ""))}?autoplay=true&muted=true`}
+              loading="lazy"
+              tabIndex={-1}
+              aria-hidden
+              allow="autoplay"
+              className="pointer-events-none h-full w-full border-0 bg-black"
+            />
           ) : (
             <span className="grid h-full w-full place-items-center">
               <ChannelAvatar c={c} size={64} />
@@ -53,7 +65,11 @@ function Tile({ c }: { c: ChannelCard }) {
             {c.broadcast.title && <p className="truncate text-sm text-ivory-2">{c.broadcast.title}</p>}
             <p className="mt-0.5 flex flex-wrap gap-x-3 text-[0.8rem] text-ivory-3">
               {c.broadcast.category && <span className="max-w-full truncate">{c.broadcast.category}</span>}
-              {typeof c.followers === "number" && <span className="tnum">{count(c.followers, "follower", "followers")}</span>}
+              {typeof c.followers === "number" ? (
+                <span className="tnum">{count(c.followers, "follower", "followers")}</span>
+              ) : typeof c.subscribers === "number" ? (
+                <span className="tnum">{count(c.subscribers, "subscriber", "subscribers")}</span>
+              ) : null}
             </p>
           </div>
         </div>
