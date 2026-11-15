@@ -441,9 +441,17 @@ export class LiveIngestAdapter implements MediaSourceAdapter {
 
   async disconnect() {
     this.ended = true;
-    this.child?.kill("SIGTERM");
-    setTimeout(() => this.child?.kill("SIGKILL"), 3000).unref();
     for (const w of this.waiters.splice(0)) w({ value: undefined as never, done: true });
+    const child = this.child;
+    if (!child || child.exitCode !== null || child.signalCode !== null) return;
+    const exited = new Promise<void>((resolve) => child.once("close", () => resolve()));
+    child.kill("SIGTERM");
+    const kill = setTimeout(() => child.kill("SIGKILL"), 3000);
+    kill.unref();
+    // Wait for ffmpeg to finish its other outputs: the recording's and the buffer's last segment
+    // is written (and listed) on exit, and is lost if the next step reads the folder first.
+    await Promise.race([exited, new Promise<void>((r) => setTimeout(r, 5000).unref())]);
+    clearTimeout(kill);
   }
 
   health() {

@@ -1,4 +1,5 @@
 import type { EvidenceRef } from "@slot1/contracts";
+import type SharpModule from "sharp";
 import type { FrameRef } from "./candidates";
 import type { Candidate } from "./fusion";
 
@@ -42,7 +43,7 @@ export class MotionRule {
   }
 }
 
-type Sharp = typeof import("sharp").default;
+type Sharp = typeof SharpModule;
 let sharpLoad: Promise<Sharp> | null = null;
 /**
  * sharp is loaded on first use, never at import: only the worker measures motion, and the API
