@@ -34,7 +34,7 @@ export function proxy(request: NextRequest) {
     `font-src 'self'`,
     // Sharing a clip fetches its file, which may live on the S3 media origin.
     `connect-src ${["'self'", webrtcOrigin, mediaOrigins, obsLocal].filter(Boolean).join(" ")}`,
-    `frame-src https://player.twitch.tv https://clips.twitch.tv https://www.twitch.tv https://player.kick.com`,
+    `frame-src https://player.twitch.tv https://clips.twitch.tv https://www.twitch.tv https://player.kick.com https://kick.com`,
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self' https://id.twitch.tv`,

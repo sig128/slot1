@@ -138,6 +138,7 @@ export function WatchClient({
       canAsk={watch.viewer.canAsk}
       askPolicy={watch.viewer.askPolicy}
       chatLogin={onTwitch ? c.login : null}
+      kickChat={onKick ? kickSlug : null}
       chatRoom={chatRoom}
       embedParents={embedParents}
       emptyState={empty}

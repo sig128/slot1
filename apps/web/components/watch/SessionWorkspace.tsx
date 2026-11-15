@@ -21,7 +21,7 @@ import { api, ApiError, newIdempotencyKey } from "@/lib/api";
 import { pct } from "@/lib/format";
 import { AiViewPanel } from "./AiView";
 import { AskPanel } from "./AskPanel";
-import { ChatPanel } from "./ChatPanel";
+import { ChatPanel, type PlatformChat } from "./ChatPanel";
 import { EventRail, railItems } from "./EventRail";
 import { EvidencePanel } from "./EvidencePanel";
 import { InstantReplayPlayer, PlayerKindContext, useInstantReplay, useInstantReplayStatus, useWideEnough, type PlayerKind } from "./InstantReplay";
@@ -54,6 +54,8 @@ interface Props {
   canAsk: boolean;
   askPolicy: "off" | "signed_in" | "anyone";
   chatLogin?: string | null;
+  /** A Kick channel's slug: its Kick chat in the Chat tab. */
+  kickChat?: string | null;
   embedParents?: string[];
   /** SLOT1 chat's room (the channel's login) when this channel has one. */
   chatRoom?: string | null;
@@ -100,10 +102,17 @@ export function SessionWorkspace(p: Props) {
   const [selected, setSelected] = useState<string | null>(p.initialMomentId ?? null);
   // The rail: one view at a time at full height (Live log, Chat, Ask SLOT1, Session), never panels
   // stacked on each other. A channel SLOT1 isn't analyzing opens on Chat; the others on Live log.
-  const twitchChat = p.mode === "live" && p.chatLogin && p.embedParents ? chatEmbedUrl(p.chatLogin, p.embedParents) : null;
+  const platformChat: PlatformChat | null =
+    p.mode !== "live"
+      ? null
+      : p.kickChat
+        ? { kind: "kick", src: `https://kick.com/popout/${encodeURIComponent(p.kickChat)}/chat` }
+        : p.chatLogin && p.embedParents
+          ? { kind: "twitch", src: chatEmbedUrl(p.chatLogin, p.embedParents) }
+          : null;
   const siteChat = p.mode === "live" ? (p.chatRoom ?? null) : null;
-  const chatAvailable = Boolean(twitchChat || siteChat);
-  const chatLabel = twitchChat && siteChat ? "Chat" : twitchChat ? "Twitch chat" : "SLOT1 chat";
+  const chatAvailable = Boolean(platformChat || siteChat);
+  const chatLabel = platformChat && siteChat ? "Chat" : platformChat ? (platformChat.kind === "kick" ? "Kick chat" : "Twitch chat") : "SLOT1 chat";
   const views: [string, string][] = [
     ["log", "Live log"],
     ...(chatAvailable ? ([["chat", chatLabel]] as [string, string][]) : []),
@@ -451,7 +460,7 @@ export function SessionWorkspace(p: Props) {
             {chatAvailable && (
               // Kept mounted while another view is open, so the chats don't reload on every switch.
               <Tabs.Content value="chat" className="flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden" forceMount>
-                <ChatPanel twitchSrc={twitchChat} room={siteChat} active={tab === "chat"} focusSlot1={focusSlot1} />
+                <ChatPanel platform={platformChat} room={siteChat} active={tab === "chat"} focusSlot1={focusSlot1} />
               </Tabs.Content>
             )}
           </Tabs.Root>

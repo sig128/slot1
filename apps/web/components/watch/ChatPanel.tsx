@@ -4,19 +4,26 @@ import { Tabs } from "radix-ui";
 import { useEffect, useState } from "react";
 import { SiteChat } from "./SiteChat";
 
-type View = "twitch" | "slot1";
+type View = "platform" | "slot1";
+
+/** The channel's own chat on its platform: Twitch's chat embed, or Kick's chat popout. */
+export interface PlatformChat {
+  kind: "twitch" | "kick";
+  src: string;
+}
 
 // Lighter than the rail's own tabs above it: an underline marks the open chat.
 const TRIGGER =
   "h-10 flex-1 border-b-2 border-transparent font-display text-[0.95rem] font-semibold tracking-[0.02em] text-ivory-3 transition-colors hover:text-ivory data-[state=active]:border-apricot data-[state=active]:text-ivory";
 
 /**
- * The rail's chat: the channel's Twitch chat (Twitch's own embed) and SLOT1 chat, each at full
- * height, one at a time. Both stay mounted, so switching never reloads either, and SLOT1 chat counts
- * what arrived while it was out of view.
+ * The rail's chat: the channel's own chat on Twitch or Kick (that platform's page, in a frame) and
+ * SLOT1 chat, each at full height, one at a time. Both stay mounted, so switching never reloads
+ * either, and SLOT1 chat counts what arrived while it was out of view.
  */
-export function ChatPanel({ twitchSrc, room, active, focusSlot1 }: { twitchSrc: string | null; room: string | null; active: boolean; focusSlot1: boolean }) {
-  const [view, setView] = useState<View>(twitchSrc ? "twitch" : "slot1");
+export function ChatPanel({ platform, room, active, focusSlot1 }: { platform: PlatformChat | null; room: string | null; active: boolean; focusSlot1: boolean }) {
+  const [view, setView] = useState<View>(platform ? "platform" : "slot1");
+  const name = platform?.kind === "kick" ? "Kick chat" : "Twitch chat";
   const [unread, setUnread] = useState(0);
 
   useEffect(() => {
@@ -27,10 +34,10 @@ export function ChatPanel({ twitchSrc, room, active, focusSlot1 }: { twitchSrc: 
 
   return (
     <Tabs.Root value={view} onValueChange={(v) => setView(v as View)} className="flex min-h-0 flex-1 flex-col">
-      {twitchSrc && room && (
+      {platform && room && (
         <Tabs.List className="flex border-b hairline" aria-label="Chats">
-          <Tabs.Trigger value="twitch" className={TRIGGER}>
-            Twitch chat
+          <Tabs.Trigger value="platform" className={TRIGGER}>
+            {name}
           </Tabs.Trigger>
           <Tabs.Trigger value="slot1" className={TRIGGER}>
             SLOT1 chat
@@ -42,9 +49,20 @@ export function ChatPanel({ twitchSrc, room, active, focusSlot1 }: { twitchSrc: 
           </Tabs.Trigger>
         </Tabs.List>
       )}
-      {twitchSrc && (
-        <Tabs.Content value="twitch" forceMount className="flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden">
-          <iframe title="Twitch chat" src={twitchSrc} className="block min-h-0 w-full flex-1 bg-graphite" />
+      {platform && (
+        <Tabs.Content value="platform" forceMount className="flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden">
+          <iframe title={name} src={platform.src} className="block min-h-0 w-full flex-1 bg-graphite" />
+          {platform.kind === "kick" && (
+            // Kick has no official chat embed; if its page doesn't load here, the chat is one click away.
+            <a
+              href={platform.src}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="block border-t hairline px-4 py-2 text-[0.78rem] text-ivory-3 underline-offset-2 hover:text-ivory hover:underline"
+            >
+              Chat not loading? Open Kick chat in a new window
+            </a>
+          )}
         </Tabs.Content>
       )}
       {room && (

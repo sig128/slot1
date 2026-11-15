@@ -31,6 +31,6 @@ describe("content security policy", () => {
   });
 
   it("keeps frames limited to Twitch's and Kick's official embeds", () => {
-    expect(directive("frame-src")).toBe("frame-src https://player.twitch.tv https://clips.twitch.tv https://www.twitch.tv https://player.kick.com");
+    expect(directive("frame-src")).toBe("frame-src https://player.twitch.tv https://clips.twitch.tv https://www.twitch.tv https://player.kick.com https://kick.com");
   });
 });
