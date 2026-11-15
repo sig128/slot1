@@ -96,19 +96,19 @@ export function SessionWorkspace(p: Props) {
   }, [p.initialClips, stream.clips]);
 
   const [selected, setSelected] = useState<string | null>(p.initialMomentId ?? null);
-  // The rail: Twitch chat at full height, never squeezed under another panel. A watch-only channel
-  // has nothing analyzed, so its rail is the chat alone; other channels switch between views.
+  // The rail: one view at a time at full height (Live log, Chat, Ask SLOT1, Session), never panels
+  // stacked on each other. A channel SLOT1 isn't analyzing opens on Chat; the others on Live log.
   const twitchChat = p.mode === "live" && p.chatLogin && p.embedParents ? chatEmbedUrl(p.chatLogin, p.embedParents) : null;
   const siteChat = p.mode === "live" ? (p.chatRoom ?? null) : null;
   const chatAvailable = Boolean(twitchChat || siteChat);
-  const analysisViews = !p.watchOnly || !chatAvailable;
   const chatLabel = twitchChat && siteChat ? "Chat" : twitchChat ? "Twitch chat" : "SLOT1 chat";
   const views: [string, string][] = [
-    ...(analysisViews ? ([["log", "Live log"]] as [string, string][]) : []),
+    ["log", "Live log"],
     ...(chatAvailable ? ([["chat", chatLabel]] as [string, string][]) : []),
-    ...(analysisViews ? ([["ask", "Ask SLOT1"], ["session", "Session"]] as [string, string][]) : []),
+    ["ask", "Ask SLOT1"],
+    ["session", "Session"],
   ];
-  const [tab, setTab] = useState(analysisViews ? "log" : "chat");
+  const [tab, setTab] = useState(p.watchOnly && chatAvailable ? "chat" : "log");
   const [focusSlot1, setFocusSlot1] = useState(false);
   const railRef = useRef<HTMLElement>(null);
 
@@ -406,45 +406,41 @@ export function SessionWorkspace(p: Props) {
                 ))}
               </Tabs.List>
             )}
-            {analysisViews && (
-              <>
-            <Tabs.Content value="log" className="flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden" forceMount>
-              <EventRail
-                mode={p.mode}
-                items={items}
-                sources={stream.sources}
-                status={p.mode === "live" ? status : null}
-                showHeader={p.mode === "live" && Boolean(p.session)}
-                connection={stream.connection}
-                selectedId={selected}
-                onSelect={select}
-                freshIds={stream.freshIds}
-                now={now}
-                emptyState={p.emptyState}
-                onReplay={
-                  p.mode === "live"
-                    ? canInstant
-                      ? instantReplay
-                      : undefined
-                    : p.session?.playback
-                      ? (o) => {
-                          setSelected(o.id);
-                          if (o.mediaStartMs !== null) jumpTo(o.mediaStartMs);
-                        }
-                      : undefined
-                }
-                replayAction={p.mode === "live" ? "Replay" : "Play"}
-                replayNote={replayEnabled && replayStatus && !replayStatus.available ? replayStatus.reason : null}
-              />
-            </Tabs.Content>
-            <Tabs.Content value="ask" className="flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden">
-              <AskPanel sessionId={p.session?.id ?? null} canAsk={p.canAsk} policy={p.askPolicy} onCite={onCite} fixtureAnswer={p.fixture?.answer} />
-            </Tabs.Content>
-            <Tabs.Content value="session" className="min-h-0 flex-1 overflow-y-auto data-[state=inactive]:hidden">
-              <SessionPanel session={p.session ? { ...p.session, analysis: status } : null} sources={stream.sources} clips={clips} now={now} />
-            </Tabs.Content>
-              </>
-            )}
+        <Tabs.Content value="log" className="flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden" forceMount>
+          <EventRail
+            mode={p.mode}
+            items={items}
+            sources={stream.sources}
+            status={p.mode === "live" ? status : null}
+            showHeader={p.mode === "live" && Boolean(p.session)}
+            connection={stream.connection}
+            selectedId={selected}
+            onSelect={select}
+            freshIds={stream.freshIds}
+            now={now}
+            emptyState={p.emptyState}
+            onReplay={
+              p.mode === "live"
+                ? canInstant
+                  ? instantReplay
+                  : undefined
+                : p.session?.playback
+                  ? (o) => {
+                      setSelected(o.id);
+                      if (o.mediaStartMs !== null) jumpTo(o.mediaStartMs);
+                    }
+                  : undefined
+            }
+            replayAction={p.mode === "live" ? "Replay" : "Play"}
+            replayNote={replayEnabled && replayStatus && !replayStatus.available ? replayStatus.reason : null}
+          />
+        </Tabs.Content>
+        <Tabs.Content value="ask" className="flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden">
+          <AskPanel sessionId={p.session?.id ?? null} canAsk={p.canAsk} policy={p.askPolicy} onCite={onCite} fixtureAnswer={p.fixture?.answer} />
+        </Tabs.Content>
+        <Tabs.Content value="session" className="min-h-0 flex-1 overflow-y-auto data-[state=inactive]:hidden">
+          <SessionPanel session={p.session ? { ...p.session, analysis: status } : null} sources={stream.sources} clips={clips} now={now} />
+        </Tabs.Content>
             {chatAvailable && (
               // Kept mounted while another view is open, so the chats don't reload on every switch.
               <Tabs.Content value="chat" className="flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden" forceMount>

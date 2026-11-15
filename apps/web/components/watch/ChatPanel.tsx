@@ -6,8 +6,9 @@ import { SiteChat } from "./SiteChat";
 
 type View = "twitch" | "slot1";
 
+// Lighter than the rail's own tabs above it: an underline marks the open chat.
 const TRIGGER =
-  "h-11 flex-1 font-display text-[1rem] font-semibold tracking-[0.02em] text-ivory-2 transition-colors hover:text-ivory data-[state=active]:select-bar";
+  "h-10 flex-1 border-b-2 border-transparent font-display text-[0.95rem] font-semibold tracking-[0.02em] text-ivory-3 transition-colors hover:text-ivory data-[state=active]:border-apricot data-[state=active]:text-ivory";
 
 /**
  * The rail's chat: the channel's Twitch chat (Twitch's own embed) and SLOT1 chat, each at full
