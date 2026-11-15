@@ -13,7 +13,7 @@ const KEY = "slot1:admin:preview-channels";
 const LOGIN_RE = /^[a-z0-9_]{1,25}$/;
 
 /** The list until an admin saves one (saving an empty list clears it for good). */
-export const DEFAULT_PREVIEW_LOGINS: readonly string[] = ["vader", "darkviperau"];
+export const DEFAULT_PREVIEW_LOGINS: readonly string[] = ["vader", "darkviperau", "missmikkaa"];
 
 export async function getPreviewLogins(ctx: ServerContext): Promise<string[]> {
   const raw = await ctx.redis.get(KEY);

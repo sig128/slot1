@@ -59,7 +59,14 @@ export async function appToken(ctx: ServerContext, forceNew = false): Promise<st
   const { oauth } = requireTwitch(ctx);
   if (!forceNew) {
     const cached = await getAppToken(ctx.db, oauth.clientId);
-    if (cached) return ctx.cipher.decrypt(cached.access_token_enc);
+    if (cached) {
+      try {
+        return ctx.cipher.decrypt(cached.access_token_enc);
+      } catch {
+        // Saved under a key this server no longer has (rotated keys): replace it.
+        await clearAppToken(ctx.db, oauth.clientId);
+      }
+    }
   }
   const t = await getAppAccessToken(oauth);
   const enc = ctx.cipher.encrypt(t.accessToken);
@@ -263,16 +270,20 @@ const followersKey = (twitchUserId: string) => `slot1:followers:${twitchUserId}`
 
 /**
  * Whose token reads follower totals. Twitch answers Get Channel Followers to user tokens only (an
- * app token is refused); with no scope it returns just the public total. Preference: SLOT1's bot
- * account, then an operator's own account, then any connected account, so the counts work as soon
- * as one Twitch account is connected. Read-only, public numbers.
+ * app token is refused); with no scope it returns just the public total. In order: SLOT1's bot
+ * account, an operator's own account, then any connected account, so the counts work as soon as
+ * one Twitch account is connected. Read-only, public numbers.
  */
-async function followerReader(ctx: ServerContext): Promise<{ role: "bot" | "broadcaster"; twitchUserId: string } | null> {
+async function followerReaders(ctx: ServerContext): Promise<{ role: "bot" | "broadcaster"; twitchUserId: string }[]> {
+  const out: { role: "bot" | "broadcaster"; twitchUserId: string }[] = [];
   const bot = await getBotGrant(ctx.db);
-  if (bot && bot.status === "active") return { role: "bot", twitchUserId: bot.twitch_user_id };
+  if (bot && bot.status === "active") out.push({ role: "bot", twitchUserId: bot.twitch_user_id });
   const grants = (await listActiveGrants(ctx.db)).filter((g) => g.role === "broadcaster");
-  const pick = grants.find((g) => ctx.config.operatorLogins.has(g.twitch_login.toLowerCase())) ?? grants[0];
-  return pick ? { role: "broadcaster", twitchUserId: pick.twitch_user_id } : null;
+  const operators = grants.filter((g) => ctx.config.operatorLogins.has(g.twitch_login.toLowerCase()));
+  for (const g of [...operators, ...grants]) {
+    if (!out.some((r) => r.role === "broadcaster" && r.twitchUserId === g.twitch_user_id)) out.push({ role: "broadcaster", twitchUserId: g.twitch_user_id });
+  }
+  return out.slice(0, 4);
 }
 
 /**
@@ -291,25 +302,36 @@ export async function followerTotals(ctx: ServerContext, twitchUserIds: (string 
     else missing.push(id);
   });
   if (missing.length === 0) return out;
-  let token: string;
-  try {
-    const reader = await followerReader(ctx);
-    if (!reader) return out;
-    token = (await userToken(ctx, reader.role, reader.twitchUserId)).token;
-  } catch {
+  const helix = ctx.helix;
+  const store = async (id: string, total: number) => {
+    out.set(id, total);
+    await ctx.redis.set(followersKey(id), String(total), "EX", FOLLOWERS_TTL_SEC).catch(() => undefined);
+  };
+  const ids = missing.slice(0, 20);
+  for (const reader of await followerReaders(ctx).catch(() => [])) {
+    let token: string;
+    try {
+      token = (await userToken(ctx, reader.role, reader.twitchUserId)).token;
+    } catch {
+      continue;
+    }
+    // The first answer tells whether this account can read: if Twitch refuses it, try the next one.
+    try {
+      await store(ids[0]!, await helix.getFollowerTotal(token, ids[0]!));
+    } catch (err) {
+      if (err instanceof HelixError && (err.isUnauthorized || err.status === 403)) continue;
+      return out;
+    }
+    await Promise.all(
+      ids.slice(1).map(async (id) => {
+        try {
+          await store(id, await helix.getFollowerTotal(token, id));
+        } catch {
+          /* unknown: left out */
+        }
+      }),
+    );
     return out;
   }
-  const helix = ctx.helix;
-  await Promise.all(
-    missing.slice(0, 20).map(async (id) => {
-      try {
-        const total = await helix.getFollowerTotal(token, id);
-        out.set(id, total);
-        await ctx.redis.set(followersKey(id), String(total), "EX", FOLLOWERS_TTL_SEC);
-      } catch {
-        /* unknown: left out */
-      }
-    }),
-  );
   return out;
 }

@@ -141,7 +141,7 @@ The API can't edit the server's `.env`. When an admin saves a group in `/admin` 
 
 ## Preview channels
 
-`/admin` → Preview channels lists up to five Twitch channels that have **not** connected SLOT1, to see the home page with live channels in it before creators join. They are added to `GET /api/channels` only for an admin (an operator or an admin session) and marked `preview`, so the home page shows them in Live now (player, panels and Twitch chat) and On air, each with a "Preview" tag. Visitors never get them, and nothing about them is analyzed or recorded. The list lives in Redis (`slot1:admin:preview-channels`), so a change shows on the next page load. Until an admin saves a list it is `vader, darkviperau`; saving an empty list clears it.
+`/admin` → Preview channels lists up to five Twitch channels that have **not** connected SLOT1, to see the home page with live channels in it before creators join. They are added to `GET /api/channels` only for an admin (an operator or an admin session) and marked `preview`, so the home page shows them in Live now (player, panels and Twitch chat) and On air, each with a "Preview" tag. Visitors never get them, and nothing about them is analyzed or recorded. The list lives in Redis (`slot1:admin:preview-channels`), so a change shows on the next page load. Until an admin saves a list it is `vader, darkviperau, missmikkaa`; saving an empty list clears it.
 
 Follower counts on the home page and watch pages come from Twitch's Get Channel Followers, which only answers user tokens: SLOT1 uses its bot account, else an operator's connected account, else any connected account. Totals are cached for 10 minutes and left out when Twitch can't say.
 
