@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { ACTIVITY_WINDOW_MS, deriveActivity, type Observation } from "@slot1/contracts";
-import { wheelIndexFromPoint, wheelKey, wheelPosition } from "../../apps/web/lib/wheel";
 
 const NOW = Date.parse("2026-11-01T21:00:00Z");
 let n = 0;
@@ -50,47 +49,5 @@ describe("what's happening on a stream right now", () => {
       key: "live",
       detail: "Nothing SLOT1 could name in the last minute",
     });
-  });
-});
-
-describe("radio wheel keys and pointer", () => {
-  it("moves clockwise with Right/Down and back with Left/Up, wrapping around", () => {
-    expect(wheelKey("ArrowRight", 0, 4)).toEqual({ type: "move", index: 1 });
-    expect(wheelKey("ArrowDown", 3, 4)).toEqual({ type: "move", index: 0 });
-    expect(wheelKey("ArrowLeft", 0, 4)).toEqual({ type: "move", index: 3 });
-    expect(wheelKey("ArrowUp", 2, 4)).toEqual({ type: "move", index: 1 });
-    expect(wheelKey("Home", 2, 4)).toEqual({ type: "move", index: 0 });
-    expect(wheelKey("End", 0, 4)).toEqual({ type: "move", index: 3 });
-  });
-
-  it("switches with Enter or Space and closes with Escape or Q", () => {
-    expect(wheelKey("Enter", 1, 4)).toEqual({ type: "commit" });
-    expect(wheelKey(" ", 1, 4)).toEqual({ type: "commit" });
-    expect(wheelKey("Escape", 1, 4)).toEqual({ type: "close" });
-    expect(wheelKey("q", 1, 4)).toEqual({ type: "close" });
-    expect(wheelKey("Q", 1, 4)).toEqual({ type: "close" });
-    expect(wheelKey("a", 1, 4)).toBeNull();
-    expect(wheelKey("ArrowRight", 0, 0)).toBeNull();
-    expect(wheelKey("Escape", 0, 0)).toEqual({ type: "close" });
-    expect(wheelKey("ArrowRight", 9, 3)).toEqual({ type: "move", index: 0 });
-  });
-
-  it("lays options out from the top, clockwise, and maps a pointer back to them", () => {
-    const top = wheelPosition(0, 4);
-    expect(top.x).toBeCloseTo(0);
-    expect(top.y).toBeCloseTo(-1);
-    const right = wheelPosition(1, 4);
-    expect(right.x).toBeCloseTo(1);
-    expect(right.y).toBeCloseTo(0);
-    expect(wheelIndexFromPoint(0, -50, 4)).toBe(0);
-    expect(wheelIndexFromPoint(50, 0, 4)).toBe(1);
-    expect(wheelIndexFromPoint(0, 50, 4)).toBe(2);
-    expect(wheelIndexFromPoint(-50, 0, 4)).toBe(3);
-    expect(wheelIndexFromPoint(-5, -50, 4)).toBe(0);
-    expect(wheelIndexFromPoint(3, 3, 4, 20)).toBeNull();
-    for (let i = 0; i < 7; i++) {
-      const p = wheelPosition(i, 7);
-      expect(wheelIndexFromPoint(p.x * 100, p.y * 100, 7)).toBe(i);
-    }
   });
 });

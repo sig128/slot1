@@ -10,7 +10,7 @@ const API = process.env.SLOT1_API_INTERNAL_URL ?? "http://127.0.0.1:4000";
 
 const STATIC: { path: string; changeFrequency: "always" | "daily" | "weekly" | "monthly" | "yearly"; priority: number }[] = [
   { path: "/", changeFrequency: "always", priority: 1 },
-  { path: "/los-santos", changeFrequency: "always", priority: 0.9 },
+  { path: "/learning", changeFrequency: "always", priority: 0.9 },
   { path: "/moments", changeFrequency: "daily", priority: 0.6 },
   { path: "/setup", changeFrequency: "monthly", priority: 0.7 },
   // The clipping guides (lib/clip-guides.ts): what people search for when they want GTA clips.

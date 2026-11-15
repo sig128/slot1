@@ -951,3 +951,70 @@ a.la-named-row:hover .la-named-label {
   color: var(--color-ivory);
   overflow-wrap: anywhere;
 }
+
+/* Before asking opens: the counter up to the hours where it does. */
+.la-lock {
+  display: grid;
+  margin-top: 6px;
+  text-align: center;
+}
+.la-counter {
+  width: min(100%, 34rem);
+  margin: 28px auto 0;
+}
+.la-counter-num {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(3rem, 8vw, 4.6rem);
+  line-height: 0.95;
+  color: var(--color-apricot);
+}
+.la-counter-num span {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--font-sans, inherit);
+  font-weight: 500;
+  font-size: 1rem;
+  color: var(--color-ivory-2);
+}
+.la-counter-bar {
+  height: 10px;
+  margin-top: 18px;
+  border-radius: 999px;
+  background: var(--color-graphite-700);
+  overflow: hidden;
+}
+.la-counter-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-coral), var(--color-apricot));
+  transition: width 600ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.la-counter-left {
+  margin-top: 8px;
+  color: var(--color-ivory-3);
+  font-size: 0.85rem;
+}
+.la-lock-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 26px;
+}
+.la-suggest-preview .la-sugg {
+  text-align: left;
+  opacity: 0.75;
+}
+.la-admin-note {
+  margin-bottom: 10px;
+  color: var(--color-ivory-3);
+  font-size: 0.82rem;
+  text-align: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .la-counter-bar > span {
+    transition: none;
+  }
+}

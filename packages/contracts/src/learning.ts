@@ -129,6 +129,8 @@ export const LearningResponse = z.object({
   }),
   /** Models SLOT1 runs right now. */
   models: z.array(LearningModel),
+  /** "Ask SLOT1 about the game" opens to everyone at `opensAtHours` hours watched. */
+  ask: z.object({ open: z.boolean(), opensAtHours: z.number().nonnegative() }),
 });
 export type LearningResponse = z.infer<typeof LearningResponse>;
 
@@ -176,6 +178,16 @@ export function skillLevel(s: Pick<LearningSkill, "examples" | "score">): number
 /* Ask SLOT1 about the game ------------------------------------------------------------------- */
 
 export const LearningAskInput = z.object({ question: z.string().trim().min(3).max(300) }).strict();
+
+/** Whether this visitor can ask now: everyone once SLOT1 has watched enough, admins always. */
+export const LearningAskAccess = z.object({
+  open: z.boolean(),
+  /** True when it's open only because this visitor is an admin. */
+  adminOnly: z.boolean(),
+  hours: z.number().nonnegative(),
+  opensAtHours: z.number().nonnegative(),
+});
+export type LearningAskAccess = z.infer<typeof LearningAskAccess>;
 export type LearningAskInput = z.infer<typeof LearningAskInput>;
 
 /** One entry SLOT1 saw that the answer stands on, with where to watch it. */

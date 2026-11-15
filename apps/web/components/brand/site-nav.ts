@@ -16,7 +16,6 @@ export const PRIMARY_NAV: NavItem[] = [
     hint: "Live channels and what SLOT1 logs",
     match: (p) => p === "/" || p.startsWith("/watch") || p.startsWith("/replay"),
   },
-  { href: "/los-santos", label: "Right now", hint: "Every public GTA stream, live", match: (p) => p.startsWith("/los-santos") },
   { href: "/moments", label: "Moments", hint: "Search saved moments and clips", match: (p) => p.startsWith("/moments") },
   { href: "/studio", label: "Studio", hint: "Your stream, chat bot and clips", match: (p) => p.startsWith("/studio") },
   { href: "/setup", label: "Setup", hint: "How SLOT1 works with your stream", match: (p) => p.startsWith("/setup") },

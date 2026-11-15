@@ -8,7 +8,7 @@ export const INTRO_TIPS = [
   "Type !slot1 clip in chat and SLOT1 posts the link once Twitch confirms the clip.",
   "Missed it? Instant replay jumps back to the moment while the stream is still live.",
   "Ask SLOT1 what happened. Every answer links to the frames it came from.",
-  "Right now puts every public SLOT1 stream on one radio wheel.",
+  "SLOT1 follows every mission attempt, from the first objective to MISSION PASSED.",
   "Stream once from OBS. SLOT1 can pass it on to Twitch, YouTube and Kick.",
   "When SLOT1 hasn’t seen something, it says so instead of guessing.",
   "Type !slot1 recap in chat for what SLOT1 saw in the last 10 minutes.",

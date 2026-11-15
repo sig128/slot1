@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { createQaProvider, type GameEvidence } from "@slot1/analysis";
 import {
   ACTIVITIES,
@@ -6,6 +6,7 @@ import {
   activityOf,
   LearningAskInput,
   learningSkills,
+  type LearningAskAccess,
   missionLabel,
   ModelEvaluation,
   questionActivities,
@@ -40,6 +41,7 @@ import {
 } from "@slot1/db";
 import { sanitizeErrorMessage } from "@slot1/platform";
 import type { ServerContext } from "@slot1/services";
+import { adminAccess } from "../lib/admin-access";
 
 /** Text-model answers per day for "Ask SLOT1 about the game" (it's public); then records only. */
 const ASK_MODEL_DAILY = 500;
@@ -160,7 +162,31 @@ async function compute(ctx: ServerContext): Promise<LearningResponse> {
     })),
     heard,
     models: modelViews,
+    ask: { open: watched.analyzedMs / 3_600_000 >= ctx.config.env.SLOT1_ASK_OPENS_AT_HOURS, opensAtHours: ctx.config.env.SLOT1_ASK_OPENS_AT_HOURS },
   };
+}
+
+/** The Learning totals, computed at most every 30 s per API process. */
+function learningData(ctx: ServerContext): Promise<LearningResponse> {
+  if (cache && Date.now() - cache.at < TTL_MS) return Promise.resolve(cache.data);
+  inflight ??= compute(ctx)
+    .then((data) => {
+      cache = { at: Date.now(), data };
+      return data;
+    })
+    .finally(() => {
+      inflight = null;
+    });
+  return inflight;
+}
+
+/** Whether this visitor can ask: everyone once SLOT1 has watched enough, admins always. */
+async function askAccess(ctx: ServerContext, req: FastifyRequest): Promise<LearningAskAccess> {
+  const data = await learningData(ctx);
+  const opensAtHours = data.ask.opensAtHours;
+  if (data.ask.open) return { open: true, adminOnly: false, hours: data.watched.hours, opensAtHours };
+  const admin = Boolean(await adminAccess(ctx, req));
+  return { open: admin, adminOnly: admin, hours: data.watched.hours, opensAtHours };
 }
 
 /**
@@ -172,16 +198,13 @@ export const learningRoutes =
   async (app) => {
     app.get("/api/learning", async (_req, reply): Promise<LearningResponse> => {
       reply.header("cache-control", "public, max-age=15");
-      if (cache && Date.now() - cache.at < TTL_MS) return cache.data;
-      inflight ??= compute(ctx)
-        .then((data) => {
-          cache = { at: Date.now(), data };
-          return data;
-        })
-        .finally(() => {
-          inflight = null;
-        });
-      return inflight;
+      return learningData(ctx);
+    });
+
+    /** GET /api/learning/ask: whether this visitor can ask yet (it depends on who's asking). */
+    app.get("/api/learning/ask", async (req, reply): Promise<LearningAskAccess> => {
+      reply.header("cache-control", "no-store");
+      return askAccess(ctx, req);
     });
 
     /**
@@ -189,8 +212,14 @@ export const learningRoutes =
      * public streams (with the moments as proof), and, when a text model is on, general game
      * knowledge kept apart from it. Never claims SLOT1 saw something it has no record of.
      */
-    app.post("/api/learning/ask", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req): Promise<LearningAnswer> => {
+    app.post("/api/learning/ask", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req, reply): Promise<LearningAnswer> => {
       const { question } = LearningAskInput.parse(req.body);
+      const access = await askAccess(ctx, req);
+      if (!access.open) {
+        return reply.status(403).send({
+          error: { code: "not_open_yet", message: `Ask SLOT1 opens when it has watched ${access.opensAtHours.toLocaleString("en-US")} hours of GTA.`, requirement: null },
+        });
+      }
       const acts = questionActivities(question);
       const places = questionPlaces(question);
       const tags = [...acts.map((a) => `act:${a}`), ...places.map((p) => `place:${p}`)];

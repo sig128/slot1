@@ -54,12 +54,12 @@ const UAS = [
 async function seedVisits(req: APIRequestContext, origin: string, watchPath: string | null) {
   const visits: [number, string, string | undefined][] = [
     [0, "/", "google.com"],
-    [0, "/los-santos", undefined],
+    [0, "/learning", undefined],
     [1, "/", "reddit.com"],
     [2, "/setup", undefined],
     [3, "/", "t.co"],
     [4, "/moments", undefined],
-    [5, watchPath ?? "/los-santos", "google.com"],
+    [5, watchPath ?? "/learning", "google.com"],
   ];
   for (const [ua, p, r] of visits) {
     const res = await req.post("/api/analytics/collect", { headers: { origin, "user-agent": UAS[ua]!, "content-type": "text/plain;charset=UTF-8" }, data: JSON.stringify({ p, r, b: ua === 2 || ua === 3 ? "s" : "l" }) });
@@ -70,7 +70,7 @@ async function seedVisits(req: APIRequestContext, origin: string, watchPath: str
 /** Earlier days for the chart: tagged rows (visitor IDs start with e2e0), removed in afterAll. */
 function seedHistory() {
   const rows: string[] = [];
-  const paths = ["/", "/los-santos", "/setup", "/moments", "/watch/demo"];
+  const paths = ["/", "/learning", "/setup", "/moments", "/watch/demo"];
   for (let d = 1; d <= 29; d++) {
     const visitors = 3 + ((d * 7) % 9);
     for (let v = 0; v < visitors; v++) {
@@ -194,7 +194,7 @@ test.describe("Contact and admin", () => {
     }
     const visitors = page.getByRole("region", { name: "Visitors" });
     await expect(visitors.getByRole("img", { name: /Visitors and page views per day/ })).toBeVisible();
-    await expect(visitors.getByRole("cell", { name: "/los-santos" }).first()).toBeVisible();
+    await expect(visitors.getByRole("cell", { name: "/learning" }).first()).toBeVisible();
     await expect(visitors.getByRole("cell", { name: "google.com" })).toBeVisible();
 
     // Range filter: the chart and lists switch to 7 days.

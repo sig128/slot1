@@ -165,6 +165,11 @@ const EnvSchema = z.object({
   SLOT1_DEMO_SAMPLE_MS: int(3000),
   BOT_GLOBAL_KILL: bool(false),
   BOT_GLOBAL_MESSAGES_PER_30S: int(60),
+  /**
+   * "Ask SLOT1 about the game" opens to everyone once SLOT1 has watched this many hours of public
+   * gameplay, so every answer has real moments behind it. Admins can ask before that.
+   */
+  SLOT1_ASK_OPENS_AT_HOURS: int(1000),
   /** Cookieless visitor counting for /admin (docs/ADMIN.md). false = nothing is counted. */
   SLOT1_ANALYTICS: bool(true),
   /** Build or commit shown in /admin → System (the server script sets it on each update). */

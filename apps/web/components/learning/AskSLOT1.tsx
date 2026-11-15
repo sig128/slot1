@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { LearningAnswer, LearningResponse, NowResponse } from "@slot1/contracts";
+import type { LearningAnswer, LearningAskAccess, LearningResponse, NowResponse } from "@slot1/contracts";
 import { LearningGlobe } from "./LearningGlobe";
 import type { ChatTurn } from "./useAsk";
 
@@ -16,6 +16,53 @@ const SUGGESTIONS: { q: string; about: string }[] = [
 ];
 
 const day = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+const hoursText = (h: number) => (h < 10 ? h.toFixed(1) : Math.floor(h).toLocaleString("en-US"));
+
+/**
+ * Before SLOT1 has watched enough to answer well: how far it has come, counting up to the hours
+ * where asking opens, in place of the question box.
+ */
+function AskCounter({ hours, opensAtHours }: { hours: number; opensAtHours: number }) {
+  const share = Math.max(0, Math.min(1, opensAtHours > 0 ? hours / opensAtHours : 1));
+  return (
+    <div className="la-lock">
+      <h2 id="ask-title" className="la-greet-title">
+        Ask SLOT1 opens at {opensAtHours.toLocaleString("en-US")} hours
+      </h2>
+      <p className="la-greet-sub">
+        Every answer should have real moments behind it, so asking opens once SLOT1 has watched {opensAtHours.toLocaleString("en-US")} hours of GTA.
+        Every stream sent to SLOT1 brings it closer.
+      </p>
+      <div className="la-counter" role="group" aria-label="Hours watched so far">
+        <p className="la-counter-num tnum">
+          {hoursText(hours)}
+          <span> of {opensAtHours.toLocaleString("en-US")} hours watched</span>
+        </p>
+        <div className="la-counter-bar" role="progressbar" aria-valuemin={0} aria-valuemax={opensAtHours} aria-valuenow={Math.round(hours * 10) / 10} aria-label="Hours watched">
+          <span style={{ width: `${Math.max(share * 100, 0.6)}%` }} />
+        </div>
+        <p className="la-counter-left tnum">{share >= 1 ? "Opening now" : `${Math.round(share * 1000) / 10}% of the way`}</p>
+      </div>
+      <div className="la-lock-ctas">
+        <Link href="/setup" className="btn btn-primary">
+          Send your stream to SLOT1
+        </Link>
+        <a href="#missions" className="btn btn-ghost">
+          See what it knows
+        </a>
+      </div>
+      <p className="la-answer-label mt-10 text-center">What you&apos;ll be able to ask</p>
+      <ul className="la-suggest la-suggest-preview">
+        {SUGGESTIONS.map((s) => (
+          <li key={s.q} className="la-sugg">
+            <span className="la-sugg-q">{s.q}</span>
+            <span className="la-sugg-about">{s.about}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 /** SLOT1's mark beside its answers: a small globe, like the big one. */
 export function SlotMark({ thinking = false }: { thinking?: boolean }) {
@@ -132,8 +179,24 @@ export function AskSLOT1({
   retry: (t: ChatTurn) => void;
 }) {
   const [q, setQ] = useState("");
+  const [access, setAccess] = useState<LearningAskAccess | null>(null);
   const box = useRef<HTMLTextAreaElement>(null);
   const chatting = turns.length > 0;
+  // Asking opens to everyone at a number of hours watched; admins can ask before that.
+  const open = access ? access.open : Boolean(learning?.ask.open);
+
+  useEffect(() => {
+    let stop = false;
+    fetch("/api/learning/ask", { cache: "no-store" })
+      .then((r) => (r.ok ? (r.json() as Promise<LearningAskAccess>) : null))
+      .then((a) => {
+        if (!stop && a) setAccess(a);
+      })
+      .catch(() => undefined);
+    return () => {
+      stop = true;
+    };
+  }, []);
   const lastId = turns.at(-1)?.id ?? 0;
   const streams = learning?.watched.streams ?? 0;
 
@@ -164,7 +227,9 @@ export function AskSLOT1({
         <LearningGlobe data={learning} now={now} thinking={busy} />
       </div>
 
-      {!chatting && (
+      {!open && learning && <AskCounter hours={learning.watched.hours} opensAtHours={learning.ask.opensAtHours} />}
+
+      {open && !chatting && (
         <div className="la-greet">
           <h2 id="ask-title" className="la-greet-title">
             What do you want to know about GTA?
@@ -213,7 +278,9 @@ export function AskSLOT1({
         </div>
       )}
 
+      {open && (
       <div className="la-composer-dock">
+        {access?.adminOnly && <p className="la-admin-note">Open for you as an admin. Everyone else sees the counter until {access.opensAtHours.toLocaleString("en-US")} hours.</p>}
         <form
           className="la-composer"
           onSubmit={(e) => {
@@ -248,8 +315,9 @@ export function AskSLOT1({
         </form>
         <p className="la-fineprint">SLOT1 only says it saw something when it has the moment to show you.</p>
       </div>
+      )}
 
-      {!chatting && (
+      {open && !chatting && (
         <ul className="la-suggest" aria-label="Questions to try">
           {SUGGESTIONS.map((s) => (
             <li key={s.q}>

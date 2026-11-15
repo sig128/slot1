@@ -51,7 +51,7 @@ export default function SetupPage() {
             <Link href="/studio" className="btn btn-coral">
               Open Studio
             </Link>
-            <Link href="/los-santos" className="btn btn-ghost">
+            <Link href="/" className="btn btn-ghost">
               See who’s live
             </Link>
           </div>
@@ -415,7 +415,7 @@ export default function SetupPage() {
             <Link href="/studio" className="btn btn-coral">
               Open Studio
             </Link>
-            <Link href="/los-santos" className="btn btn-ghost">
+            <Link href="/" className="btn btn-ghost">
               See who’s live
             </Link>
           </div>

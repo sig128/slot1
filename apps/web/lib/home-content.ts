@@ -21,7 +21,7 @@ export const FEATURES: Feature[] = [
   {
     name: "Instant replay",
     body: "Missed it? Jump back a few seconds while the stream is still live. Every timestamp in the log jumps the video to that second.",
-    href: "/los-santos",
+    href: "/",
     cta: "Watch a live stream",
   },
   {
@@ -39,7 +39,7 @@ export const FEATURES: Feature[] = [
   {
     name: "Live video",
     body: "Watch SLOT1’s own copy of a stream, usually under a second behind the creator. The player shows its own estimate.",
-    href: "/los-santos",
+    href: "/",
     cta: "See who’s live",
   },
   {
@@ -47,12 +47,6 @@ export const FEATURES: Feature[] = [
     body: "Stream once from OBS and SLOT1 sends the same stream on to Twitch, YouTube and Kick.",
     href: "/setup#stream",
     cta: "Set it up",
-  },
-  {
-    name: "Los Santos right now",
-    body: "Every public stream SLOT1 is watching, on one page. Flip between them with the radio wheel.",
-    href: "/los-santos",
-    cta: "See who’s live",
   },
   {
     name: "The chat bot",

@@ -3,7 +3,7 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { clearLearningCache } from "../../apps/api/src/routes/learning";
-import { LearningAnswer, LearningResponse } from "@slot1/contracts";
+import { LearningAnswer, LearningAskAccess, LearningResponse } from "@slot1/contracts";
 import { backfillKnowledgeTags, createIngestSession, createLocalBroadcaster, createLocalUser, insertObservation, updateSettings, type NewObservation } from "@slot1/db";
 import { Browser, startHarness, type Harness } from "./harness";
 
@@ -170,5 +170,36 @@ describe("Ask SLOT1 about the game, with a text model", () => {
     const b = LearningAnswer.parse((await anon.request("POST", "/api/learning/ask", { json: { question: "Where do I buy guns?" } })).json());
     expect(b.seen).toBeNull();
     expect(b.general).toBe("Try Ammu-Nation.");
+  });
+});
+
+describe("Ask SLOT1 opens at 1,000 hours watched", () => {
+  let h: Harness;
+
+  beforeAll(async () => {
+    h = await startHarness({ SLOT1_ASK_OPENS_AT_HOURS: "1000" });
+    clearLearningCache();
+  });
+  afterAll(async () => {
+    await h?.close();
+  });
+
+  it("shows the counter and refuses questions until then, except for admins", async () => {
+    const anon = new Browser(h);
+    await anon.refreshCsrf();
+    const learning = LearningResponse.parse((await anon.get("/api/learning")).json());
+    expect(learning.ask).toEqual({ open: false, opensAtHours: 1000 });
+    expect(LearningAskAccess.parse((await anon.get("/api/learning/ask")).json())).toMatchObject({ open: false, adminOnly: false, opensAtHours: 1000 });
+    const refused = await anon.request("POST", "/api/learning/ask", { json: { question: "Where do I buy guns?" } });
+    expect(refused.status).toBe(403);
+    expect(refused.json()).toMatchObject({ error: { code: "not_open_yet" } });
+
+    const admin = new Browser(h);
+    const me = await admin.signInLocal("Learning Admin");
+    await h.ctx.db.query(`UPDATE users SET is_operator = true WHERE id = $1`, [(me.user as { id: string }).id]);
+    await admin.refreshCsrf();
+    expect(LearningAskAccess.parse((await admin.get("/api/learning/ask")).json())).toMatchObject({ open: true, adminOnly: true });
+    const ok = await admin.request("POST", "/api/learning/ask", { json: { question: "Where do I buy guns?" } });
+    expect(ok.status).toBe(200);
   });
 });

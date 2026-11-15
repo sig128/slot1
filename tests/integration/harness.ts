@@ -51,6 +51,8 @@ export async function startHarness(extraEnv: Record<string, string> = {}): Promi
     VISION_PROVIDER: "none",
     OCR_ENABLED: "auto",
     TWITCH_EMBED_PARENTS: "localhost",
+    // Ask SLOT1 is open in tests unless a test locks it (tests/integration/game-ask.test.ts).
+    SLOT1_ASK_OPENS_AT_HOURS: "0",
     ...extraEnv,
   };
   const config = loadConfig(env);

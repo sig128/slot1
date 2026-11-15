@@ -30,6 +30,8 @@ The page shows them as "Everything it has seen, sorted" (unseen activities stay 
 
 ## Ask SLOT1 about the game
 
+Asking opens to everyone once SLOT1 has watched `SLOT1_ASK_OPENS_AT_HOURS` hours of public gameplay (1,000 by default), so every answer has real moments behind it. Until then the Learning page shows a counter of the hours watched in place of the question box, and `POST /api/learning/ask` answers 403 `not_open_yet`. Admins (an operator account or an admin session) can ask before that; `GET /api/learning/ask` tells the page which applies to the visitor.
+
 `POST /api/learning/ask { question }` (10 a minute per visitor):
 
 1. The question is matched to activities (`questionActivities`, with broader question words like "guns" for buying weapons) and places (`questionPlaces`).

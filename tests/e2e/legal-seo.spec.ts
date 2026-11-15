@@ -36,7 +36,7 @@ test.describe("legal pages and search", () => {
   test("the Privacy Policy is complete, navigable and honest about the AI services in use", async ({ page }) => {
     await page.goto("/privacy");
     await expect(page.getByRole("heading", { level: 1, name: "Privacy Policy" })).toBeVisible();
-    await expect(page.getByText("Last updated: 1 November 2026")).toBeVisible();
+    await expect(page.getByText("Last updated: 15 November 2026")).toBeVisible();
     const contents = page.getByRole("navigation", { name: "Contents" });
     for (const s of ["Who is responsible", "What we collect and why", "Cookies and similar technologies", "Who processes your information", "Your rights", "Children"])
       await expect(contents.getByRole("link", { name: new RegExp(s) })).toBeVisible();
@@ -109,7 +109,7 @@ test.describe("legal pages and search", () => {
     expect(robots).toMatch(/Allow: \/api\/library\/\*\/poster/);
     expect(robots).toMatch(/Sitemap: https?:\/\/[^/\s]+\/sitemap\.xml/);
     const sitemap = await (await request.get("/sitemap.xml")).text();
-    for (const p of ["/privacy", "/terms", "/los-santos", "/setup"]) expect(sitemap).toContain(`${p}</loc>`);
+    for (const p of ["/privacy", "/terms", "/learning", "/setup"]) expect(sitemap).toContain(`${p}</loc>`);
     expect(sitemap).not.toMatch(/\/(admin|studio|demo)</);
     for (const p of ["/opengraph-image", "/twitter-image", "/apple-icon", "/watch/someone_else/opengraph-image"]) {
       const r = await request.get(p);

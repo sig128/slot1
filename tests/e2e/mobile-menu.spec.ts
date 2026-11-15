@@ -97,12 +97,12 @@ test.describe("phone header and menu", () => {
     await expect(menuButton).toHaveAttribute("aria-expanded", "true");
     expect(await menu.evaluate((el) => getComputedStyle(el).animationName), "no motion with reduced motion").toBe("none");
     const nav = menu.getByRole("navigation", { name: "Primary" });
-    await expect(nav.getByRole("link")).toHaveText(["On Air", "Right now", "Moments", "Studio", "Setup", "Learning"].map((n) => new RegExp(`^${n}`)));
+    await expect(nav.getByRole("link")).toHaveText(["On Air", "Moments", "Studio", "Setup", "Learning"].map((n) => new RegExp(`^${n}`)));
     const onAir = nav.getByRole("link", { name: "On Air" });
     await expect(onAir).toBeFocused();
     await expect(onAir).toHaveAttribute("aria-current", "page");
     await expect(onAir).toHaveAccessibleDescription("Live channels and what SLOT1 logs");
-    await expect(nav.getByRole("link", { name: "Right now" })).not.toHaveAttribute("aria-current");
+    await expect(nav.getByRole("link", { name: "Learning" })).not.toHaveAttribute("aria-current");
     await expect(menu.getByRole("link", { name: "Sign in with Twitch" })).toHaveAttribute("href", "/api/auth/twitch/start?returnTo=%2Fstudio");
     await expect(menu.getByRole("link", { name: "Sign in with Kick" })).toHaveAttribute("href", "/api/auth/kick/start?returnTo=%2Fstudio");
     const more = menu.getByRole("navigation", { name: "More" });
