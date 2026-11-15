@@ -77,6 +77,40 @@ export function createPipelineSink(ctx: ServerContext, o: SinkOptions): Pipeline
       return { assetId: asset.id };
     },
 
+    /** What was said in one live audio chunk: text only (the audio is never kept), as evidence. */
+    async storeTranscript(t) {
+      const key = storageKeys.transcript(b, s, o.source.id, t.mediaStartMs);
+      const body = Buffer.from(
+        JSON.stringify({
+          language: t.language,
+          languageName: t.languageName,
+          text: t.text,
+          segments: t.segments,
+          sounds: t.sounds,
+          provider: t.provider,
+          model: t.model,
+          mediaStartMs: t.mediaStartMs,
+          durationMs: t.durationMs,
+          receivedAt: t.receivedAt.toISOString(),
+        }),
+        "utf8",
+      );
+      const { bytes } = await ctx.storage.putBuffer(key, body, "application/json");
+      const asset = await insertAsset(ctx.db, {
+        broadcasterId: b,
+        sessionId: s,
+        sourceId: o.source.id,
+        kind: "transcript",
+        storageKey: key,
+        contentType: "application/json",
+        bytes,
+        durationMs: t.durationMs,
+        mediaPtsMs: t.mediaStartMs,
+        expiresAt: new Date(Date.now() + o.retentionDays * 86_400_000),
+      });
+      return { assetId: asset.id };
+    },
+
     async persist(action) {
       if (action.kind === "insert") {
         const c = action.candidate;

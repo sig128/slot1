@@ -267,6 +267,7 @@ interface SettingsRow {
   auto_clip_pre_roll_ms: number;
   auto_clip_post_roll_ms: number;
   chat_announcements: boolean;
+  speech_transcripts: boolean;
 }
 
 const SETTINGS_MAP: Record<keyof ChannelSettings, keyof SettingsRow> = {
@@ -300,6 +301,7 @@ const SETTINGS_MAP: Record<keyof ChannelSettings, keyof SettingsRow> = {
   autoClipPreRollMs: "auto_clip_pre_roll_ms",
   autoClipPostRollMs: "auto_clip_post_roll_ms",
   chatAnnouncements: "chat_announcements",
+  speechTranscripts: "speech_transcripts",
 };
 
 export async function ensureSettings(db: Queryable, broadcasterId: string) {

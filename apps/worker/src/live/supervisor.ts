@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import {
   commentaryAllowed,
+  createTranscriptionProvider,
   createVisionProvider,
   deriveLiveState,
   getProfile,
@@ -58,6 +59,7 @@ import { loadActiveGtaModel } from "../gta/onnx-model";
 import { publishAiView } from "./ai-view";
 import { announce } from "./announce";
 import { LiveRecorder } from "./recorder";
+import { LiveSpeech } from "./speech";
 
 const LEASE_TTL_MS = 10_000;
 /** A publisher returning after this long starts a new session instead of extending the old one. */
@@ -257,7 +259,21 @@ class LiveRunner {
         if (buffer) await this.replays?.serve(this.source.id, (req) => this.replayFromBuffer(req, readerStartedAt, bufferSeconds, buffer.segments));
         else await this.replays?.stop(this.source.id);
         await adapter.connect();
-        const pipeline = analyzing
+        const sink = analyzing
+          ? createPipelineSink(ctx, {
+              session,
+              source: this.source,
+              settings,
+              retentionDays: this.demo ? DEMO_LIMITS.frameRetentionDays : settings.retentionDays,
+              onObservation: async (o) => {
+                await this.maybeComment(o);
+                if (this.demo) this.maybeDemoClip(o);
+              },
+              onFrameStored: async () => undefined,
+              autoClipRunId: () => this.recorder?.runId ?? null,
+            })
+          : null;
+        const pipeline = sink
           ? new ObservationPipeline({
               ocr: ctx.config.capabilities.ocr.available ? new TesseractOcr(ctx.config.env.TESSERACT_PATH, ctx.tools) : null,
               ocrVersion: "5",
@@ -273,18 +289,7 @@ class LiveRunner {
               motion: new MotionMeter(),
               visionGate: { heartbeatMs: Math.max(10_000, settings.sampleIntervalMs), minGapMs: 3_000 },
               workDir: path.join(work, "pipeline"),
-              sink: createPipelineSink(ctx, {
-                session,
-                source: this.source,
-                settings,
-                retentionDays: this.demo ? DEMO_LIMITS.frameRetentionDays : settings.retentionDays,
-                onObservation: async (o) => {
-                  await this.maybeComment(o);
-                  if (this.demo) this.maybeDemoClip(o);
-                },
-                onFrameStored: async () => undefined,
-                autoClipRunId: () => this.recorder?.runId ?? null,
-              }),
+              sink,
               // "What the AI sees": a short-lived snapshot of each analyzed frame for viewers.
               insight: (i) =>
                 publishAiView(
@@ -301,11 +306,30 @@ class LiveRunner {
                 ),
             })
           : null;
+        // What's said on stream, in any language: only when the creator switched it on and a
+        // speech-to-text service is set up. Its own audio reader; it never holds up the frames.
+        let lastFrame: { ptsMs: number; at: number } | null = null;
+        const transcriber = pipeline && sink && settings.speechTranscripts && !this.demo ? createTranscriptionProvider(ctx.config.env) : null;
+        const speech =
+          pipeline && sink && transcriber
+            ? new LiveSpeech({
+                tools: ctx.tools,
+                readUrl: buildReadUrl(ctx, this.source.publish_path!),
+                workDir: path.join(work, "speech"),
+                provider: transcriber,
+                pipeline,
+                sink,
+                timeline: { latest: () => lastFrame },
+                log: ctx.log,
+              })
+            : null;
+        speech?.start();
         let gotFrame = false;
         let maskCheckedAt = Date.now();
         for await (const frame of adapter.frames()) {
           if (!this.running) break;
           gotFrame = true;
+          lastFrame = { ptsMs: frame.ptsMs, at: frame.receivedAt.getTime() };
           this.failures = 0;
           this.lastFrameAt = frame.receivedAt.getTime();
           if (pipeline) {
@@ -320,6 +344,8 @@ class LiveRunner {
           const fresh = await getSettings(ctx.db, this.source.broadcaster_id);
           // Restart the reader when analysis or recording is switched on or off.
           if ((fresh.agentEnabled && !fresh.analysisPaused) !== analyzing || (fresh.recordingEnabled && fresh.recordingConsent) !== (settings.recordingEnabled && settings.recordingConsent)) break;
+          // Speech transcripts switched on or off: from the next reader run, a few seconds from now.
+          if (analyzing && fresh.speechTranscripts !== settings.speechTranscripts) break;
           // The demo's hourly session change (handled at the top of the loop).
           if (this.demo && Date.now() - session.started_at.getTime() > DEMO_LIMITS.sessionMaxMs) break;
           // A changed camera mask applies from the next reader run, a few seconds from now.
@@ -329,6 +355,7 @@ class LiveRunner {
             if (current && JSON.stringify(current.camera_mask ?? []) !== maskKey) break;
           }
         }
+        await speech?.stop();
         await pipeline?.flush();
         await adapter.disconnect();
         await recorder?.close().catch(() => undefined);

@@ -49,6 +49,7 @@ export function LearningExperience({ initialLearning, initialNow }: { initialLea
         ["Moments caught", n(learning.watched.caught)],
         ["Hours watched", learning.watched.hours.toLocaleString("en-US")],
         ["Frames learned", n(learning.learning.labeledFrames + learning.learning.frames)],
+        ["Lines heard", n(learning.heard.lines)],
         ["Skills started", `${started}/${skills.length}`],
       ]
     : [];
@@ -57,7 +58,7 @@ export function LearningExperience({ initialLearning, initialNow }: { initialLea
     <>
       <div className="learn-stage relative -mx-4 sm:-mx-6 lg:-mx-10">
         <LearningGlobe data={learning} now={now} />
-        <dl className="learn-hud absolute inset-x-0 bottom-0 grid grid-cols-2 gap-x-6 gap-y-3 px-4 pb-5 sm:grid-cols-5 sm:px-6 lg:px-10">
+        <dl className="learn-hud absolute inset-x-0 bottom-0 grid grid-cols-2 gap-x-6 gap-y-3 px-4 pb-5 sm:grid-cols-3 sm:px-6 lg:grid-cols-6 lg:px-10">
           {stats.map(([label, value]) => (
             <div key={label} className="min-w-0">
               <dd className="tnum font-display text-[clamp(1.6rem,3vw,2.6rem)] font-bold leading-none text-ivory">{value}</dd>
@@ -76,6 +77,15 @@ export function LearningExperience({ initialLearning, initialNow }: { initialLea
         <span className="inline-flex items-center gap-2">
           <span className="h-2.5 w-2.5 rounded-full bg-apricot" aria-hidden /> Reading the screen
         </span>
+        {learning && learning.heard.languages.length > 0 && (
+          <span className="text-ivory-2">
+            Heard in {learning.heard.languages.length === 1 ? "1 language" : `${learning.heard.languages.length} languages`}:{" "}
+            {learning.heard.languages
+              .slice(0, 8)
+              .map((l) => `${l.name} (${n(l.lines)})`)
+              .join(", ")}
+          </span>
+        )}
         <span className="text-ivory-3">
           {knowledgeDots(learning) > 0
             ? "Bright dots are what it learned. Hover a skill to see how far it’s come; drag to turn."

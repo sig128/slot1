@@ -24,6 +24,10 @@ export const SETTING_KEYS = [
   "KICK_CLIENT_SECRET",
   "ANTHROPIC_API_KEY",
   "VISION_PROVIDER",
+  "TRANSCRIPTION_PROVIDER",
+  "TRANSCRIPTION_BASE_URL",
+  "TRANSCRIPTION_API_KEY",
+  "TRANSCRIPTION_MODEL",
   "SLOT1_AUTODEPLOY",
   "SLOT1_GOOGLE_SITE_VERIFICATION",
   "SLOT1_BING_SITE_VERIFICATION",
@@ -42,6 +46,7 @@ export const CLEARABLE_SETTINGS: ReadonlySet<SettingKey> = new Set<SettingKey>([
   "KICK_CLIENT_ID",
   "KICK_CLIENT_SECRET",
   "ANTHROPIC_API_KEY",
+  "TRANSCRIPTION_API_KEY",
   "SLOT1_GOOGLE_SITE_VERIFICATION",
   "SLOT1_BING_SITE_VERIFICATION",
   "SLOT1_CONTACT_EMAIL",
@@ -67,6 +72,14 @@ export function settingValueOk(key: SettingKey, v: string): boolean {
       return /^[A-Za-z0-9_-]{20,300}$/.test(v);
     case "VISION_PROVIDER":
       return v === "anthropic" || v === "none";
+    case "TRANSCRIPTION_PROVIDER":
+      return v === "none" || v === "openai_compatible" || v === "elevenlabs";
+    case "TRANSCRIPTION_BASE_URL":
+      return /^https?:\/\/[A-Za-z0-9.-]{1,200}(:[0-9]{2,5})?(\/[A-Za-z0-9._~/-]{0,200})?$/.test(v);
+    case "TRANSCRIPTION_API_KEY":
+      return /^[A-Za-z0-9_.-]{10,300}$/.test(v);
+    case "TRANSCRIPTION_MODEL":
+      return /^[A-Za-z0-9._:/-]{1,100}$/.test(v);
     case "SLOT1_AUTODEPLOY":
       return v === "true" || v === "false";
     case "SLOT1_GOOGLE_SITE_VERIFICATION":
@@ -86,6 +99,33 @@ export function settingValueOk(key: SettingKey, v: string): boolean {
     case "SLOT1_ADMIN_PASSWORD_HASH":
       return /^scrypt\$[A-Za-z0-9+/=.:_$-]{20,400}$/.test(v);
   }
+}
+
+/* Speech to text --------------------------------------------------------------------------- */
+
+export const SPEECH_SERVICES = ["off", "groq", "openai", "elevenlabs", "custom"] as const;
+export type SpeechService = (typeof SPEECH_SERVICES)[number];
+
+/**
+ * The speech-to-text services /admin offers. Each detects the language by itself: Whisper (Groq,
+ * OpenAI, most self-hosted servers) knows 99 languages, ElevenLabs Scribe about 90.
+ */
+export const SPEECH_PRESETS: Record<SpeechService, { provider: "none" | "openai_compatible" | "elevenlabs"; baseUrl: string | null; model: string | null }> = {
+  off: { provider: "none", baseUrl: null, model: null },
+  groq: { provider: "openai_compatible", baseUrl: "https://api.groq.com/openai/v1", model: "whisper-large-v3-turbo" },
+  openai: { provider: "openai_compatible", baseUrl: "https://api.openai.com/v1", model: "whisper-1" },
+  elevenlabs: { provider: "elevenlabs", baseUrl: "https://api.elevenlabs.io", model: "scribe_v2" },
+  custom: { provider: "openai_compatible", baseUrl: null, model: null },
+};
+
+/** Which service the server's settings amount to. */
+export function speechServiceOf(provider: string | null | undefined, baseUrl: string | null | undefined): SpeechService {
+  if (!provider || provider === "none") return "off";
+  if (provider === "elevenlabs") return "elevenlabs";
+  const host = (baseUrl ?? "").toLowerCase();
+  if (host.includes("api.groq.com")) return "groq";
+  if (host.includes("api.openai.com")) return "openai";
+  return "custom";
 }
 
 /* What /admin sends ---------------------------------------------------------------------- */
@@ -120,6 +160,12 @@ export const SettingsPatch = z
     kickClientSecret: trimmed.optional(),
     anthropicApiKey: trimmed.optional(),
     aiEnabled: z.boolean().optional(),
+    /** Which speech-to-text service transcribes live speech (any language); "off" turns it off. */
+    speechService: z.enum(SPEECH_SERVICES).optional(),
+    speechApiKey: trimmed.optional(),
+    /** "custom" only: an OpenAI-compatible server (a self-hosted Whisper, say). */
+    speechBaseUrl: trimmed.optional(),
+    speechModel: trimmed.optional(),
     autodeploy: z.boolean().optional(),
     googleVerification: verification.optional(),
     bingVerification: verification.optional(),
@@ -143,6 +189,10 @@ export const FIELD_KEYS: Record<SettingsField, SettingKey> = {
   kickClientSecret: "KICK_CLIENT_SECRET",
   anthropicApiKey: "ANTHROPIC_API_KEY",
   aiEnabled: "VISION_PROVIDER",
+  speechService: "TRANSCRIPTION_PROVIDER",
+  speechApiKey: "TRANSCRIPTION_API_KEY",
+  speechBaseUrl: "TRANSCRIPTION_BASE_URL",
+  speechModel: "TRANSCRIPTION_MODEL",
   autodeploy: "SLOT1_AUTODEPLOY",
   googleVerification: "SLOT1_GOOGLE_SITE_VERIFICATION",
   bingVerification: "SLOT1_BING_SITE_VERIFICATION",
@@ -162,6 +212,10 @@ export const FIELD_RULES: Record<SettingsField, string> = {
   kickClientSecret: "The Client Secret of your Kick developer app (letters and digits).",
   anthropicApiKey: "The key from console.anthropic.com (letters, digits, - and _).",
   aiEnabled: "On or off.",
+  speechService: "Off, Groq, OpenAI, ElevenLabs or your own server.",
+  speechApiKey: "The API key from the speech service (letters, digits, - _ and .).",
+  speechBaseUrl: "The server's address, starting with http:// or https:// (for example https://whisper.example.com/v1).",
+  speechModel: "The model name the server expects (letters, digits and . _ : / -).",
   autodeploy: "On or off.",
   googleVerification: "The content=\"...\" value of Google's meta tag (letters, digits, - and _).",
   bingVerification: "The content=\"...\" value of Bing's meta tag (letters, digits, - and _).",
@@ -188,6 +242,15 @@ export function settingsEntries(patch: SettingsPatch): SettingsCheck {
     const key = FIELD_KEYS[field];
     if (field === "aiEnabled") {
       entries.push({ key, value: raw ? "anthropic" : "none" });
+      continue;
+    }
+    if (field === "speechService") {
+      // One choice sets the provider, its address and its model together; "custom" takes the
+      // address and model from their own fields.
+      const preset = SPEECH_PRESETS[raw as SpeechService];
+      entries.push({ key: "TRANSCRIPTION_PROVIDER", value: preset.provider });
+      if (preset.baseUrl) entries.push({ key: "TRANSCRIPTION_BASE_URL", value: preset.baseUrl });
+      if (preset.model) entries.push({ key: "TRANSCRIPTION_MODEL", value: preset.model });
       continue;
     }
     if (field === "autodeploy") {
@@ -249,6 +312,10 @@ export interface AdminSettingsView {
     kickClientSecretSet: boolean;
     anthropicApiKeySet: boolean;
     aiProvider: "none" | "anthropic" | "openai";
+    speechService: SpeechService;
+    speechApiKeySet: boolean;
+    speechBaseUrl: string | null;
+    speechModel: string | null;
     autodeploy: boolean;
     googleVerification: string | null;
     bingVerification: string | null;
@@ -259,7 +326,7 @@ export interface AdminSettingsView {
     adminPasswordSet: boolean;
   };
   /** Whether each part works right now (from the settings the API started with). */
-  working: { twitch: boolean; twitchReason: string | null; ai: boolean; aiReason: string | null; kick: boolean };
+  working: { twitch: boolean; twitchReason: string | null; ai: boolean; aiReason: string | null; kick: boolean; speech: boolean };
   /** The OAuth Redirect URL the Twitch app must list, exactly. */
   twitchRedirectUrl: string;
   /** "Sign in with Kick" returns here; the Kick app's Redirect URL must be exactly this. */

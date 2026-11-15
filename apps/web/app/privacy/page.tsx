@@ -198,6 +198,12 @@ function sections(cfg: LegalConfig): LegalSection[] {
             }
           />
           <DataItem
+            title="What’s said on your stream, if you switch transcripts on"
+            what="With speech transcripts switched on in Studio, SLOT1 sends your stream’s sound in short chunks (about 12 seconds) to the speech-to-text service named in section 6 and keeps the text that comes back, in its original language, with the language the service detected and any sounds it tagged (like laughter). SLOT1 doesn’t keep the audio. Everyone heard in your stream is transcribed, not only you."
+            why="Showing what was said in the live log and answering questions about the stream."
+            kept="Like the other analysis: for the number of days you choose in Studio after the session ends."
+          />
+          <DataItem
             title="Your streaming connection"
             what="The IP address your streaming software connects from, stored with the video source while it is connected."
             why="A record of where a stream key was used from, so misuse of a key can be investigated."

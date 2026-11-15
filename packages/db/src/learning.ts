@@ -11,6 +11,25 @@ const PUBLIC_SESSIONS = `
   JOIN channel_settings cs ON cs.broadcaster_id = s.broadcaster_id
  WHERE s.visibility = 'public' AND cs.visibility = 'public' AND cs.public_analysis AND coalesce(s.label, '') <> 'test'`;
 
+/** Lines SLOT1 heard said on public streams, by the language the speech service detected. */
+export async function learningHeard(db: Queryable): Promise<{ lines: number; languages: { name: string; lines: number }[] }> {
+  const { rows } = await db.query<{ lang: string | null; n: number }>(
+    `SELECT substring(o.description from '^Said \\(([^)]{1,60})\\)') AS lang, count(*)::int AS n
+       FROM observations o
+       JOIN stream_sessions s ON s.id = o.session_id
+       JOIN channel_settings cs ON cs.broadcaster_id = s.broadcaster_id
+      WHERE s.visibility = 'public' AND cs.visibility = 'public' AND cs.public_analysis AND coalesce(s.label, '') <> 'test'
+        AND o.type = 'dialogue' AND o.origin = 'audio' AND o.review_status <> 'rejected'
+      GROUP BY 1`,
+  );
+  const lines = rows.reduce((a, r) => a + r.n, 0);
+  const languages = rows
+    .filter((r): r is { lang: string; n: number } => Boolean(r.lang))
+    .map((r) => ({ name: r.lang, lines: r.n }))
+    .sort((a, b) => b.lines - a.lines || a.name.localeCompare(b.name));
+  return { lines, languages };
+}
+
 export async function learningWatched(db: Queryable): Promise<{ streams: number; channels: number; analyzedMs: number }> {
   const { rows } = await db.query<{ streams: number; channels: number; analyzed_ms: string }>(
     `SELECT count(*)::int AS streams, count(DISTINCT s.broadcaster_id)::int AS channels, coalesce(sum(s.analyzed_ms), 0)::text AS analyzed_ms

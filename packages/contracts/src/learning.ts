@@ -53,6 +53,12 @@ export const LearningResponse = z.object({
     labeledFrames: z.number().int().nonnegative(),
   }),
   skills: z.array(LearningSkill),
+  /** What SLOT1 heard said on public streams (speech transcripts), in any language. */
+  heard: z.object({
+    lines: z.number().int().nonnegative(),
+    /** Languages detected, most lines first. */
+    languages: z.array(z.object({ name: z.string(), lines: z.number().int().nonnegative() })),
+  }),
   /** Models SLOT1 runs right now. */
   models: z.array(LearningModel),
 });

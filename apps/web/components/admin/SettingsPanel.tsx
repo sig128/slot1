@@ -10,6 +10,7 @@ import {
   type SettingsPatchInput,
   type SettingsRequestResult,
   type TwitchSignInEvent,
+  type SpeechService,
 } from "@slot1/contracts";
 import { api, ApiError } from "@/lib/api";
 import { ago } from "./parts";
@@ -204,6 +205,7 @@ export function SettingsPanel({ initial, initialEvents, now }: { initial: AdminS
         </div>
         <div className="grid content-start gap-14">
           <AiGroup {...common} />
+          <SpeechGroup {...common} />
           <LegalGroup {...common} />
           <PasswordGroup {...common} />
         </div>
@@ -568,6 +570,108 @@ function KickGroup({ view, off, busy, save, send }: GroupProps) {
         onSave={() => {
           const p = g.patch();
           if (p && Object.keys(p).length) void send("kick", "/api/admin/settings", p).then((ok) => ok && g.forget(["kickClientSecret"]));
+        }}
+      />
+    </Group>
+  );
+}
+
+const SPEECH_CHOICES: { id: SpeechService; name: string; note: string }[] = [
+  { id: "groq", name: "Groq (Whisper large v3 turbo)", note: "99 languages. Fast and low-cost." },
+  { id: "openai", name: "OpenAI (Whisper)", note: "99 languages." },
+  { id: "elevenlabs", name: "ElevenLabs (Scribe)", note: "About 90 languages, and it tags sounds like laughter." },
+  { id: "custom", name: "Your own server", note: "Any OpenAI-compatible speech server, such as a self-hosted Whisper." },
+  { id: "off", name: "Off", note: "No speech transcripts." },
+];
+
+/** Speech to text: what's said on live streams, in any language (creators switch it on in Studio). */
+function SpeechGroup({ view, off, busy, save, send }: GroupProps) {
+  const id = useId();
+  const v = view.values;
+  const custom = v.speechService === "custom";
+  const g = useGroup(["speechService", "speechApiKey", "speechBaseUrl", "speechModel"], {
+    speechService: v.speechService,
+    speechApiKey: "",
+    speechBaseUrl: custom ? (v.speechBaseUrl ?? "") : "",
+    speechModel: custom ? (v.speechModel ?? "") : "",
+  });
+  const choice = String(g.value("speechService") ?? "off") as SpeechService;
+  return (
+    <Group
+      id="settings-speech"
+      title="Speech to text"
+      status={
+        <Working
+          ok={view.working.speech}
+          yes="On. Creators who switch on transcripts in Studio get what's said on stream, in any language, with the language detected."
+          no="Off. Choose a service and paste its key to transcribe what's said on stream."
+          server={null}
+        />
+      }
+    >
+      <fieldset className="grid gap-2" disabled={off || busy}>
+        <legend className="sr-only">Speech service</legend>
+        {SPEECH_CHOICES.map((c) => (
+          <label key={c.id} htmlFor={`${id}-${c.id}`} className="flex cursor-pointer items-start gap-3">
+            <input
+              id={`${id}-${c.id}`}
+              type="radio"
+              name={`${id}-service`}
+              className="mt-1 h-4 w-4 accent-[var(--color-coral)]"
+              checked={choice === c.id}
+              onChange={() => g.set("speechService", c.id)}
+            />
+            <span>
+              <span className="block font-display text-[1.08rem] font-semibold">{c.name}</span>
+              <span className="block text-[0.85rem] text-ivory-3">{c.note}</span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
+      {choice === "custom" && (
+        <>
+          <Field label="Server address" htmlFor={`${id}-url`} error={g.errors.speechBaseUrl} hint="Where its /audio/transcriptions lives, for example https://whisper.example.com/v1.">
+            <TextInput
+              id={`${id}-url`}
+              value={String(g.value("speechBaseUrl") ?? "")}
+              onChange={(x) => g.set("speechBaseUrl", x)}
+              disabled={off || busy}
+              placeholder="https://"
+              error={g.errors.speechBaseUrl}
+            />
+          </Field>
+          <Field label="Model" htmlFor={`${id}-model`} error={g.errors.speechModel} hint="The model name the server expects, for example whisper-large-v3.">
+            <TextInput id={`${id}-model`} value={String(g.value("speechModel") ?? "")} onChange={(x) => g.set("speechModel", x)} disabled={off || busy} error={g.errors.speechModel} />
+          </Field>
+        </>
+      )}
+      {choice !== "off" && (
+        <Field
+          label="API key"
+          htmlFor={`${id}-key`}
+          error={g.errors.speechApiKey}
+          hint={v.speechApiKeySet ? "Saved. It's never shown again. Paste a new one to replace it. The service bills the usage." : "From the service's dashboard. The service bills the usage."}
+        >
+          <TextInput
+            id={`${id}-key`}
+            type="password"
+            value={String(g.value("speechApiKey") ?? "")}
+            onChange={(x) => g.set("speechApiKey", x)}
+            disabled={off || busy}
+            placeholder={v.speechApiKeySet ? "•••••••• saved, paste a new one to replace it" : "Paste the API key"}
+            autoComplete="new-password"
+            error={g.errors.speechApiKey}
+          />
+        </Field>
+      )}
+      <SaveRow
+        group="speech"
+        label="Save speech to text"
+        save={save}
+        disabled={off || busy}
+        onSave={() => {
+          const p = g.patch();
+          if (p && Object.keys(p).length) void send("speech", "/api/admin/settings", p).then((ok) => ok && g.forget(["speechApiKey"]));
         }}
       />
     </Group>

@@ -263,6 +263,9 @@ export const storageKeys = {
     `b/${b}/s/${s}/src/${sourceId}/frames/${String(Math.max(0, Math.round(ptsMs))).padStart(10, "0")}.jpg`,
   clip: (b: string, s: string, clipId: string, variant: string) => `b/${b}/s/${s}/clips/${clipId}/${variant}.mp4`,
   audioChunk: (b: string, s: string, sourceId: string, startMs: number) => `b/${b}/s/${s}/src/${sourceId}/audio/${startMs}.mp3`,
+  /** What was said in one live audio chunk (text only), next to the frames. */
+  transcript: (b: string, s: string, sourceId: string, ptsMs: number) =>
+    `b/${b}/s/${s}/src/${sourceId}/speech/${String(Math.max(0, Math.round(ptsMs))).padStart(10, "0")}.json`,
   /** Recording segments and the finalized file live with their session (deleted with it). */
   recordingSegment: (b: string, s: string, runId: string, name: string) => `b/${b}/s/${s}/recording/runs/${runId}/${name}`,
   recordingFile: (b: string, s: string, version: string, name: string) => `b/${b}/s/${s}/recording/${version}/${name}`,

@@ -45,6 +45,12 @@ describe("What SLOT1 learned", () => {
     const rejected = await observe({ type: "result_screen", description: "Result screen read", rawText: "WASTED", origin: "ocr" });
     await h.ctx.db.query(`UPDATE observations SET review_status = 'rejected' WHERE id = $1`, [rejected.observation.id]);
     await observe({ type: "chat_message", description: "Chat said WASTED lol", rawText: "WASTED", origin: "twitch" });
+    // What was said, in two languages.
+    const said = (lang: string, text: string) =>
+      observe({ type: "dialogue", description: `Said (${lang}): “${text}”`, rawText: text, origin: "audio", evidence: [{ assetId: randomUUID(), kind: "transcript", mediaPtsMs: 1000 }] });
+    await said("Turkish", "Polis geliyor");
+    await said("Turkish", "Kaçın!");
+    await said("Norwegian", "Hei alle sammen");
   }
   const read = async () => {
     clearLearningCache();
@@ -77,6 +83,11 @@ describe("What SLOT1 learned", () => {
     expect(skill(after, "event:police_chase").seen! - skill(before, "event:police_chase").seen!).toBe(1);
     expect(skill(after, "event:wasted").seen).toBe(skill(before, "event:wasted").seen);
     expect(skill(after, "box:minimap")).toMatchObject({ seen: null, score: null });
+    // Lines heard, by language: only the public stream's three.
+    expect(after.heard.lines - before.heard.lines).toBe(3);
+    const lang = (r: LearningResponse, name: string) => r.heard.languages.find((l) => l.name === name)?.lines ?? 0;
+    expect(lang(after, "Turkish") - lang(before, "Turkish")).toBe(2);
+    expect(lang(after, "Norwegian") - lang(before, "Norwegian")).toBe(1);
   });
 
   it("lists every class of the GTA taxonomy as a skill and is public", async () => {

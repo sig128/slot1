@@ -59,7 +59,13 @@ export function aiProcessors(env: Record<string, string | undefined> = process.e
     } catch {
       /* keep the default */
     }
-    out.push({ name: host === "api.openai.com" ? "OpenAI" : `the speech-to-text service at ${host}`, purpose: "turns stream audio into text (transcription)" });
+    out.push({
+      name: host === "api.openai.com" ? "OpenAI" : host === "api.groq.com" ? "Groq" : `the speech-to-text service at ${host}`,
+      purpose: "turns stream audio into text (transcription), when a creator switches speech transcripts on",
+    });
+  }
+  if (env.TRANSCRIPTION_PROVIDER === "elevenlabs" && set(env.TRANSCRIPTION_API_KEY)) {
+    out.push({ name: "ElevenLabs", purpose: "turns stream audio into text (transcription), when a creator switches speech transcripts on" });
   }
   return out;
 }

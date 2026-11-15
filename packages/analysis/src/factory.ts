@@ -1,7 +1,7 @@
 import type { MediaTools } from "./media";
 import { TesseractOcr, type OcrEngine } from "./ocr";
 import { AnthropicQaProvider, OpenAIQaProvider, type QaProvider } from "./providers/qa";
-import { OpenAICompatibleTranscription, type TranscriptionProvider } from "./providers/transcription";
+import { ElevenLabsTranscription, OpenAICompatibleTranscription, type TranscriptionProvider } from "./providers/transcription";
 import { AnthropicVisionProvider, OpenAIVisionProvider, type VisionProvider } from "./providers/vision";
 
 /** Subset of environment configuration needed to build providers. */
@@ -15,7 +15,7 @@ export interface ProviderEnv {
   OPENAI_BASE_URL: string;
   OPENAI_VISION_MODEL: string | null;
   OPENAI_TEXT_MODEL: string | null;
-  TRANSCRIPTION_PROVIDER: "none" | "openai_compatible";
+  TRANSCRIPTION_PROVIDER: "none" | "openai_compatible" | "elevenlabs";
   TRANSCRIPTION_BASE_URL: string;
   TRANSCRIPTION_API_KEY: string | null;
   TRANSCRIPTION_MODEL: string | null;
@@ -48,6 +48,11 @@ export function createQaProvider(env: ProviderEnv): QaProvider | null {
 export function createTranscriptionProvider(env: ProviderEnv): TranscriptionProvider | null {
   if (env.TRANSCRIPTION_PROVIDER === "openai_compatible" && env.TRANSCRIPTION_MODEL) {
     return new OpenAICompatibleTranscription(env.TRANSCRIPTION_BASE_URL, env.TRANSCRIPTION_API_KEY, env.TRANSCRIPTION_MODEL);
+  }
+  if (env.TRANSCRIPTION_PROVIDER === "elevenlabs" && env.TRANSCRIPTION_API_KEY) {
+    // The OpenAI default base URL means "not set" here: ElevenLabs has its own.
+    const base = /api\.openai\.com/.test(env.TRANSCRIPTION_BASE_URL) ? "https://api.elevenlabs.io" : env.TRANSCRIPTION_BASE_URL;
+    return new ElevenLabsTranscription(base, env.TRANSCRIPTION_API_KEY, env.TRANSCRIPTION_MODEL ?? "scribe_v2");
   }
   return null;
 }

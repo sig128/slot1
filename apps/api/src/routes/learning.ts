@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import { learningSkills, ModelEvaluation, type LearningModel, type LearningResponse } from "@slot1/contracts";
-import { consentingChannelCount, learningExamples, learningFrames, learningSeen, learningWatched, listActiveModels } from "@slot1/db";
+import { consentingChannelCount, learningExamples, learningFrames, learningHeard, learningSeen, learningWatched, listActiveModels } from "@slot1/db";
 import type { ServerContext } from "@slot1/services";
 
 const TTL_MS = 30_000;
@@ -18,13 +18,14 @@ function latestEvaluation(metrics: unknown): ModelEvaluation | null {
 }
 
 async function compute(ctx: ServerContext): Promise<LearningResponse> {
-  const [watched, seen, frames, examples, channels, models] = await Promise.all([
+  const [watched, seen, frames, examples, channels, models, heard] = await Promise.all([
     learningWatched(ctx.db),
     learningSeen(ctx.db),
     learningFrames(ctx.db),
     learningExamples(ctx.db),
     consentingChannelCount(ctx.db),
     listActiveModels(ctx.db),
+    learningHeard(ctx.db),
   ]);
   // Per-class scores from the active models' own test sets: scenes from the scene model, screen
   // elements from the detector.
@@ -51,6 +52,7 @@ async function compute(ctx: ServerContext): Promise<LearningResponse> {
     },
     learning: { channels, frames: frames.frames, labeledFrames: frames.labeled },
     skills: learningSkills({ examples, seen, scores }),
+    heard,
     models: modelViews,
   };
 }

@@ -28,6 +28,21 @@ export interface PipelineSink {
   trainingFrame?(input: { frame: SampledFrame; ref: FrameRef; weakLabels: WeakLabel[]; prediction: FramePrediction | null }): Promise<void>;
   /** The GTA model skipped this frame (e.g. the shared inference service was busy). Optional. */
   modelFrameSkipped?(frame: FrameRef, reason: string): Promise<void>;
+  /** Keep what was said in one live audio chunk (text only) as transcript evidence. Optional. */
+  storeTranscript?(t: StoredTranscript): Promise<{ assetId: string }>;
+}
+
+export interface StoredTranscript {
+  mediaStartMs: number;
+  durationMs: number;
+  receivedAt: Date;
+  language: string | null;
+  languageName: string | null;
+  text: string;
+  segments: { startMs: number; endMs: number; text: string }[];
+  sounds: string[];
+  provider: string;
+  model: string;
 }
 
 export interface PipelineOptions {
@@ -135,7 +150,29 @@ export class ObservationPipeline {
     return Boolean(this.o.ocr || this.o.vision || this.o.gtaModel);
   }
 
-  async handleFrame(frame: SampledFrame): Promise<void> {
+  /** Frames and outside events (speech) are handled one at a time, in arrival order. */
+  private serial: Promise<void> = Promise.resolve();
+
+  handleFrame(frame: SampledFrame): Promise<void> {
+    const run = this.serial.then(() => this.analyzeFrame(frame));
+    this.serial = run.catch(() => undefined);
+    return run;
+  }
+
+  /**
+   * A measured or outside candidate (what was said on stream, media facts): fused like any other
+   * reading, between frames, never in the middle of one.
+   */
+  addCandidate(c: Candidate): Promise<boolean> {
+    const run = this.serial.then(() => this.fuse(c));
+    this.serial = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
+  private async analyzeFrame(frame: SampledFrame): Promise<void> {
     const { assetId } = await this.o.sink.storeFrame(frame);
     const ref: FrameRef = { ptsMs: frame.ptsMs, assetId, receivedAt: frame.receivedAt, capturedAt: frame.capturedAt };
     this.frameRefs.push(ref);
@@ -278,14 +315,13 @@ export class ObservationPipeline {
     }
   }
 
-  /** Process any frames still waiting for a vision batch. */
-  async flush(): Promise<void> {
-    if (this.o.vision && this.batch.length > 0) await this.runVision();
-  }
-
-  /** Persist a measured/deterministic candidate through the same fusion path. */
-  async addCandidate(c: Candidate): Promise<void> {
-    await this.fuse(c);
+  /** Process any frames still waiting for a vision batch (after the frames already queued). */
+  flush(): Promise<void> {
+    const run = this.serial.then(async () => {
+      if (this.o.vision && this.batch.length > 0) await this.runVision();
+    });
+    this.serial = run.catch(() => undefined);
+    return run;
   }
 
   private async runVision(): Promise<boolean> {

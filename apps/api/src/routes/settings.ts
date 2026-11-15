@@ -4,6 +4,7 @@ import {
   AdminPasswordChange,
   SettingsPatch,
   settingsEntries,
+  speechServiceOf,
   type AdminSettingsView,
   type PublicStatus,
   type SettingEntry,
@@ -23,15 +24,32 @@ const STARTED_AT = new Date(Date.now() - Math.round(process.uptime() * 1000));
 
 /** What a saved request changes, kept so /admin shows it before the API itself restarts. */
 const shownKey = (id: string) => `slot1:settings:req:${id}`;
-const SECRET_KEYS = new Set(["TWITCH_CLIENT_SECRET", "KICK_CLIENT_SECRET", "ANTHROPIC_API_KEY", "SLOT1_ADMIN_PASSWORD_HASH"]);
+const SECRET_KEYS = new Set(["TWITCH_CLIENT_SECRET", "KICK_CLIENT_SECRET", "ANTHROPIC_API_KEY", "TRANSCRIPTION_API_KEY", "SLOT1_ADMIN_PASSWORD_HASH"]);
 
 type Values = AdminSettingsView["values"];
 
 /** Applies one saved request's settings to the values shown (secrets only as "saved"). */
 function overlay(values: Values, entries: { key: string; value: string | null }[]): Values {
   const v = { ...values };
+  // The speech service is the provider and its address together.
+  let speechProvider: string | null | undefined;
+  let speechMoved = false;
   for (const { key, value } of entries) {
     switch (key) {
+      case "TRANSCRIPTION_PROVIDER":
+        speechProvider = value;
+        speechMoved = true;
+        break;
+      case "TRANSCRIPTION_BASE_URL":
+        v.speechBaseUrl = value;
+        speechMoved = true;
+        break;
+      case "TRANSCRIPTION_API_KEY":
+        v.speechApiKeySet = Boolean(value);
+        break;
+      case "TRANSCRIPTION_MODEL":
+        v.speechModel = value;
+        break;
       case "TWITCH_CLIENT_ID":
         if (value) v.twitchClientId = value;
         break;
@@ -82,6 +100,10 @@ function overlay(values: Values, entries: { key: string; value: string | null }[
         break;
     }
   }
+  if (speechMoved) {
+    const provider = speechProvider !== undefined ? speechProvider : v.speechService === "off" ? "none" : v.speechService === "elevenlabs" ? "elevenlabs" : "openai_compatible";
+    v.speechService = speechServiceOf(provider, v.speechBaseUrl);
+  }
   return v;
 }
 
@@ -120,6 +142,10 @@ export const settingsRoutes =
         kickClientSecretSet: Boolean(env.KICK_CLIENT_SECRET),
         anthropicApiKeySet: Boolean(env.ANTHROPIC_API_KEY),
         aiProvider: env.VISION_PROVIDER,
+        speechService: speechServiceOf(env.TRANSCRIPTION_PROVIDER, env.TRANSCRIPTION_BASE_URL),
+        speechApiKeySet: Boolean(env.TRANSCRIPTION_API_KEY),
+        speechBaseUrl: env.TRANSCRIPTION_BASE_URL,
+        speechModel: env.TRANSCRIPTION_MODEL,
         autodeploy: env.SLOT1_AUTODEPLOY,
         googleVerification: env.SLOT1_GOOGLE_SITE_VERIFICATION,
         bingVerification: env.SLOT1_BING_SITE_VERIFICATION,
@@ -151,6 +177,7 @@ export const settingsRoutes =
           ai: caps.vision.available,
           aiReason: caps.vision.available ? null : caps.vision.reason,
           kick: Boolean(env.KICK_CLIENT_ID && env.KICK_CLIENT_SECRET),
+          speech: caps.transcription.available,
         },
         twitchRedirectUrl: `${ctx.config.publicOrigin}/api/auth/twitch/callback`,
         kickRedirectUrl: kickRedirectUri(ctx),

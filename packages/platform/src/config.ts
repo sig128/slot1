@@ -86,7 +86,8 @@ const EnvSchema = z.object({
   VISION_FRAMES_PER_CALL: int(4),
   VISION_MAX_EDGE_PX: int(1280),
 
-  TRANSCRIPTION_PROVIDER: z.enum(["none", "openai_compatible"]).default("none"),
+  // openai_compatible: OpenAI, Groq or a self-hosted Whisper server; elevenlabs: ElevenLabs Scribe.
+  TRANSCRIPTION_PROVIDER: z.enum(["none", "openai_compatible", "elevenlabs"]).default("none"),
   TRANSCRIPTION_BASE_URL: z.string().default("https://api.openai.com/v1"),
   TRANSCRIPTION_API_KEY: optStr,
   TRANSCRIPTION_MODEL: optStr,
@@ -315,7 +316,8 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
 
   let transcriptionReason: string | null = null;
   if (env.TRANSCRIPTION_PROVIDER === "none") transcriptionReason = "Transcription not configured: set TRANSCRIPTION_PROVIDER";
-  else if (!env.TRANSCRIPTION_MODEL) transcriptionReason = "TRANSCRIPTION_MODEL is not set";
+  else if (env.TRANSCRIPTION_PROVIDER === "elevenlabs" && !env.TRANSCRIPTION_API_KEY) transcriptionReason = "TRANSCRIPTION_API_KEY is not set";
+  else if (env.TRANSCRIPTION_PROVIDER === "openai_compatible" && !env.TRANSCRIPTION_MODEL) transcriptionReason = "TRANSCRIPTION_MODEL is not set";
 
   const ocrEnabled = env.OCR_ENABLED === "false" ? false : env.OCR_ENABLED === "true" ? true : tesseractAvailable(env.TESSERACT_PATH);
 

@@ -863,6 +863,19 @@ export function AdvancedSection({ ctx }: { ctx: StudioCtx }) {
           )}
         </Group>
       )}
+      <Group title="Speech">
+        <Toggle
+          label="Transcribe what's said on stream"
+          description={
+            caps.transcription.available
+              ? "In any language, detected automatically. Lines appear in the live log with the original words. Only the text is kept, never the audio. Other voices in your stream (party chat, friends, game characters) are transcribed too."
+              : "Speech to text isn't set up on this server yet."
+          }
+          checked={s.speechTranscripts}
+          disabled={!caps.transcription.available && !s.speechTranscripts}
+          onChange={(v) => void ctx.save({ speechTranscripts: v })}
+        />
+      </Group>
       <Group title="Analysis tuning">
         <div className="grid max-w-3xl gap-4 sm:grid-cols-2">
           <div>

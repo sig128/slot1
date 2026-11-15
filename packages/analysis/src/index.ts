@@ -9,6 +9,7 @@ export * from "./sources";
 export * from "./candidates";
 export * from "./pipeline";
 export * from "./motion";
+export * from "./speech";
 export * from "./providers/http";
 export * from "./providers/vision";
 export * from "./providers/transcription";

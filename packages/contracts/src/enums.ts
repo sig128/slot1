@@ -137,6 +137,8 @@ export const AssetKind = z.enum([
   "screenshot",
   "render",
   "poster",
+  /** What was said in a live audio chunk (text, never audio). */
+  "transcript",
 ]);
 export type AssetKind = z.infer<typeof AssetKind>;
 

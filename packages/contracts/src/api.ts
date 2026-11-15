@@ -397,6 +397,8 @@ export const ChannelSettings = z.object({
   autoClipPostRollMs: z.number().int(),
   /** Opt-in bot announcements in chat ("SLOT1 is watching", auto-clip ready). */
   chatAnnouncements: z.boolean(),
+  /** Creator opted in to live speech transcripts (any language; text only, never audio). */
+  speechTranscripts: z.boolean(),
 });
 export type ChannelSettings = z.infer<typeof ChannelSettings>;
 
@@ -431,6 +433,7 @@ export const ChannelSettingsPatch = z
     autoClipPreRollMs: z.number().int().min(0).max(60_000),
     autoClipPostRollMs: z.number().int().min(1000).max(60_000),
     chatAnnouncements: z.boolean(),
+    speechTranscripts: z.boolean(),
   })
   .partial()
   .strict();
