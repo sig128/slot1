@@ -72,7 +72,8 @@ export async function deleteSessionsForUser(db: Queryable, userId: string) {
 /* ------------------------------------------------------------------------------------------ */
 
 export interface OAuthStateRow {
-  role: "broadcaster" | "bot";
+  /** "viewer": signing in only to chat (identity, no channel connected). */
+  role: "broadcaster" | "bot" | "viewer";
   redirect_uri: string;
   requested_scopes: string[];
   return_to: string | null;
@@ -80,7 +81,7 @@ export interface OAuthStateRow {
 
 export async function createOAuthState(
   db: Queryable,
-  input: { stateHash: Buffer; sessionIdHash: Buffer; role: "broadcaster" | "bot"; redirectUri: string; scopes: string[]; returnTo: string | null },
+  input: { stateHash: Buffer; sessionIdHash: Buffer; role: "broadcaster" | "bot" | "viewer"; redirectUri: string; scopes: string[]; returnTo: string | null },
 ) {
   await db.query(
     `INSERT INTO oauth_states (state_hash, session_id_hash, role, redirect_uri, requested_scopes, return_to, expires_at)

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { AdminMessagesResponse, AdminOverview, AdminSettingsView, AdminUsage, TwitchSignInEvent } from "@slot1/contracts";
 import { api, ApiError } from "@/lib/api";
 import { MessagesInbox } from "./MessagesInbox";
+import { ChatModerationPanel } from "./ChatModerationPanel";
 import { PreviewChannelsPanel } from "./PreviewChannelsPanel";
 import { SettingsAlert, SettingsPanel } from "./SettingsPanel";
 import { ago, compact, duration, Health, num, Ranked, Section, size, Stat } from "./parts";
@@ -38,6 +39,7 @@ const SECTIONS = [
   ["messages", "Messages"],
   ["system", "System"],
   ["preview-channels", "Featured channels"],
+  ["chat", "Chat"],
   ["settings", "Settings"],
 ] as const;
 
@@ -483,6 +485,11 @@ export function AdminApp({
         {/* FEATURED CHANNELS -------------------------------------------------------------- */}
         <Section id="preview-channels" title="Featured channels">
           <PreviewChannelsPanel />
+        </Section>
+
+        {/* CHAT -------------------------------------------------------------------------- */}
+        <Section id="chat" title="Chat">
+          <ChatModerationPanel />
         </Section>
 
         {/* SETTINGS ---------------------------------------------------------------------- */}

@@ -213,6 +213,26 @@ function sections(cfg: LegalConfig): LegalSection[] {
           />
           <p>The bot’s replies are ordinary public Twitch chat messages.</p>
 
+          <h3>In SLOT1 chat</h3>
+          <DataItem
+            title="SLOT1 chat messages"
+            what="What you post in SLOT1 chat on a channel’s page, with your Twitch display name and the time. Everyone who opens that page can read it. Messages that start with “!slot1” or “@slot1” are answered by the SLOT1 bot in the same chat."
+            why="Showing the chat to everyone on the page and answering bot commands. Counters keyed by your SLOT1 account, kept at most a minute, stop flooding and repeats."
+            kept="24 hours, then deleted automatically. Sooner if a moderator deletes the message."
+          />
+          <DataItem
+            title="Signing in to chat"
+            what="Signing in just to chat uses only your Twitch identity: user ID and display name. No permissions are asked for, no channel is connected, and Twitch’s token is used once and not kept."
+            why="Showing who wrote a message and letting moderators ban someone."
+            kept="Your identity while your SLOT1 account exists. Your session as described above."
+          />
+          <DataItem
+            title="Reports and chat bans"
+            what="When a message is reported: a copy of it (name, text, time), who reported it and when. When someone is banned from chat: their name, where they’re banned, who banned them and when."
+            why="Moderating SLOT1 chat."
+            kept="Reports up to 30 days. Bans until they’re lifted."
+          />
+
           <h3>Questions and messages</h3>
           <DataItem
             title="Ask SLOT1"

@@ -37,6 +37,8 @@ export function WatchClient({
   const onTwitch = Boolean(c.twitchUrl);
   // Admin → Featured channels: shown like any channel, without the watch-only notes.
   const featured = !watch.authorized && Boolean(c.preview);
+  // SLOT1 chat: on SLOT1 channels this visitor can watch, and on featured channels.
+  const chatRoom = (watch.authorized || featured) && /^[a-z0-9_-]{2,25}$/i.test(c.login) ? c.login.toLowerCase() : null;
   const player = clipSlug ? (
     <div className="w-full" style={{ minWidth: 0 }}>
       <iframe
@@ -129,6 +131,7 @@ export function WatchClient({
       canAsk={watch.viewer.canAsk}
       askPolicy={watch.viewer.askPolicy}
       chatLogin={onTwitch ? c.login : null}
+      chatRoom={chatRoom}
       embedParents={embedParents}
       emptyState={empty}
       watchOnly={!watch.authorized}

@@ -20,3 +20,4 @@ export * from "./edl-edit";
 export * from "./edl-tracks";
 export * from "./signin";
 export * from "./settings";
+export * from "./chat";

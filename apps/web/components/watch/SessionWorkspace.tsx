@@ -21,6 +21,7 @@ import { api, ApiError, newIdempotencyKey } from "@/lib/api";
 import { pct } from "@/lib/format";
 import { AiViewPanel } from "./AiView";
 import { AskPanel } from "./AskPanel";
+import { ChatPanel } from "./ChatPanel";
 import { EventRail, railItems } from "./EventRail";
 import { EvidencePanel } from "./EvidencePanel";
 import { InstantReplayPlayer, PlayerKindContext, useInstantReplay, useInstantReplayStatus, useWideEnough, type PlayerKind } from "./InstantReplay";
@@ -52,6 +53,8 @@ interface Props {
   askPolicy: "off" | "signed_in" | "anyone";
   chatLogin?: string | null;
   embedParents?: string[];
+  /** SLOT1 chat's room (the channel's login) when this channel has one. */
+  chatRoom?: string | null;
   emptyState: React.ReactNode;
   notice?: React.ReactNode;
   /** Public channel that hasn't connected SLOT1: Twitch player only, no analysis UI. */
@@ -95,14 +98,32 @@ export function SessionWorkspace(p: Props) {
   const [selected, setSelected] = useState<string | null>(p.initialMomentId ?? null);
   // The rail: Twitch chat at full height, never squeezed under another panel. A watch-only channel
   // has nothing analyzed, so its rail is the chat alone; other channels switch between views.
-  const chatAvailable = p.mode === "live" && Boolean(p.chatLogin && p.embedParents);
+  const twitchChat = p.mode === "live" && p.chatLogin && p.embedParents ? chatEmbedUrl(p.chatLogin, p.embedParents) : null;
+  const siteChat = p.mode === "live" ? (p.chatRoom ?? null) : null;
+  const chatAvailable = Boolean(twitchChat || siteChat);
   const analysisViews = !p.watchOnly || !chatAvailable;
+  const chatLabel = twitchChat && siteChat ? "Chat" : twitchChat ? "Twitch chat" : "SLOT1 chat";
   const views: [string, string][] = [
     ...(analysisViews ? ([["log", "Live log"]] as [string, string][]) : []),
-    ...(chatAvailable ? ([["chat", "Twitch chat"]] as [string, string][]) : []),
+    ...(chatAvailable ? ([["chat", chatLabel]] as [string, string][]) : []),
     ...(analysisViews ? ([["ask", "Ask SLOT1"], ["session", "Session"]] as [string, string][]) : []),
   ];
   const [tab, setTab] = useState(analysisViews ? "log" : "chat");
+  const [focusSlot1, setFocusSlot1] = useState(false);
+  const railRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    // Back from "Sign in with Twitch to chat" (?chat=slot1): open SLOT1 chat and bring it into view.
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("chat") !== "slot1") return;
+    for (const k of ["chat", "twitch", "why"]) q.delete(k);
+    window.history.replaceState(null, "", `${window.location.pathname}${q.size ? `?${q}` : ""}${window.location.hash}`);
+    if (!siteChat) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTab("chat");
+    setFocusSlot1(true);
+    railRef.current?.scrollIntoView({ block: "center" });
+  }, [siteChat]);
   const [theater, setTheater] = useState(false);
   // Twitch chat shows by default next to the live player; it can be hidden.
   const [position, setPosition] = useState<number | null>(null);
@@ -362,6 +383,7 @@ export function SessionWorkspace(p: Props) {
         </div>
 
         <aside
+          ref={railRef}
           className="flex h-[78svh] min-h-[460px] min-w-0 flex-col border hairline bg-graphite-900 lg:sticky lg:top-20 lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:h-[calc(100dvh-7rem)]"
           aria-label="SLOT1 rail"
         >
@@ -424,9 +446,9 @@ export function SessionWorkspace(p: Props) {
               </>
             )}
             {chatAvailable && (
-              // Kept mounted while another view is open, so the chat doesn't reload on every switch.
+              // Kept mounted while another view is open, so the chats don't reload on every switch.
               <Tabs.Content value="chat" className="flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden" forceMount>
-                <iframe title="Twitch chat" src={chatEmbedUrl(p.chatLogin!, p.embedParents!)} className="block min-h-0 w-full flex-1 bg-graphite" />
+                <ChatPanel twitchSrc={twitchChat} room={siteChat} active={tab === "chat"} focusSlot1={focusSlot1} />
               </Tabs.Content>
             )}
           </Tabs.Root>

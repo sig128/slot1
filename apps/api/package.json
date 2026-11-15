@@ -27,6 +27,7 @@
     "fastify-plugin": "^5.0.1",
     "fflate": "^0.8.3",
     "ioredis": "^5.11.1",
+    "obscenity": "0.4.6",
     "pg": "^8.23.1",
     "pino": "^10.4.0",
     "zod": "^4.6.7"

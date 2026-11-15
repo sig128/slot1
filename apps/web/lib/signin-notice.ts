@@ -17,6 +17,11 @@ export interface SignInNotice {
 
 export const TWITCH_SIGN_IN_PATH = "/api/auth/twitch/start";
 
+/** "Sign in with Twitch" just to chat: identity only, no channel connected. Comes back to `returnTo`. */
+export function chatSignInHref(returnTo: string): string {
+  return `${TWITCH_SIGN_IN_PATH}?role=viewer&returnTo=${encodeURIComponent(returnTo)}`;
+}
+
 /** The "Sign in with Twitch" link. It goes straight to Twitch, then back to `returnTo`. */
 export function twitchSignInHref(returnTo = "/studio"): string {
   return returnTo === "/studio" ? `${TWITCH_SIGN_IN_PATH}?returnTo=%2Fstudio` : `${TWITCH_SIGN_IN_PATH}?returnTo=${encodeURIComponent(returnTo)}`;
@@ -31,6 +36,8 @@ function notice(search: URLSearchParams, origin: string): Omit<SignInNotice, "co
   const twitch = search.get("twitch");
   const bot = search.get("bot");
   if (twitch === "connected") return { tone: "ok", title: "Twitch connected.", body: null, owner: null, retry: false };
+  // Signed in only to chat: no channel was connected.
+  if (twitch === "signed_in") return { tone: "ok", title: "Signed in with Twitch.", body: null, owner: null, retry: false };
   if (twitch === "denied") {
     return { tone: "warn", title: "You cancelled on Twitch.", body: "Nothing was connected. Sign in again whenever you're ready.", owner: null, retry: true };
   }

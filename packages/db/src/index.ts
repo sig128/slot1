@@ -13,3 +13,4 @@ export * from "./relay";
 export * from "./analytics";
 export * from "./admin";
 export * from "./seo";
+export * from "./chat";

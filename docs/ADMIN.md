@@ -139,6 +139,22 @@ The API can't edit the server's `.env`. When an admin saves a group in `/admin` 
 - A new admin password needs the current one, except when none is set yet. The API hashes it (scrypt), so the request holds only the hash. Once applied, every admin session ends.
 - A server installed without the setup script has no shared folder; the page then says saving isn't available and the forms are off.
 
+## Chat
+
+Channel pages have SLOT1 chat next to the Twitch chat, on featured channels and on SLOT1 channels a visitor can watch (not on any pasted Twitch link). Everyone on the page reads it; posting needs "Sign in with Twitch to chat", which asks Twitch for identity only (`openid`), connects no channel and keeps no token. Messages live in Redis (`slot1:chat:room:<login>`) for 24 hours at most; new messages and deletions go out over SSE (`/api/chat/:login/events`).
+
+Before a message is posted, SLOT1 blocks links, slurs and sexual terms (everyday swearing is allowed), messages over 300 characters, more than one message a second or 20 a minute, and repeats within 30 seconds. `!slot1 …` and `@slot1 …` get the bot's answer in the chat: on featured channels from Twitch's live info only (`now`, `uptime`, `game`, `title`, `viewers`, `followers`); on SLOT1 channels the same commands as in Twitch chat, read-only, from what the channel shows publicly, with the creator's kill switch, allowed commands and question setting applied.
+
+Viewers report messages. Admins and the channel's creator delete messages and ban (the creator in their own chat; admins in one chat or all). `/admin` → Chat lists open reports (dismiss, delete, or ban from every chat; kept 30 days) and bans (lift).
+
+| Endpoint | Who |
+| --- | --- |
+| `GET /api/chat/:login`, `GET /api/chat/:login/events` | everyone (404 where there's no chat) |
+| `POST /api/chat/:login/messages` `{text}` | signed-in viewers who aren't banned |
+| `DELETE /api/chat/:login/messages/:id`, `POST …/:id/ban` `{everywhere}` | admins; the creator in their own chat (`everywhere` admins only) |
+| `POST /api/chat/:login/messages/:id/report` | signed-in viewers |
+| `GET /api/admin/chat`, `POST /api/admin/chat/reports/resolve`, `DELETE /api/admin/chat/bans/:id` | admins |
+
 ## Featured channels
 
 `/admin` → Featured channels lists up to five Twitch channels to show on the home page for everyone. When one is live it plays in Live now (Twitch's player, the panels and the Twitch chat) and has a card in On air, like any other channel, with no watch-only notes. SLOT1 analyzes only channels whose creator connected, so a featured channel's live log stays empty and the SLOT1 bot isn't in its Twitch chat (Twitch requires the creator's `channel:bot` permission) until that creator connects. The API marks them `preview`. The list lives in Redis (`slot1:admin:preview-channels`), so a change shows on the next page load. Until an admin saves a list it is `vader, darkviperau, missmikkaa, darkzelk`; saving an empty list clears it.

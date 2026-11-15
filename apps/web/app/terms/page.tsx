@@ -138,6 +138,29 @@ function sections(cfg: LegalConfig): LegalSection[] {
       ),
     },
     {
+      id: "chat",
+      title: "SLOT1 chat",
+      body: (
+        <>
+          <p>
+            Channel pages on SLOT1 have their own chat, next to the channel’s Twitch chat. Everyone who opens the page can read it. To post, sign in with
+            Twitch; your Twitch display name is shown with what you write. Messages are deleted after 24 hours.
+          </p>
+          <p>The acceptable-use rules above apply, and in SLOT1 chat also:</p>
+          <ul>
+            <li>no links, and no slurs or sexual terms (SLOT1 blocks these before they’re posted);</li>
+            <li>no spam, flooding or repeating the same message;</li>
+            <li>no one’s personal information, and no pretending to be the creator or SLOT1.</li>
+          </ul>
+          <p>
+            The SLOT1 bot answers messages that start with <code>!slot1</code> or <code>@slot1</code>, only from what SLOT1 has seen or what Twitch reports
+            about the stream. Anyone can report a message. SLOT1’s admins, and a channel’s creator in their own chat, can delete messages and ban people
+            from chat.
+          </p>
+        </>
+      ),
+    },
+    {
       id: "ai",
       title: "AI output",
       body: (

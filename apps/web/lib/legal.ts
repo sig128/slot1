@@ -1,7 +1,7 @@
 
 /** Date shown on both legal pages. Change it whenever either document changes. */
-export const LEGAL_LAST_UPDATED = "1 November 2026";
-export const LEGAL_LAST_UPDATED_ISO = "2026-11-01";
+export const LEGAL_LAST_UPDATED = "15 November 2026";
+export const LEGAL_LAST_UPDATED_ISO = "2026-11-15";
 
 export interface LegalConfig {
   /** Who runs SLOT1: the registered business name once there is one. */

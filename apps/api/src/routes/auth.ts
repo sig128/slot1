@@ -49,8 +49,14 @@ export function safeReturnTo(v: unknown, fallback = "/studio"): string {
   return v;
 }
 
+/**
+ * "viewer": Sign in with Twitch only to chat on SLOT1. Identity only (OpenID): no channel is
+ * connected, no permission is asked for, and Twitch's token is not kept.
+ */
+const VIEWER_SCOPES = ["openid"];
+
 const StartQuery = z.object({
-  role: z.enum(["broadcaster", "bot"]).default("broadcaster"),
+  role: z.enum(["broadcaster", "bot", "viewer"]).default("broadcaster"),
   clipAnalysis: z.enum(["0", "1"]).default("0"),
   relay: z.enum(["0", "1"]).default("0"),
   returnTo: z.string().optional(),
@@ -89,14 +95,14 @@ export const authRoutes =
       // forwarding. Re-authorizing replaces the granted scopes, so asking for the full set every
       // time also means a reconnect never drops one. (Older links still send clipAnalysis=1 or
       // relay=1; those scopes are included anyway.)
-      const scopes = q.role === "bot" ? BOT_SCOPES : BROADCASTER_CONNECT_SCOPES;
+      const scopes = q.role === "bot" ? BOT_SCOPES : q.role === "viewer" ? VIEWER_SCOPES : BROADCASTER_CONNECT_SCOPES;
       await createOAuthState(ctx.db, {
         stateHash: sha256(state),
         sessionIdHash: idHash,
         role: q.role,
         redirectUri: ctx.config.env.TWITCH_REDIRECT_URI,
         scopes,
-        returnTo: safeReturnTo(q.returnTo),
+        returnTo: safeReturnTo(q.returnTo, q.role === "viewer" ? "/" : "/studio"),
       });
       return reply.redirect(
         buildAuthorizeUrl({
@@ -151,6 +157,23 @@ export const authRoutes =
       }
       if (!info?.user_id || !info.login) return fail(returnTo, "twitch_down", "Twitch's token check named no account");
       const scopes = info.scopes ?? tokens.scope;
+
+      if (st.role === "viewer") {
+        // Chat sign-in: who you are on Twitch, nothing else. The token is used once, then dropped.
+        try {
+          let displayName = info.login;
+          if (ctx.helix) {
+            const me = await ctx.helix.getTokenUser(tokens.access_token).catch(() => null);
+            if (me) displayName = me.display_name;
+          }
+          const user = await upsertTwitchUser(ctx.db, info.user_id, displayName, ctx.config.operatorLogins.has(info.login.toLowerCase()));
+          await signIn(ctx, req, reply, user.id);
+          return back(ctx, reply, returnTo, { twitch: "signed_in" });
+        } catch (err) {
+          req.log.error({ err }, "Twitch sign-in (chat): saving the user failed");
+          return fail(returnTo, "server", sanitizeErrorMessage((err as Error).message));
+        }
+      }
 
       try {
         const access = ctx.cipher.encrypt(tokens.access_token);
