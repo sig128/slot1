@@ -6,6 +6,7 @@ import { FusionWindow, HighlightScorer, type Candidate, type FusionAction } from
 import { GtaPredictionGate, type FrameModel, type FramePrediction } from "./gta/model";
 import { weakLabelsFromOcr, type WeakLabel } from "./gta/weak-labels";
 import type { OcrEngine, OcrLine } from "./ocr";
+import { motionCandidate, type FrameChange, type MotionMeter } from "./motion";
 import type { GameProfile } from "./profiles";
 import { ProviderError } from "./providers/http";
 import type { VisionProvider, VisionResult } from "./providers/vision";
@@ -47,6 +48,15 @@ export interface PipelineOptions {
    * sees"). Optional; never allowed to break analysis.
    */
   insight?: (i: FrameInsight) => Promise<void>;
+  /** Measures how much each frame changed: sudden action becomes a live log entry. */
+  motion?: MotionMeter | null;
+  /**
+   * Watching every second: OCR and the GTA model read every frame, but the vision model is asked
+   * only when something happens (sudden action, a cut, big on-screen text, a new scene from the GTA
+   * model; at most one every `minGapMs`, sent at once) plus one frame every `heartbeatMs`.
+   * Null sends every frame in batches, as before.
+   */
+  visionGate?: { heartbeatMs: number; minGapMs: number } | null;
 }
 
 /** Everything the pipeline did with one frame, exactly as it happened. */
@@ -71,6 +81,22 @@ export interface FrameInsight {
 }
 
 /**
+ * Whether the vision model looks at a frame: "now" (something happened), "batch" (queue it as
+ * before) or "skip" (nothing changed and the last look was recent). Without a gate or a motion
+ * reading every frame is batched.
+ */
+export function visionDecision(
+  gate: { heartbeatMs: number; minGapMs: number } | null,
+  f: { change: FrameChange | null; bigText: boolean; sceneChanged: boolean; sinceLastMs: number },
+): "now" | "batch" | "skip" {
+  if (!gate || !f.change) return "batch";
+  const happened = f.change.spike || f.change.cut || f.bigText || f.sceneChanged;
+  if (happened && f.sinceLastMs >= gate.minGapMs) return "now";
+  if (f.sinceLastMs >= gate.heartbeatMs) return "batch";
+  return "skip";
+}
+
+/**
  * The single observation pipeline used for replays, Twitch clips and live ingest:
  *   frame → evidence asset → local OCR (deterministic) → batched vision → fusion → persist.
  * Nothing is produced without a real frame; providers that are not configured are skipped and
@@ -87,7 +113,10 @@ export class ObservationPipeline {
   /** Observations created or extended while the current frame is being handled. */
   private produced: FrameInsight["produced"] | null = null;
   private lastVision: { state: "analyzed" | "skipped" | "error"; result: VisionResult | null; note: string | null } | null = null;
-  readonly stats = { frames: 0, analyzedFrames: 0, visionFrames: 0, visionCalls: 0, observations: 0, visionErrors: 0, ocrLines: 0, modelFrames: 0, modelSkipped: 0 };
+  readonly stats = { frames: 0, analyzedFrames: 0, visionFrames: 0, visionCalls: 0, observations: 0, visionErrors: 0, ocrLines: 0, modelFrames: 0, modelSkipped: 0, visionSkipped: 0, motionSpikes: 0 };
+  private lastVisionPushAt = -Infinity;
+  private lastScene: string | null = null;
+  private lastMotionAt = -Infinity;
   readonly frameRefs: FrameRef[] = [];
 
   constructor(private readonly o: PipelineOptions) {
@@ -161,13 +190,44 @@ export class ObservationPipeline {
       }
     }
 
+    // How much the picture changed: sudden action is logged, and it decides whether vision looks.
+    let change: FrameChange | null = null;
+    if (this.o.motion) {
+      try {
+        change = await this.o.motion.measure(frame.jpeg);
+      } catch {
+        change = null;
+      }
+      const t = frame.receivedAt.getTime();
+      if (change?.spike && t - this.lastMotionAt >= 5000) {
+        this.lastMotionAt = t;
+        this.stats.motionSpikes += 1;
+        hadResult = (await this.fuse(motionCandidate(change, ref, nowIso()))) || hadResult;
+      }
+    }
+
     let visionRan = false;
+    let gatedOut = false;
     if (this.o.vision) {
-      this.batch.push(ref);
-      this.batchJpegs.push(frame.jpeg);
-      if (this.batch.length >= this.o.visionBatchSize) {
-        visionRan = true;
-        hadResult = (await this.runVision()) || hadResult;
+      const g = this.o.visionGate;
+      const scene = prediction?.scene?.class ?? null;
+      const sceneChanged = scene !== null && scene !== this.lastScene;
+      if (scene !== null) this.lastScene = scene;
+      const bigText = ocrLines.some((l) => l.type === "result_screen" || l.type === "mission_title" || l.type === "objective_text");
+      const t = frame.receivedAt.getTime();
+      const decision = visionDecision(g ?? null, { change, bigText, sceneChanged, sinceLastMs: t - this.lastVisionPushAt });
+      if (decision !== "skip") {
+        this.lastVisionPushAt = t;
+        this.batch.push(ref);
+        this.batchJpegs.push(frame.jpeg);
+        // Something happened: ask now instead of waiting for a full batch.
+        if (decision === "now" || this.batch.length >= this.o.visionBatchSize) {
+          visionRan = true;
+          hadResult = (await this.runVision()) || hadResult;
+        }
+      } else {
+        gatedOut = true;
+        this.stats.visionSkipped += 1;
       }
     }
 
@@ -204,9 +264,9 @@ export class ObservationPipeline {
             enabled: Boolean(v),
             provider: v?.provider ?? null,
             model: v?.model ?? null,
-            state: !v ? "off" : last ? last.state : "batching",
-            result: last?.result ?? null,
-            note: last?.note ?? null,
+            state: !v ? "off" : gatedOut ? "skipped" : last ? last.state : "batching",
+            result: gatedOut ? null : (last?.result ?? null),
+            note: gatedOut ? "Nothing changed on screen, so the vision model wasn't asked about this frame." : (last?.note ?? null),
             batch: { have: v ? this.batch.length : 0, need: v ? this.o.visionBatchSize : 0 },
           },
           produced,

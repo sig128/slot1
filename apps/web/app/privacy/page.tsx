@@ -152,7 +152,7 @@ function sections(cfg: LegalConfig): LegalSection[] {
             what={
               <>
                 The live stream your streaming software sends to SLOT1 (picture and sound, as described above), recordings you upload, and Twitch clips
-                you let SLOT1 download. SLOT1 samples frames from the video (every 5 seconds by default) to analyze them, and keeps the frames each log
+                you let SLOT1 download. SLOT1 samples frames from the video (one a second by default) to analyze them, and keeps the frames each log
                 entry cites as its evidence. Full recordings, and the rolling buffer used to cut clips, are kept only if you consent to recording in
                 Studio.
               </>

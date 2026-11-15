@@ -117,30 +117,35 @@ export class TesseractOcr implements OcrEngine {
   ) {}
 
   async readFrame(framePath: string, profile: GameProfile, workDir: string): Promise<OcrLine[]> {
-    const out: OcrLine[] = [];
     await mkdir(workDir, { recursive: true });
-    for (const region of profile.regions) {
-      const input = await this.prepareRegion(framePath, region, workDir);
-      try {
-        const res = await runProcess(this.tesseractPath, [input, "stdout", "--psm", String(region.psm), "-l", "eng", "tsv"], {
-          timeoutMs: 30_000,
-          maxStdoutBytes: 2 * 1024 * 1024,
-          env: { PATH: process.env.PATH ?? "/usr/bin:/bin", OMP_THREAD_LIMIT: "1", LANG: "C" },
-        });
-        if (res.code !== 0) continue;
-        for (const line of legibleLines(parseTesseractTsv(res.stdout.toString("utf8")), region.minLineConfidence)) {
-          if (region.requirePattern && !region.requirePattern.test(line.text)) continue;
-          const type = region.classify ? region.classify(line.text) ?? region.type : region.type;
-          // Region-local box → frame-normalized box.
-          const [rx, ry, rw, rh] = region.box;
-          const bbox: [number, number, number, number] | undefined = line.box
-            ? [rx + line.box[0] * rw, ry + line.box[1] * rh, line.box[2] * rw, line.box[3] * rh]
-            : undefined;
-          out.push({ text: line.text, confidence: line.confidence, regionId: region.id, type, ...(bbox ? { bbox } : {}) });
-        }
-      } finally {
-        if (input !== framePath) await rm(input, { force: true });
+    // The regions are read side by side (one tesseract thread each), so a frame a second keeps up;
+    // lines come back in the profile's region order either way.
+    const perRegion = await Promise.all(profile.regions.map((region) => this.readRegion(framePath, region, workDir)));
+    return perRegion.flat();
+  }
+
+  private async readRegion(framePath: string, region: OcrRegion, workDir: string): Promise<OcrLine[]> {
+    const out: OcrLine[] = [];
+    const input = await this.prepareRegion(framePath, region, workDir);
+    try {
+      const res = await runProcess(this.tesseractPath, [input, "stdout", "--psm", String(region.psm), "-l", "eng", "tsv"], {
+        timeoutMs: 30_000,
+        maxStdoutBytes: 2 * 1024 * 1024,
+        env: { PATH: process.env.PATH ?? "/usr/bin:/bin", OMP_THREAD_LIMIT: "1", LANG: "C" },
+      });
+      if (res.code !== 0) return out;
+      for (const line of legibleLines(parseTesseractTsv(res.stdout.toString("utf8")), region.minLineConfidence)) {
+        if (region.requirePattern && !region.requirePattern.test(line.text)) continue;
+        const type = region.classify ? region.classify(line.text) ?? region.type : region.type;
+        // Region-local box → frame-normalized box.
+        const [rx, ry, rw, rh] = region.box;
+        const bbox: [number, number, number, number] | undefined = line.box
+          ? [rx + line.box[0] * rw, ry + line.box[1] * rh, line.box[2] * rw, line.box[3] * rh]
+          : undefined;
+        out.push({ text: line.text, confidence: line.confidence, regionId: region.id, type, ...(bbox ? { bbox } : {}) });
       }
+    } finally {
+      if (input !== framePath) await rm(input, { force: true });
     }
     return out;
   }

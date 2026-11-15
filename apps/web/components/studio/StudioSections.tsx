@@ -891,7 +891,10 @@ export function AdvancedSection({ ctx }: { ctx: StudioCtx }) {
               defaultValue={Math.round(s.sampleIntervalMs / 1000)}
               onBlur={(e) => void ctx.save({ sampleIntervalMs: Number(e.target.value) * 1000 })}
             />
-            <p className="mt-1 text-[0.8rem] text-ivory-3">Staleness thresholds adapt to this interval and the measured delay.</p>
+            <p className="mt-1 text-[0.8rem] text-ivory-3">
+              1 second is best: SLOT1&apos;s own readers check every frame and the vision AI is only asked when something happens, so a shorter
+              interval doesn&apos;t raise its cost.
+            </p>
           </div>
         </div>
       </Group>

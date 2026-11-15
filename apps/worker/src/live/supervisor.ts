@@ -7,6 +7,7 @@ import {
   deriveLiveState,
   getProfile,
   LiveIngestAdapter,
+  MotionMeter,
   ObservationPipeline,
   TesseractOcr,
   type SampledFrame,
@@ -267,6 +268,10 @@ class LiveRunner {
               sourceLabel: this.source.label,
               visionBatchSize: Math.max(1, Math.min(3, ctx.config.env.VISION_FRAMES_PER_CALL)),
               coverageMsPerFrame: settings.sampleIntervalMs,
+              // Every frame is measured for sudden action; the vision model looks when something
+              // happens and every 10 s otherwise, so watching each second doesn't multiply its cost.
+              motion: new MotionMeter(),
+              visionGate: { heartbeatMs: Math.max(10_000, settings.sampleIntervalMs), minGapMs: 3_000 },
               workDir: path.join(work, "pipeline"),
               sink: createPipelineSink(ctx, {
                 session,
