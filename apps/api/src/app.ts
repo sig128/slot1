@@ -24,6 +24,7 @@ import { mediaRoutes } from "./routes/media";
 import { momentRoutes } from "./routes/moments";
 import { sessionRoutes } from "./routes/sessions";
 import { chatRoutes } from "./routes/chat";
+import { learningRoutes } from "./routes/learning";
 import { seoRoutes } from "./routes/seo";
 import { studioRoutes } from "./routes/studio";
 import { trainingRoutes } from "./routes/training";
@@ -111,6 +112,7 @@ export async function buildApp({ ctx, hub }: AppDeps): Promise<FastifyInstance> 
   await app.register(channelRoutes(ctx));
   await app.register(sessionRoutes(ctx, hub));
   await app.register(chatRoutes(ctx, hub));
+  await app.register(learningRoutes(ctx));
   await app.register(uploadRoutes(ctx));
   await app.register(mediaRoutes(ctx));
   await app.register(momentRoutes(ctx));

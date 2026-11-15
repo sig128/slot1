@@ -20,6 +20,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { href: "/moments", label: "Moments", hint: "Search saved moments and clips", match: (p) => p.startsWith("/moments") },
   { href: "/studio", label: "Studio", hint: "Your stream, chat bot and clips", match: (p) => p.startsWith("/studio") },
   { href: "/setup", label: "Setup", hint: "How SLOT1 works with your stream", match: (p) => p.startsWith("/setup") },
+  { href: "/learning", label: "Learning", hint: "What SLOT1's AI has seen and learned", match: (p) => p.startsWith("/learning") },
 ];
 
 /** The smaller links at the foot of the phone menu (the page footer carries them too). */
