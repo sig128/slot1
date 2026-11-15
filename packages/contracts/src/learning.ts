@@ -104,6 +104,23 @@ export const LearningResponse = z.object({
       href: z.string().nullable(),
     }),
   ),
+  /**
+   * Everything SLOT1 named on public streams, most seen first: what the AI named in the picture
+   * (vehicles, people, items, places, signs), objectives read on screen, and car and weapon names
+   * the game showed (contracts/gta-names.ts). There's no fixed list.
+   */
+  named: z.array(
+    z.object({
+      kind: z.enum(["vehicle", "weapon", "person", "place", "item", "text", "objective", "other"]),
+      label: z.string(),
+      seen: z.number().int().nonnegative(),
+      streams: z.number().int().nonnegative(),
+      /** The newest moment with it. */
+      href: z.string().nullable(),
+    }),
+  ),
+  /** How many different names in all (the list above shows the most seen). */
+  namedTotal: z.number().int().nonnegative(),
   /** What SLOT1 heard said on public streams (speech transcripts), in any language. */
   heard: z.object({
     lines: z.number().int().nonnegative(),
@@ -179,8 +196,8 @@ export const LearningAnswer = z.object({
   seen: z.object({ answer: z.string(), sources: z.array(LearningSource) }).nullable(),
   /** General game knowledge (never presented as seen on stream); null without a text model. */
   general: z.string().nullable(),
-  /** The activities, places and missions the question was matched to. */
-  about: z.object({ activities: z.array(z.string()), places: z.array(z.string()), missions: z.array(z.string()) }),
+  /** The activities, places, missions and named things (vehicles, weapons…) the question was matched to. */
+  about: z.object({ activities: z.array(z.string()), places: z.array(z.string()), missions: z.array(z.string()), named: z.array(z.string()) }),
   mode: z.enum(["model", "retrieval"]),
 });
 export type LearningAnswer = z.infer<typeof LearningAnswer>;

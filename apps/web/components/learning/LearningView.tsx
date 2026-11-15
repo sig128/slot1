@@ -3,6 +3,7 @@ import type { LearningResponse, NowResponse } from "@slot1/contracts";
 import { KnowledgeMap, PlacesSeen } from "./KnowledgeMap";
 import { LearningExperience } from "./LearningExperience";
 import { MissionStories } from "./MissionStories";
+import { NamedCatalog } from "./NamedCatalog";
 import "./learning.css";
 
 const STEPS: [string, string][] = [
@@ -34,6 +35,7 @@ export function LearningView({ data, now }: { data: LearningResponse | null; now
         <>
           <MissionStories data={data} />
           <KnowledgeMap data={data} />
+          <NamedCatalog data={data} />
           <PlacesSeen data={data} />
         </>
       }

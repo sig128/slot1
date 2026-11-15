@@ -720,6 +720,10 @@
   flex: 1;
   min-width: 1rem;
 }
+.learn-act .tnum {
+  flex: none;
+  white-space: nowrap;
+}
 .learn-act.is-seen {
   color: var(--color-ivory);
 }

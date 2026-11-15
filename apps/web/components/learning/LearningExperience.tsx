@@ -14,6 +14,7 @@ const PARTS: { id: string; label: string }[] = [
   { id: "missions", label: "Missions" },
   { id: "causes", label: "What leads to it" },
   { id: "sorted", label: "Everything sorted" },
+  { id: "named", label: "Everything it named" },
   { id: "places", label: "Places on the map" },
   { id: "eyes", label: "Its eyes right now" },
   { id: "how", label: "How it learns" },
@@ -83,6 +84,7 @@ export function LearningExperience({
     ? {
         missions: learning.missions.length ? n(learning.missions.length) : null,
         sorted: `${learning.activities.filter((a) => a.seen > 0).length}/${learning.activities.length}`,
+        named: learning.namedTotal ? n(learning.namedTotal) : null,
         places: learning.places.length ? n(learning.places.length) : null,
         eyes: live ? n(live) : null,
       }

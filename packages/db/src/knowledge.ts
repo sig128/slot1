@@ -1,4 +1,4 @@
-import { knowledgeTags, type Observation } from "@slot1/contracts";
+import { knowledgeTags, vehicleName, weaponName, type Observation } from "@slot1/contracts";
 import type { Queryable } from "./client";
 import { mapObservation, O_COLS, toTsQuery, type ObservationRow } from "./observations";
 
@@ -73,6 +73,86 @@ export async function knowledgeEvidence(db: Queryable, q: { tags: string[]; text
     [q.tags, terms, q.limit ?? 12],
   );
   return rows.map((r) => ({ ...mapObservation(r), tags: r.tags ?? [], channelLogin: r.login, channelName: r.display_name, sessionKind: r.kind }));
+}
+
+export type NamedKind = "vehicle" | "weapon" | "person" | "place" | "item" | "text" | "objective" | "other";
+
+export interface NamedThing {
+  kind: NamedKind;
+  label: string;
+  seen: number;
+  streams: number;
+  /** The newest entry with it. */
+  latestId: string;
+}
+
+const ENTITY_KINDS = new Set(["vehicle", "person", "place", "item", "text", "other"]);
+const nameKey = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+
+/**
+ * Everything SLOT1 named on public streams: what the AI named in the picture, the objectives read on
+ * screen, and car and weapon names the game showed (whole lines of on-screen text the dictionary
+ * knows). No fixed list; the most seen first, and how many there are in all.
+ */
+export async function namedThings(db: Queryable, limit = 600): Promise<{ things: NamedThing[]; total: number }> {
+  const [named, lines] = await Promise.all([
+    db.query<{ kind: string; label: string; seen: number; streams: number; latest: string; total: number }>(
+      `SELECT kind, min(label) AS label, count(*)::int AS seen, count(DISTINCT session_id)::int AS streams,
+              (array_agg(id ORDER BY received_at DESC))[1] AS latest, count(*) OVER ()::int AS total
+         FROM (
+           SELECT o.id, o.session_id, o.received_at, e->>'kind' AS kind, btrim(e->>'label') AS label
+             FROM observations o
+             CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(o.related_entities) = 'array' THEN o.related_entities ELSE '[]'::jsonb END) AS e
+             ${PUBLIC} AND coalesce(e->>'certainty', '') <> 'uncertain' AND length(btrim(e->>'label')) BETWEEN 2 AND 80
+           UNION ALL
+           SELECT o.id, o.session_id, o.received_at, 'objective', btrim(regexp_replace(o.raw_text, '[[:space:].!]+$', ''))
+             FROM observations o
+             ${PUBLIC} AND o.type = 'objective_text' AND o.raw_text IS NOT NULL AND length(btrim(o.raw_text)) BETWEEN 4 AND 120
+         ) x
+        GROUP BY kind, lower(regexp_replace(label, '[^[:alnum:]]+', ' ', 'g'))
+        ORDER BY seen DESC, label
+        LIMIT $1`,
+      [limit],
+    ),
+    // Short lines of on-screen text, to find the car and weapon names among them.
+    db.query<{ raw: string; seen: number; streams: number; latest: string }>(
+      `SELECT min(o.raw_text) AS raw, count(*)::int AS seen, count(DISTINCT o.session_id)::int AS streams,
+              (array_agg(o.id ORDER BY o.received_at DESC))[1] AS latest
+         FROM observations o
+         ${PUBLIC} AND o.origin = 'ocr' AND o.type IN ('place_name', 'visible_text') AND o.raw_text IS NOT NULL AND length(o.raw_text) <= 40
+        GROUP BY lower(regexp_replace(o.raw_text, '[^[:alnum:]]+', ' ', 'g'))
+        ORDER BY seen DESC
+        LIMIT 5000`,
+    ),
+  ]);
+  const byKey = new Map<string, NamedThing>();
+  for (const r of named.rows) {
+    const kind = (r.kind === "objective" || ENTITY_KINDS.has(r.kind) ? r.kind : "other") as NamedKind;
+    byKey.set(`${kind}:${nameKey(r.label)}`, { kind, label: r.label, seen: r.seen, streams: r.streams, latestId: r.latest });
+  }
+  let fromScreen = 0;
+  for (const r of lines.rows) {
+    const vehicle = vehicleName(r.raw);
+    const weapon = vehicle ? null : weaponName(r.raw);
+    const label = vehicle ?? weapon;
+    if (!label) continue;
+    const kind: NamedKind = vehicle ? "vehicle" : "weapon";
+    const k = `${kind}:${nameKey(label)}`;
+    const cur = byKey.get(k);
+    if (cur) {
+      cur.seen += r.seen;
+      cur.streams = Math.max(cur.streams, r.streams);
+    } else {
+      byKey.set(k, { kind, label, seen: r.seen, streams: r.streams, latestId: r.latest });
+      fromScreen += 1;
+    }
+  }
+  const things = [...byKey.values()].sort((a, b) => b.seen - a.seen || a.label.localeCompare(b.label)).slice(0, limit);
+  return { things, total: (named.rows[0]?.total ?? 0) + fromScreen };
 }
 
 /** Particular entries (the proof behind a mission or a result), public ones only, in the order asked. */

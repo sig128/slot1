@@ -6,8 +6,8 @@ Every entry of every live log (what the AI described, what was read on screen, w
 
 `packages/contracts/src/game-knowledge.ts` defines:
 
-- **10 categories** (Driving and vehicles, Police and wanted level, Combat, Missions and heists, Money and businesses, Shops and services, Races and activities, People, phone and roleplay, Exploring the world, GTA Online) with **78 activities** under them. Each activity matches an entry by its words (whole words, game vocabulary) or by its type (`possible_collision` is a crash, `mission_title` is starting a mission, `dialogue` is talking to people).
-- **GTA V's places** (districts, landmarks, shops, banks), found in any entry's words, plus every place name read on screen (`place_name`, `landmark` entries, cleaned up into title case).
+- **18 categories** (Driving, Vehicles by type, Stunts and tricks, Police and wanted level, Crime, Combat, Weapons, Missions and heists, Money and businesses, Shops and services, Races and activities, People, phone and roleplay, Exploring the world, Around the map, Animals and nature, GTA Online, Glitches and bugs, On stream) with **200 activities** under them. Each activity matches an entry by its words (whole words, game vocabulary) or by its type (`possible_collision` is a crash, `mission_title` is starting a mission, `dialogue` is talking to people).
+- **GTA V's places** (districts, landmarks, shops, banks), found in any entry's words, plus every place name read on screen (`place_name` entries, and `landmark` entries with text read on screen, cleaned up into title case). A car's name shows where the area name does when the player gets in; `packages/contracts/src/gta-names.ts` knows GTA V's vehicles and weapons, so that line counts as driving, never as a place.
 
 `knowledgeTags()` turns an entry into tags: `act:<activity>` and `place:<Place Name>`. Matching is conservative: a wrong tag is worse than a missing one. Results are read exactly (WASTED on a result screen is a death, never a mission result), money on the HUD is not "picking up cash", Twitch-side entries (chat, follows) are never tagged, and the most precise place wins ("Vespucci Beach", not also "Vespucci").
 
@@ -58,3 +58,14 @@ Every WASTED, BUSTED, MISSION FAILED and MISSION PASSED is also kept with the ac
 The worker rebuilds a stream's stories (`mission_attempts`, `story_events`) whenever a mission entry arrives or the stream ends, at most every 2 minutes per stream (`packages/db/src/stories.ts`). Across streams, attempts group by the mission's name, or by their first objective when no name was read.
 
 The Learning page shows every mission (attempts, passed, how long passing takes, where it fails and why) and what leads to each result. "Ask SLOT1 about the game" answers "how do I pass …" and "why do I keep dying" from them, with the result screens as proof.
+
+
+## Everything it named
+
+Besides the fixed activities, the Learning page lists every name SLOT1 saw, with no fixed list (`namedThings` in `packages/db/src/knowledge.ts`):
+
+- what the AI named in the picture (its `entities`: vehicles, people, items, places, signs, other), except those it was unsure of
+- every objective read on screen
+- car and weapon names the game showed: whole lines of on-screen text that are exactly a name in `gta-names.ts` (the car's name when the player gets in, a weapon's name on the weapon wheel). Only whole lines count, because many of those names are ordinary words too.
+
+Names group without case or punctuation, are counted across public streams and link to their newest moment. "Ask SLOT1 about the game" answers about a named thing when a question names it.

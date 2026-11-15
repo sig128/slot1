@@ -49,7 +49,7 @@ function PlayIcon() {
 
 function Answer({ a }: { a: LearningAnswer }) {
   const [copied, setCopied] = useState(false);
-  const looked = [...a.about.missions, ...a.about.activities, ...a.about.places];
+  const looked = [...a.about.missions, ...a.about.named, ...a.about.activities, ...a.about.places];
   const text = [a.seen?.answer, a.general ? `General GTA knowledge: ${a.general}` : null].filter(Boolean).join("\n\n");
   return (
     <div className="la-answer">

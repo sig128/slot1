@@ -31,8 +31,10 @@ import {
   learningWatched,
   listActiveModels,
   missionRecords,
+  namedThings,
   outcomeCauses,
   type KnowledgeEvidence,
+  type NamedThing,
   type OutcomeCause,
   type TagCount,
 } from "@slot1/db";
@@ -45,7 +47,7 @@ const ASK_MODEL_DAILY = 500;
 const TTL_MS = 30_000;
 let cache: { at: number; data: LearningResponse } | null = null;
 let inflight: Promise<LearningResponse> | null = null;
-let storiesCache: { at: number; missions: MissionSummary[]; causes: OutcomeCause[] } | null = null;
+let storiesCache: { at: number; missions: MissionSummary[]; causes: OutcomeCause[]; named: NamedThing[]; namedTotal: number } | null = null;
 
 export function clearLearningCache() {
   cache = null;
@@ -53,10 +55,10 @@ export function clearLearningCache() {
 }
 
 /** Every mission and every result's causes across public streams, computed at most every 30 s. */
-async function stories(ctx: ServerContext): Promise<{ missions: MissionSummary[]; causes: OutcomeCause[] }> {
+async function stories(ctx: ServerContext): Promise<{ missions: MissionSummary[]; causes: OutcomeCause[]; named: NamedThing[]; namedTotal: number }> {
   if (storiesCache && Date.now() - storiesCache.at < TTL_MS) return storiesCache;
-  const [records, causes] = await Promise.all([missionRecords(ctx.db), outcomeCauses(ctx.db)]);
-  storiesCache = { at: Date.now(), missions: summarizeMissions(records), causes };
+  const [records, causes, named] = await Promise.all([missionRecords(ctx.db), outcomeCauses(ctx.db), namedThings(ctx.db)]);
+  storiesCache = { at: Date.now(), missions: summarizeMissions(records), causes, named: named.things, namedTotal: named.total };
   return storiesCache;
 }
 
@@ -146,6 +148,8 @@ async function compute(ctx: ServerContext): Promise<LearningResponse> {
       failReasons: m.failReasons,
       href: m.proof[0] ? `/m/${m.proof[0]}` : null,
     })),
+    named: story.named.map((t) => ({ kind: t.kind, label: t.label, seen: t.seen, streams: t.streams, href: `/m/${t.latestId}` })),
+    namedTotal: story.namedTotal,
     outcomes: story.causes.map((c) => ({
       kind: c.kind,
       label: OUTCOME_LABEL[c.kind],
@@ -192,14 +196,17 @@ export const learningRoutes =
       const tags = [...acts.map((a) => `act:${a}`), ...places.map((p) => `place:${p}`)];
       const [found, counts, story] = await Promise.all([knowledgeEvidence(ctx.db, { tags, text: question, limit: 12 }), knowledgeCounts(ctx.db), stories(ctx)]);
       const asked = missionsAsked(question, story.missions);
-      const facts = [...missionFacts(asked), ...causeFacts(question, acts, story.causes), ...(await gameFacts(ctx, acts, places, counts))];
-      // The missions' own result screens first: they're what the mission answers stand on.
-      const proof = await knowledgeEntries(
-        ctx.db,
-        asked.flatMap((m) => m.proof.slice(0, 2)),
-      );
+      const things = namedAsked(question, story.named);
+      const facts = [
+        ...missionFacts(asked),
+        ...things.map((t) => `${t.label} (${NAMED_KIND[t.kind]}): seen ${times(t.seen, "time", "times")} in ${times(t.streams, "stream", "streams")}.`),
+        ...causeFacts(question, acts, story.causes),
+        ...(await gameFacts(ctx, acts, places, counts)),
+      ];
+      // The missions' own result screens and the named things' newest moments first: the answer stands on them.
+      const proof = await knowledgeEntries(ctx.db, [...asked.flatMap((m) => m.proof.slice(0, 2)), ...things.map((t) => t.latestId)]);
       const evidence = [...proof, ...found.filter((e) => !proof.some((p) => p.id === e.id))].slice(0, 14);
-      const about = { activities: acts.map((a) => activityOf(a)?.label ?? a), places, missions: asked.map((m) => missionLabel(m)) };
+      const about = { activities: acts.map((a) => activityOf(a)?.label ?? a), places, missions: asked.map((m) => missionLabel(m)), named: things.map((t) => t.label) };
       const sourceOf = (e: KnowledgeEvidence) => ({
         observationId: e.id,
         description: e.description,
@@ -238,6 +245,28 @@ export const learningRoutes =
       return { question, seen: seen ? { answer: seen, sources: top.map(sourceOf) } : null, general: null, about, mode: "retrieval" };
     });
   };
+
+const NAMED_KIND: Record<NamedThing["kind"], string> = {
+  vehicle: "vehicle",
+  weapon: "weapon",
+  person: "person",
+  place: "place",
+  item: "item",
+  text: "text on screen",
+  objective: "objective",
+  other: "named thing",
+};
+
+/** Named things (vehicles, weapons, people…) a question mentions by name, most seen first. */
+function namedAsked(question: string, named: NamedThing[]): NamedThing[] {
+  const q = ` ${question.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ")} `;
+  return named
+    .filter((t) => {
+      const k = t.label.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+      return k.length >= 4 && t.kind !== "objective" && t.kind !== "text" && q.includes(` ${k} `);
+    })
+    .slice(0, 3);
+}
 
 /** The missions a question is about: the ones it names, or the most failed ones for "which mission…". */
 function missionsAsked(question: string, missions: MissionSummary[]): MissionSummary[] {
