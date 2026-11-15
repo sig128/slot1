@@ -47,7 +47,7 @@ test.describe("SLOT1 journey", () => {
     const embed = page.locator('iframe[src^="https://player.twitch.tv/"]');
     const fallback = page.getByRole("link", { name: /Watch on Twitch/ });
     await expect(embed.or(fallback).first()).toBeVisible();
-    await expect(page.getByText("Twitch chat", { exact: true })).toBeVisible();
+    await expect(page.locator('iframe[title="Twitch chat"]')).toBeVisible();
     if (await embed.count()) {
       const src = new URL((await embed.first().getAttribute("src"))!);
       expect(src.searchParams.get("channel")).toBe("someone_else");

@@ -93,10 +93,18 @@ export function SessionWorkspace(p: Props) {
   }, [p.initialClips, stream.clips]);
 
   const [selected, setSelected] = useState<string | null>(p.initialMomentId ?? null);
-  const [tab, setTab] = useState("log");
+  // The rail: Twitch chat at full height, never squeezed under another panel. A watch-only channel
+  // has nothing analyzed, so its rail is the chat alone; other channels switch between views.
+  const chatAvailable = p.mode === "live" && Boolean(p.chatLogin && p.embedParents);
+  const analysisViews = !p.watchOnly || !chatAvailable;
+  const views: [string, string][] = [
+    ...(analysisViews ? ([["log", "Live log"]] as [string, string][]) : []),
+    ...(chatAvailable ? ([["chat", "Twitch chat"]] as [string, string][]) : []),
+    ...(analysisViews ? ([["ask", "Ask SLOT1"], ["session", "Session"]] as [string, string][]) : []),
+  ];
+  const [tab, setTab] = useState(analysisViews ? "log" : "chat");
   const [theater, setTheater] = useState(false);
   // Twitch chat shows by default next to the live player; it can be hidden.
-  const [chatOpen, setChatOpen] = useState(true);
   const [position, setPosition] = useState<number | null>(null);
   const [panel, setPanel] = useState<null | "moment" | "clip">(null);
   const aiViewAvailable = p.mode === "live" && Boolean(p.session) && !p.watchOnly && !p.fixture;
@@ -211,9 +219,9 @@ export function SessionWorkspace(p: Props) {
             <div className="flex flex-wrap items-center gap-3">
               {p.session && p.session.kind !== "replay" ? (
                 <>
-                  <span className="chip chip-replay">Recording</span>
-                  <SourceLabelChip label={p.session.label} />
-                  <span className="text-sm text-ivory-2">A recording of a live broadcast, with what SLOT1 saw while it was live.</span>
+                      <span className="chip chip-replay">Recording</span>
+                      <SourceLabelChip label={p.session.label} />
+                      <span className="text-sm text-ivory-2">A recording of a live broadcast, with what SLOT1 saw while it was live.</span>
                 </>
               ) : (
                 <>
@@ -354,7 +362,7 @@ export function SessionWorkspace(p: Props) {
         </div>
 
         <aside
-          className="flex min-h-[420px] min-w-0 flex-col border hairline bg-graphite-900 lg:sticky lg:top-20 lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:h-[calc(100dvh-7rem)]"
+          className="flex h-[78svh] min-h-[460px] min-w-0 flex-col border hairline bg-graphite-900 lg:sticky lg:top-20 lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:h-[calc(100dvh-7rem)]"
           aria-label="SLOT1 rail"
         >
           {replayState.kind !== "idle" && !overlayReplay && (
@@ -363,21 +371,21 @@ export function SessionWorkspace(p: Props) {
             </div>
           )}
           <Tabs.Root value={tab} onValueChange={setTab} className="flex min-h-0 flex-1 flex-col">
-            <Tabs.List className="flex border-b hairline" aria-label="Rail views">
-              {[
-                ["log", "Live log"],
-                ["ask", "Ask SLOT1"],
-                ["session", "Session"],
-              ].map(([v, label]) => (
-                <Tabs.Trigger
-                  key={v}
-                  value={v!}
-                  className="h-11 flex-1 font-display text-[1rem] font-semibold tracking-[0.02em] text-ivory-2 transition-colors hover:text-ivory data-[state=active]:select-bar"
-                >
-                  {label}
-                </Tabs.Trigger>
-              ))}
-            </Tabs.List>
+            {views.length > 1 && (
+              <Tabs.List className="flex border-b hairline" aria-label="Rail views">
+                {views.map(([v, label]) => (
+                  <Tabs.Trigger
+                    key={v}
+                    value={v}
+                    className="h-11 flex-1 font-display text-[1rem] font-semibold tracking-[0.02em] text-ivory-2 transition-colors hover:text-ivory data-[state=active]:select-bar"
+                  >
+                    {label}
+                  </Tabs.Trigger>
+                ))}
+              </Tabs.List>
+            )}
+            {analysisViews && (
+              <>
             <Tabs.Content value="log" className="flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden" forceMount>
               <EventRail
                 mode={p.mode}
@@ -413,16 +421,15 @@ export function SessionWorkspace(p: Props) {
             <Tabs.Content value="session" className="min-h-0 flex-1 overflow-y-auto data-[state=inactive]:hidden">
               <SessionPanel session={p.session ? { ...p.session, analysis: status } : null} sources={stream.sources} clips={clips} now={now} />
             </Tabs.Content>
+              </>
+            )}
+            {chatAvailable && (
+              // Kept mounted while another view is open, so the chat doesn't reload on every switch.
+              <Tabs.Content value="chat" className="flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden" forceMount>
+                <iframe title="Twitch chat" src={chatEmbedUrl(p.chatLogin!, p.embedParents!)} className="block min-h-0 w-full flex-1 bg-graphite" />
+              </Tabs.Content>
+            )}
           </Tabs.Root>
-          {p.mode === "live" && p.chatLogin && p.embedParents && (
-            <div className="border-t hairline">
-              <button type="button" className="flex h-10 w-full items-center justify-between px-4 text-sm text-ivory-2 hover:text-ivory" aria-expanded={chatOpen} onClick={() => setChatOpen((o) => !o)}>
-                <span>Twitch chat</span>
-                <span aria-hidden>{chatOpen ? "Hide" : "Show"}</span>
-              </button>
-              {chatOpen && <iframe title="Twitch chat" src={chatEmbedUrl(p.chatLogin, p.embedParents)} className="block h-[38vh] w-full border-t hairline bg-graphite" />}
-            </div>
-          )}
         </aside>
 
         {selected && (
