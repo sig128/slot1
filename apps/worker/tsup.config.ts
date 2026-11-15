@@ -12,6 +12,8 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   noExternal: [/^@slot1\//],
+  // scripts/check-bundle.mjs reads this to make sure no third-party code was bundled in.
+  metafile: true,
   // The bundle carries its SQL migrations (resolved next to dist/main.js at runtime).
   async onSuccess() {
     const { cp } = await import("node:fs/promises");

@@ -13,6 +13,11 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   noExternal: [/^@slot1\//],
+  // Image processing for motion runs in the worker only (loaded on first use there); the API never
+  // loads it and doesn't ship it.
+  external: ["sharp"],
+  // scripts/check-bundle.mjs reads this to make sure no third-party code was bundled in.
+  metafile: true,
   // The bundle carries its SQL migrations (resolved next to dist/main.js at runtime).
   async onSuccess() {
     const { cp } = await import("node:fs/promises");

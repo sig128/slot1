@@ -33,6 +33,8 @@ COPY . .
 ARG SLOT1_API_INTERNAL_URL=http://api:4000
 ENV SLOT1_API_INTERNAL_URL=$SLOT1_API_INTERNAL_URL
 RUN pnpm --filter @slot1/api --filter @slot1/worker --filter @slot1/inference build \
+ && node scripts/check-bundle.mjs apps/api \
+ && node scripts/check-bundle.mjs apps/worker \
  && pnpm --filter @slot1/web build \
  && pnpm --filter @slot1/api deploy --legacy --prod /out/api \
  && pnpm --filter @slot1/worker deploy --legacy --prod /out/worker \
