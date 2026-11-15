@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SkylineArt } from "@/components/brand/SkylineArt";
 import { CopyButton } from "@/components/setup/CopyButton";
-import { COMMANDS, CONSOLE_TEST, CREATOR_COMMANDS, MODES, PERMISSIONS, WONT_DO, type Command } from "@/components/setup/content";
+import { COMMANDS, CONSOLE_TEST, CREATOR_COMMANDS, KICK_PERMISSIONS, MODES, PERMISSIONS, WONT_DO, type Command } from "@/components/setup/content";
 import { RouteMap } from "@/components/setup/RouteMap";
 import { SetupTabs } from "@/components/setup/SetupTabs";
 import { VideoSources } from "@/components/setup/VideoSources";
@@ -201,6 +201,54 @@ export default function SetupPage() {
                 <p className="mt-2">
                   Disconnect in Studio at any time, or remove SLOT1 in your Twitch settings under Connections. SLOT1 then stops using your channel.
                 </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="kick" className="su-section" aria-labelledby="kick-h">
+          <h2 id="kick-h" className="su-h2">
+            Connecting Kick
+          </h2>
+          <p className="su-intro">
+            Choose Sign in with Kick and use the account you broadcast from. Kick asks you once, then Studio takes you straight to the same
+            one-minute OBS setup.
+          </p>
+          <div className="su-grid su-twitch">
+            <div className="su-panel">
+              <h3 className="su-panel-title flex flex-wrap items-center gap-2">
+                What it asks Kick for <span className="su-tag su-muted">Read only, one approval</span>
+              </h3>
+              <ul className="su-perms">
+                {KICK_PERMISSIONS.map((p) => (
+                  <li key={p.scope} className="su-perm">
+                    <code>{p.scope}</code>
+                    <span className="su-tag su-gold">{p.feature}</span>
+                    <p>{p.why}</p>
+                  </li>
+                ))}
+              </ul>
+              <p className="su-note">Kick’s sign-in token is used once to read these two things, then revoked. SLOT1 keeps no Kick token.</p>
+            </div>
+            <div className="grid content-start gap-3">
+              <div className="su-panel">
+                <h3 className="su-panel-title">Keep your Kick viewers</h3>
+                <p className="mt-2">
+                  In Stream setup, add Kick under “Choose where it goes” with the Stream URL and Stream Key from your Kick creator dashboard (Settings →
+                  Stream). SLOT1 passes your stream on to Kick unchanged. A console can’t stream to Kick by itself, so console players send it through OBS
+                  with a capture card or Remote Play.
+                </p>
+              </div>
+              <div className="su-panel">
+                <h3 className="su-panel-title">What works on Kick</h3>
+                <p className="mt-2">
+                  The live log, Ask SLOT1, recordings and Clipper, and Kick chat beside SLOT1 chat on your page. The SLOT1 bot answers !slot1 in SLOT1
+                  chat; it doesn’t post in Kick chat yet.
+                </p>
+              </div>
+              <div className="su-panel">
+                <h3 className="su-panel-title">You can take it back</h3>
+                <p className="mt-2">Nothing stays connected on Kick, because SLOT1 keeps no Kick token. Delete your channel’s data any time in Studio → Privacy.</p>
               </div>
             </div>
           </div>

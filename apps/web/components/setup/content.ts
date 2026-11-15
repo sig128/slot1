@@ -86,6 +86,20 @@ export const PERMISSIONS: Permission[] = [
   },
 ];
 
+/** What Sign in with Kick asks for (KICK_CREATOR_SCOPES in packages/services/src/kick.ts, docs/KICK.md). */
+export const KICK_PERMISSIONS: Permission[] = [
+  {
+    scope: "user:read",
+    feature: "Who you are",
+    why: "Your Kick username and profile picture, to sign you in. Kick also sends your email address; SLOT1 doesn’t keep it.",
+  },
+  {
+    scope: "channel:read",
+    feature: "Your channel",
+    why: "Which Kick channel is yours, so your SLOT1 page is the same channel with its live log, Kick chat and SLOT1 chat.",
+  },
+];
+
 export interface VideoOption {
   name: string;
   tag: string;
@@ -241,6 +255,7 @@ export const SECTIONS = [
   { id: "brief", label: "Brief" },
   { id: "modes", label: "What it sees" },
   { id: "twitch", label: "Twitch" },
+  { id: "kick", label: "Kick" },
   { id: "bot", label: "Chat bot" },
   { id: "sources", label: "Video" },
   { id: "stream", label: "Go live everywhere" },
