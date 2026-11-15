@@ -75,6 +75,25 @@ export async function knowledgeEvidence(db: Queryable, q: { tags: string[]; text
   return rows.map((r) => ({ ...mapObservation(r), tags: r.tags ?? [], channelLogin: r.login, channelName: r.display_name, sessionKind: r.kind }));
 }
 
+/** Particular entries (the proof behind a mission or a result), public ones only, in the order asked. */
+export async function knowledgeEntries(db: Queryable, ids: string[]): Promise<KnowledgeEvidence[]> {
+  if (ids.length === 0) return [];
+  const cols = O_COLS.split(",")
+    .map((c) => `o.${c.trim()}`)
+    .join(", ");
+  const { rows } = await db.query<ObservationRow & { tags: string[] | null; login: string; display_name: string; kind: string }>(
+    `SELECT ${cols}, o.tags, b.login, b.display_name, s.kind
+       FROM observations o JOIN broadcasters b ON b.id = o.broadcaster_id
+       ${PUBLIC} AND o.id = ANY($1::uuid[])`,
+    [ids],
+  );
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  return ids
+    .map((id) => byId.get(id))
+    .filter((r): r is NonNullable<typeof r> => Boolean(r))
+    .map((r) => ({ ...mapObservation(r), tags: r.tags ?? [], channelLogin: r.login, channelName: r.display_name, sessionKind: r.kind }));
+}
+
 /** Tags entries saved before tagging existed, a batch at a time. Returns how many it tagged. */
 export async function backfillKnowledgeTags(db: Queryable, batch = 2000): Promise<number> {
   const { rows } = await db.query<{ id: string; type: string; description: string; raw_text: string | null; origin: string }>(

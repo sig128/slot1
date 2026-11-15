@@ -1,6 +1,6 @@
 import { hostname } from "node:os";
 import { Queue, UnrecoverableError, Worker, type Job } from "bullmq";
-import { createPool, runMigrations, backfillKnowledgeTags } from "@slot1/db";
+import { createPool, runMigrations, backfillKnowledgeTags, refreshSessionStories, sessionsNeedingStories } from "@slot1/db";
 import { createBullConnection, createRedis, DEFAULT_JOB_OPTIONS, loadConfig, QUEUES, sanitizeErrorMessage } from "@slot1/platform";
 import { buildServerContext, reconcileEventSub, type Enqueue } from "@slot1/services";
 import { createLiveClip, createVodClip, downloadAndAnalyzeClip, renderOwnedClip } from "./jobs/clips";
@@ -142,8 +142,30 @@ async function main() {
     "SLOT1 worker started",
   );
 
+  // Missions as stories and what leads to each result: rebuilt for streams with new mission
+  // entries, one worker at a time, every 30 s (each stream at most every 2 minutes).
+  let storiesBusy = false;
+  const storiesTimer = setInterval(() => {
+    if (storiesBusy) return;
+    storiesBusy = true;
+    void (async () => {
+      const lock = await redis.set("slot1:stories:lock", `${hostname()}:${process.pid}`, "PX", 120_000, "NX");
+      if (!lock) return;
+      try {
+        for (const id of await sessionsNeedingStories(db, 10)) await refreshSessionStories(db, id);
+      } finally {
+        await redis.del("slot1:stories:lock");
+      }
+    })()
+      .catch((err: unknown) => log.warn({ err: sanitizeErrorMessage((err as Error).message) }, "rebuilding mission stories failed"))
+      .finally(() => {
+        storiesBusy = false;
+      });
+  }, 30_000);
+
   const shutdown = async () => {
     log.info("worker shutting down");
+    clearInterval(storiesTimer);
     await supervisor.stopAll();
     await relays.stopAll();
     await Promise.all(workers.map((w) => w.close()));

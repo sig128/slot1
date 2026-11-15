@@ -6,16 +6,22 @@ import {
   activityOf,
   LearningAskInput,
   learningSkills,
+  missionLabel,
   ModelEvaluation,
   questionActivities,
+  questionMissions,
   questionPlaces,
+  summarizeMissions,
   type LearningAnswer,
   type LearningModel,
   type LearningResponse,
+  type MissionSummary,
+  type StoryEventKind,
 } from "@slot1/contracts";
 import {
   consentingChannelCount,
   knowledgeCounts,
+  knowledgeEntries,
   knowledgeEvidence,
   knowledgePlacesFor,
   learningExamples,
@@ -24,7 +30,10 @@ import {
   learningSeen,
   learningWatched,
   listActiveModels,
+  missionRecords,
+  outcomeCauses,
   type KnowledgeEvidence,
+  type OutcomeCause,
   type TagCount,
 } from "@slot1/db";
 import { sanitizeErrorMessage } from "@slot1/platform";
@@ -36,10 +45,26 @@ const ASK_MODEL_DAILY = 500;
 const TTL_MS = 30_000;
 let cache: { at: number; data: LearningResponse } | null = null;
 let inflight: Promise<LearningResponse> | null = null;
+let storiesCache: { at: number; missions: MissionSummary[]; causes: OutcomeCause[] } | null = null;
 
 export function clearLearningCache() {
   cache = null;
+  storiesCache = null;
 }
+
+/** Every mission and every result's causes across public streams, computed at most every 30 s. */
+async function stories(ctx: ServerContext): Promise<{ missions: MissionSummary[]; causes: OutcomeCause[] }> {
+  if (storiesCache && Date.now() - storiesCache.at < TTL_MS) return storiesCache;
+  const [records, causes] = await Promise.all([missionRecords(ctx.db), outcomeCauses(ctx.db)]);
+  storiesCache = { at: Date.now(), missions: summarizeMissions(records), causes };
+  return storiesCache;
+}
+
+const OUTCOME_LABEL: Record<StoryEventKind, string> = { wasted: "Wasted", busted: "Busted", mission_failed: "Mission failed", mission_passed: "Mission passed" };
+
+const minutes = (ms: number) => (ms < 90_000 ? `${Math.max(1, Math.round(ms / 1000))} s` : `${Math.round(ms / 60_000)} min`);
+const times = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+const actLabel = (k: string) => activityOf(k)?.label ?? k;
 
 /** The newest evaluation of a model, if it has one that parses. */
 function latestEvaluation(metrics: unknown): ModelEvaluation | null {
@@ -48,7 +73,7 @@ function latestEvaluation(metrics: unknown): ModelEvaluation | null {
 }
 
 async function compute(ctx: ServerContext): Promise<LearningResponse> {
-  const [watched, seen, frames, examples, channels, models, heard, counts] = await Promise.all([
+  const [watched, seen, frames, examples, channels, models, heard, counts, story] = await Promise.all([
     learningWatched(ctx.db),
     learningSeen(ctx.db),
     learningFrames(ctx.db),
@@ -57,6 +82,7 @@ async function compute(ctx: ServerContext): Promise<LearningResponse> {
     listActiveModels(ctx.db),
     learningHeard(ctx.db),
     knowledgeCounts(ctx.db),
+    stories(ctx),
   ]);
   const byTag = new Map(counts.map((c) => [c.tag, c]));
   const categoryLabel = new Map(ACTIVITY_CATEGORIES.map((c) => [c.key, c.label]));
@@ -105,6 +131,29 @@ async function compute(ctx: ServerContext): Promise<LearningResponse> {
       .sort((a, b) => b.seen - a.seen || a.tag.localeCompare(b.tag))
       .slice(0, 40)
       .map((c) => ({ name: c.tag.slice(6), seen: c.seen, streams: c.streams })),
+    missions: story.missions.slice(0, 40).map((m) => ({
+      key: m.key,
+      label: missionLabel(m),
+      named: Boolean(m.name),
+      attempts: m.attempts,
+      passed: m.passed,
+      failed: m.failed,
+      streams: m.streams,
+      medianPassMs: m.medianPassMs,
+      fastestPassMs: m.fastestPassMs,
+      deaths: m.deaths,
+      failsAt: m.failsAt,
+      failReasons: m.failReasons,
+      href: m.proof[0] ? `/m/${m.proof[0]}` : null,
+    })),
+    outcomes: story.causes.map((c) => ({
+      kind: c.kind,
+      label: OUTCOME_LABEL[c.kind],
+      total: c.total,
+      before: c.before.map((b) => ({ key: b.activity, label: actLabel(b.activity), count: b.count })),
+      places: c.places.map((p) => ({ name: p.place, count: p.count })),
+      href: c.proof[0] ? `/m/${c.proof[0]}` : null,
+    })),
     heard,
     models: modelViews,
   };
@@ -141,9 +190,16 @@ export const learningRoutes =
       const acts = questionActivities(question);
       const places = questionPlaces(question);
       const tags = [...acts.map((a) => `act:${a}`), ...places.map((p) => `place:${p}`)];
-      const [evidence, counts] = await Promise.all([knowledgeEvidence(ctx.db, { tags, text: question, limit: 12 }), knowledgeCounts(ctx.db)]);
-      const facts = await gameFacts(ctx, acts, places, counts);
-      const about = { activities: acts.map((a) => activityOf(a)?.label ?? a), places };
+      const [found, counts, story] = await Promise.all([knowledgeEvidence(ctx.db, { tags, text: question, limit: 12 }), knowledgeCounts(ctx.db), stories(ctx)]);
+      const asked = missionsAsked(question, story.missions);
+      const facts = [...missionFacts(asked), ...causeFacts(question, acts, story.causes), ...(await gameFacts(ctx, acts, places, counts))];
+      // The missions' own result screens first: they're what the mission answers stand on.
+      const proof = await knowledgeEntries(
+        ctx.db,
+        asked.flatMap((m) => m.proof.slice(0, 2)),
+      );
+      const evidence = [...proof, ...found.filter((e) => !proof.some((p) => p.id === e.id))].slice(0, 14);
+      const about = { activities: acts.map((a) => activityOf(a)?.label ?? a), places, missions: asked.map((m) => missionLabel(m)) };
       const sourceOf = (e: KnowledgeEvidence) => ({
         observationId: e.id,
         description: e.description,
@@ -175,12 +231,60 @@ export const learningRoutes =
           req.log.warn({ err: sanitizeErrorMessage((err as Error).message) }, "game question: text model failed, answering from records");
         }
       }
-      // From SLOT1's records alone: the counts, and the moments themselves.
+      // From SLOT1's records alone: the counts, one per line, and the moments themselves as sources.
       const top = evidence.slice(0, 4);
-      const seen = facts.length || top.length ? [...facts, ...top.map((e) => `${e.description} (${e.channelName}).`)].join(" ") : "";
-      return { question, seen: seen ? { answer: seen.slice(0, 700), sources: top.map(sourceOf) } : null, general: null, about, mode: "retrieval" };
+      const lines = facts.length ? facts : top.length ? [`SLOT1 saw ${top.length === 1 ? "one moment" : `${top.length} moments`} about this on stream.`] : [];
+      const seen = lines.join("\n").slice(0, 1500);
+      return { question, seen: seen ? { answer: seen, sources: top.map(sourceOf) } : null, general: null, about, mode: "retrieval" };
     });
   };
+
+/** The missions a question is about: the ones it names, or the most failed ones for "which mission…". */
+function missionsAsked(question: string, missions: MissionSummary[]): MissionSummary[] {
+  const byKey = new Map(missions.map((m) => [m.key, m]));
+  const named = questionMissions(question, missions)
+    .map((k) => byKey.get(k))
+    .filter((m): m is MissionSummary => Boolean(m));
+  if (named.length) return named.slice(0, 3);
+  if (/\b(?:which|what|hardest|toughest|most)\b.*\b(?:missions?|heists?)\b|\b(?:missions?|heists?)\b.*\b(?:hardest|toughest|fail(?:s|ed|ing)? (?:the )?most)\b/i.test(question)) {
+    return [...missions].filter((m) => m.failed > 0).sort((a, b) => b.failed - a.failed || b.attempts - a.attempts).slice(0, 3);
+  }
+  return [];
+}
+
+/** A mission's attempts across streams, as plain sentences. */
+function missionFacts(missions: MissionSummary[]): string[] {
+  return missions.map((m) => {
+    const parts = [`${missionLabel(m)}: ${times(m.attempts, "attempt", "attempts")} in ${times(m.streams, "stream", "streams")}, ${m.passed} passed, ${m.failed} failed.`];
+    if (m.medianPassMs !== null) parts.push(`Passing took about ${minutes(m.medianPassMs)}${m.fastestPassMs !== null && m.fastestPassMs < m.medianPassMs ? ` (fastest ${minutes(m.fastestPassMs)})` : ""}.`);
+    if (m.failsAt.length) parts.push(`Failed most at the objective ${m.failsAt.map((f) => `“${f.objective}” (${f.count})`).join(", ")}.`);
+    if (m.failReasons.length) parts.push(`The result screen said: ${m.failReasons.map((f) => `“${f.reason}” (${f.count})`).join(", ")}.`);
+    if (m.deaths) parts.push(`${times(m.deaths, "death", "deaths")} during it.`);
+    if (m.inPassed.length) parts.push(`In passed attempts SLOT1 saw: ${m.inPassed.map((a) => `${actLabel(a.activity)} (${a.count} of ${m.passed})`).join(", ")}.`);
+    if (m.inFailed.length) parts.push(`In failed ones: ${m.inFailed.map((a) => `${actLabel(a.activity)} (${a.count} of ${m.failed})`).join(", ")}.`);
+    return parts.join("\n");
+  });
+}
+
+const DEATH_Q = /\b(?:die|dies|dying|died|death|deaths|wasted|killed|kill me|keep dying)\b/i;
+const BUST_Q = /\b(?:busted|arrested|caught|jail)\b/i;
+const FAIL_Q = /\b(?:fail|fails|failed|failing|lose|losing)\b.*\bmissions?\b|\bmissions?\b.*\b(?:fail|fails|failed|failing)\b/i;
+
+/** What leads to WASTED, BUSTED or MISSION FAILED, when the question is about it. */
+function causeFacts(question: string, acts: string[], causes: OutcomeCause[]): string[] {
+  const kinds: StoryEventKind[] = [];
+  if (DEATH_Q.test(question) || acts.includes("wasted")) kinds.push("wasted");
+  if (BUST_Q.test(question) || acts.includes("busted")) kinds.push("busted");
+  if (FAIL_Q.test(question) || acts.includes("mission_failed")) kinds.push("mission_failed");
+  const out: string[] = [];
+  for (const k of kinds) {
+    const c = causes.find((x) => x.kind === k);
+    if (!c || c.total === 0 || c.before.length === 0) continue;
+    const places = c.places.length ? ` Where: ${c.places.map((p) => `${p.place} (${p.count})`).join(", ")}.` : "";
+    out.push(`In the minute before ${OUTCOME_LABEL[k].toUpperCase()} (${times(c.total, "time", "times")}) SLOT1 saw: ${c.before.map((b) => `${actLabel(b.activity)} (${b.count})`).join(", ")}.${places}`);
+  }
+  return out;
+}
 
 /** Counts SLOT1 computed for the question's activities and places, as plain sentences. */
 async function gameFacts(ctx: ServerContext, acts: string[], places: string[], counts: TagCount[]): Promise<string[]> {

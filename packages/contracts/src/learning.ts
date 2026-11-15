@@ -70,6 +70,40 @@ export const LearningResponse = z.object({
   ),
   /** Places on the map SLOT1 saw (read on screen, recognized or named), most often first. */
   places: z.array(z.object({ name: z.string(), seen: z.number().int().nonnegative(), streams: z.number().int().nonnegative() })),
+  /**
+   * Missions as stories (contracts/mission-stories.ts): every mission seen on public streams, its
+   * attempts from start to result, most attempted first.
+   */
+  missions: z.array(
+    z.object({
+      key: z.string(),
+      /** As read on screen, or "The mission that starts with …" when no name was read. */
+      label: z.string(),
+      named: z.boolean(),
+      attempts: z.number().int().nonnegative(),
+      passed: z.number().int().nonnegative(),
+      failed: z.number().int().nonnegative(),
+      streams: z.number().int().nonnegative(),
+      medianPassMs: z.number().int().nullable(),
+      fastestPassMs: z.number().int().nullable(),
+      deaths: z.number().int().nonnegative(),
+      failsAt: z.array(z.object({ objective: z.string(), count: z.number().int() })),
+      failReasons: z.array(z.object({ reason: z.string(), count: z.number().int() })),
+      /** The newest result screen of it, to watch. */
+      href: z.string().nullable(),
+    }),
+  ),
+  /** What SLOT1 saw in the minute before every WASTED, BUSTED, MISSION FAILED and MISSION PASSED. */
+  outcomes: z.array(
+    z.object({
+      kind: z.enum(["wasted", "busted", "mission_failed", "mission_passed"]),
+      label: z.string(),
+      total: z.number().int().nonnegative(),
+      before: z.array(z.object({ key: z.string(), label: z.string(), count: z.number().int() })),
+      places: z.array(z.object({ name: z.string(), count: z.number().int() })),
+      href: z.string().nullable(),
+    }),
+  ),
   /** What SLOT1 heard said on public streams (speech transcripts), in any language. */
   heard: z.object({
     lines: z.number().int().nonnegative(),
@@ -145,8 +179,8 @@ export const LearningAnswer = z.object({
   seen: z.object({ answer: z.string(), sources: z.array(LearningSource) }).nullable(),
   /** General game knowledge (never presented as seen on stream); null without a text model. */
   general: z.string().nullable(),
-  /** The activities and places the question was matched to. */
-  about: z.object({ activities: z.array(z.string()), places: z.array(z.string()) }),
+  /** The activities, places and missions the question was matched to. */
+  about: z.object({ activities: z.array(z.string()), places: z.array(z.string()), missions: z.array(z.string()) }),
   mode: z.enum(["model", "retrieval"]),
 });
 export type LearningAnswer = z.infer<typeof LearningAnswer>;

@@ -43,3 +43,18 @@ The question and every entry's text are treated as untrusted data in the prompt.
 
 - `tests/unit/game-knowledge.test.ts`: the activities, places, exact results, noise that must not be tagged, and question matching.
 - `tests/integration/game-ask.test.ts`: counts on the Learning page (public streams only), answers from records with moments, the background tagging, and a mock text model whose made-up citations are dropped.
+
+## Missions as stories
+
+`packages/contracts/src/mission-stories.ts` rebuilds every mission attempt of a stream from its entries: from the first objective (or a mission title) to MISSION PASSED or MISSION FAILED. Each attempt keeps:
+
+- its name, only as read on screen: under MISSION PASSED, from a title, or from a retry of the same mission (a failed attempt and the next one sharing an objective)
+- how it ended (passed, failed, or no result seen when nothing ended it for 10 minutes), how long it took, the objectives on the way and the last one before it failed
+- why it failed, as the result screen said ("Lamar died."), or "Wasted."/"Busted." when that came right before MISSION FAILED
+- deaths and busts during it, and the activities and places seen in it
+
+Every WASTED, BUSTED, MISSION FAILED and MISSION PASSED is also kept with the activities seen in the minute before it. One result screen read by several readers (text, SLOT1's model, the AI) counts once.
+
+The worker rebuilds a stream's stories (`mission_attempts`, `story_events`) whenever a mission entry arrives or the stream ends, at most every 2 minutes per stream (`packages/db/src/stories.ts`). Across streams, attempts group by the mission's name, or by their first objective when no name was read.
+
+The Learning page shows every mission (attempts, passed, how long passing takes, where it fails and why) and what leads to each result. "Ask SLOT1 about the game" answers "how do I pass …" and "why do I keep dying" from them, with the result screens as proof.

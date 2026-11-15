@@ -175,7 +175,7 @@ function skillStatus(s: LearningSkill): string {
  * frames; the 29 big nodes are its GTA skills, sized by how far each has come. Streams SLOT1 is
  * watching orbit it, and each live catch flies into its skill.
  */
-export function LearningGlobe({ data, now }: { data: LearningResponse | null; now: NowResponse | null }) {
+export function LearningGlobe({ data, now, thinking = false }: { data: LearningResponse | null; now: NowResponse | null; thinking?: boolean }) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const [small, setSmall] = useState(false);
@@ -185,11 +185,29 @@ export function LearningGlobe({ data, now }: { data: LearningResponse | null; no
   const geo = useMemo(() => buildGeometry(skills, dots, small), [skills, dots, small]);
 
   // Live state the animation reads without re-rendering.
-  const live = useRef({ geo, skills, now, pulses: [] as Pulse[], lastSeen: new Map<string, string>(), lastKey: new Map<string, string>(), hoverIdx: -1 });
+  const live = useRef({
+    geo,
+    skills,
+    now,
+    pulses: [] as Pulse[],
+    lastSeen: new Map<string, string>(),
+    lastKey: new Map<string, string>(),
+    hoverIdx: -1,
+    thinking: false,
+    /** When an answer last landed: one ring goes out from the globe. */
+    answeredAt: -Infinity,
+  });
   useEffect(() => {
     live.current.geo = geo;
     live.current.skills = skills;
   }, [geo, skills]);
+
+  // Asking: the network searches (spins up, threads light up); answered: a ring goes out.
+  useEffect(() => {
+    const l = live.current;
+    if (l.thinking && !thinking) l.answeredAt = performance.now();
+    l.thinking = thinking;
+  }, [thinking]);
 
   // A new catch on a stream: send it flying into its skill.
   useEffect(() => {
@@ -231,6 +249,14 @@ export function LearningGlobe({ data, now }: { data: LearningResponse | null; no
     let dpr = 1;
     let angle = 0.6;
     let spin = reduced ? 0 : 0.07;
+    // How fast it turns right now, and how much it's "thinking" (0..1), eased toward their targets.
+    let spinNow = spin;
+    let think = 0;
+    let lastScan = 0;
+    const scans: { a: V3; b: V3; start: number }[] = [];
+    const rnd = seeded(4242);
+    // A faint field of stars around the network, fixed to the frame.
+    const stars = Array.from({ length: 110 }, () => ({ x: rnd(), y: rnd(), r: 0.4 + rnd() * 0.9, phase: rnd() * Math.PI * 2, speed: 0.4 + rnd() * 1.2 }));
     let drag: { x: number; a: number } | null = null;
     let visible = true;
     let raf = 0;
@@ -247,10 +273,12 @@ export function LearningGlobe({ data, now }: { data: LearningResponse | null; no
       el.height = Math.round(h * dpr);
     };
     resize();
-    // Phones get a lighter network.
+    // Phones, and the globe when it's docked small above a conversation, get a lighter network.
+    let compact = w < 640 || h < 300;
     const ro = new ResizeObserver(() => {
       resize();
-      setSmall(w < 640);
+      compact = w < 640 || h < 300;
+      setSmall(compact);
     });
     ro.observe(box);
     const io = new IntersectionObserver(([e]) => (visible = Boolean(e?.isIntersecting)));
@@ -261,8 +289,11 @@ export function LearningGlobe({ data, now }: { data: LearningResponse | null; no
       const dt = Math.min(0.05, (t - last) / 1000);
       last = t;
       if (!visible) return;
-      if (!drag) angle += spin * dt;
-      const { geo: g, skills: sk, now: nw, pulses } = live.current;
+      const { geo: g, skills: sk, now: nw, pulses, thinking, answeredAt } = live.current;
+      think += ((thinking ? 1 : 0) - think) * Math.min(1, dt * 3);
+      const spinTarget = reduced ? 0 : thinking ? 0.9 : spin;
+      spinNow += (spinTarget - spinNow) * Math.min(1, dt * 2.5);
+      if (!drag) angle += spinNow * dt;
       const learned = g.knowledge.length;
       const grow = 0.8 + 0.2 * Math.min(1, Math.log10(1 + learned) / 3.2);
       const R = Math.min(w, h) * 0.4 * grow;
@@ -270,13 +301,57 @@ export function LearningGlobe({ data, now }: { data: LearningResponse | null; no
       const cy = h / 2;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
+      const apricotTone = color("--color-apricot");
+      const ivoryTone = color("--color-ivory");
+      const night = color("--color-graphite-900");
 
-      // The glow brightens as it learns.
-      const glow = ctx.createRadialGradient(cx, cy, R * 0.1, cx, cy, R * 1.6);
-      glow.addColorStop(0, rgba(color("--color-apricot"), 0.08 + 0.18 * Math.min(1, learned / 600)));
-      glow.addColorStop(1, rgba(color("--color-apricot"), 0));
+      // Stars, twinkling slowly (still with reduced motion).
+      ctx.fillStyle = ivoryTone;
+      for (const s of stars) {
+        const x = s.x * w;
+        const y = s.y * h;
+        if ((x - cx) ** 2 + (y - cy) ** 2 < (R * 1.05) ** 2) continue;
+        ctx.globalAlpha = reduced ? 0.18 : 0.08 + 0.22 * (0.5 + 0.5 * Math.sin((t / 1000) * s.speed + s.phase));
+        ctx.beginPath();
+        ctx.arc(x, y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      // The glow brightens as it learns, and while it's searching for an answer.
+      const glow = ctx.createRadialGradient(cx, cy, R * 0.1, cx, cy, R * 1.7);
+      glow.addColorStop(0, rgba(apricotTone, (0.08 + 0.18 * Math.min(1, learned / 600)) * (1 + 0.9 * think)));
+      glow.addColorStop(1, rgba(apricotTone, 0));
       ctx.fillStyle = glow;
       ctx.fillRect(0, 0, w, h);
+
+      // The body: a dark sphere lit from the upper left, so the network reads as a world.
+      const body = ctx.createRadialGradient(cx - R * 0.38, cy - R * 0.42, R * 0.04, cx, cy, R * 1.02);
+      body.addColorStop(0, rgba(apricotTone, 0.16 + 0.1 * think));
+      body.addColorStop(0.45, rgba(night, 0.55));
+      body.addColorStop(1, rgba(night, 0.92));
+      ctx.fillStyle = body;
+      ctx.beginPath();
+      ctx.arc(cx, cy, R, 0, Math.PI * 2);
+      ctx.fill();
+      // Its atmosphere and rim light.
+      const air = ctx.createRadialGradient(cx, cy, R * 0.96, cx, cy, R * 1.22);
+      air.addColorStop(0, rgba(apricotTone, 0.16 + 0.14 * think));
+      air.addColorStop(1, rgba(apricotTone, 0));
+      ctx.fillStyle = air;
+      ctx.beginPath();
+      ctx.arc(cx, cy, R * 1.22, 0, Math.PI * 2);
+      ctx.arc(cx, cy, R * 0.96, 0, Math.PI * 2, true);
+      ctx.fill();
+      const rim = ctx.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+      rim.addColorStop(0, rgba(apricotTone, 0.7));
+      rim.addColorStop(0.5, rgba(ivoryTone, 0.1));
+      rim.addColorStop(1, rgba(color("--color-signal"), 0.35));
+      ctx.strokeStyle = rim;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(cx, cy, R * 1.004, 0, Math.PI * 2);
+      ctx.stroke();
 
       // Two slow orbit rings around the network.
       ctx.lineWidth = 1;
@@ -395,6 +470,60 @@ export function LearningGlobe({ data, now }: { data: LearningResponse | null; no
         }
       }
 
+      // Searching for an answer: threads light up from what it knows to its skills.
+      if (thinking && !reduced && t - lastScan > 70 && nodes.length) {
+        lastScan = t;
+        const pool = g.knowledge.length > 20 ? g.knowledge : g.lattice;
+        scans.push({ a: pool[Math.floor(rnd() * pool.length)]!, b: g.nodes[Math.floor(rnd() * g.nodes.length)]!, start: t });
+      }
+      for (let k = scans.length - 1; k >= 0; k--) {
+        const sc = scans[k]!;
+        const age = (t - sc.start) / 900;
+        if (age >= 1) {
+          scans.splice(k, 1);
+          continue;
+        }
+        const a = P(sc.a);
+        const b = P(sc.b);
+        if (a.z < -0.2 && b.z < -0.2) continue;
+        // Bowed outward from the center, like a signal over the surface.
+        const mx = (a.x + b.x) / 2;
+        const my = (a.y + b.y) / 2;
+        const dx = mx - cx;
+        const dy = my - cy;
+        const dl = Math.hypot(dx, dy) || 1;
+        const qx = mx + (dx / dl) * R * 0.28;
+        const qy = my + (dy / dl) * R * 0.28;
+        const fade = age < 0.2 ? age / 0.2 : 1 - (age - 0.2) / 0.8;
+        ctx.globalAlpha = 0.5 * fade;
+        ctx.strokeStyle = apricotTone;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.quadraticCurveTo(qx, qy, b.x, b.y);
+        ctx.stroke();
+        const u = Math.min(1, age * 1.4);
+        const hx = (1 - u) ** 2 * a.x + 2 * (1 - u) * u * qx + u ** 2 * b.x;
+        const hy = (1 - u) ** 2 * a.y + 2 * (1 - u) * u * qy + u ** 2 * b.y;
+        ctx.globalAlpha = fade;
+        ctx.fillStyle = ivoryTone;
+        ctx.beginPath();
+        ctx.arc(hx, hy, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // An answer landed: one ring goes out.
+      const since = t - answeredAt;
+      if (since >= 0 && since < 1400) {
+        const e = 1 - (1 - since / 1400) ** 3;
+        ctx.globalAlpha = 0.55 * (1 - e);
+        ctx.strokeStyle = apricotTone;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, R * (1.02 + 0.55 * e), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+
       // Streams SLOT1 is watching, orbiting the globe.
       const streams = (nw?.streams ?? []).filter((s) => s.kind === "slot1" && s.activity);
       const sat = new Map<string, { x: number; y: number }>();
@@ -410,7 +539,7 @@ export function LearningGlobe({ data, now }: { data: LearningResponse | null; no
         ctx.fill();
         ctx.globalAlpha = 0.85;
         ctx.fillStyle = ivory;
-        ctx.font = `600 ${small ? 11 : 13}px "Barlow Condensed", system-ui, sans-serif`;
+        ctx.font = `600 ${compact ? 11 : 13}px "Barlow Condensed", system-ui, sans-serif`;
         ctx.textAlign = x < cx ? "right" : "left";
         ctx.fillText(s.displayName, x + (x < cx ? -10 : 10), y + 4);
       });
@@ -446,15 +575,15 @@ export function LearningGlobe({ data, now }: { data: LearningResponse | null; no
         } else if (age >= 1100) {
           // Full strength for a second, then fade, on a dark plate so it reads over the network.
           const fade = Math.max(0, Math.min(1, 1 - (age - 2100) / 1100));
-          ctx.font = `800 ${small ? 16 : 22}px "Passion One", "Barlow Condensed", system-ui, sans-serif`;
+          ctx.font = `800 ${compact ? 16 : 22}px "Passion One", "Barlow Condensed", system-ui, sans-serif`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           const tw = ctx.measureText(q.label).width;
-          const ty = to.y - to.r - (small ? 18 : 22);
+          const ty = to.y - to.r - (compact ? 18 : 22);
           ctx.globalAlpha = 0.88 * fade;
           ctx.fillStyle = color("--color-graphite-900");
           ctx.beginPath();
-          ctx.roundRect(to.x - tw / 2 - 10, ty - (small ? 13 : 16), tw + 20, small ? 26 : 32, 3);
+          ctx.roundRect(to.x - tw / 2 - 10, ty - (compact ? 13 : 16), tw + 20, compact ? 26 : 32, 3);
           ctx.fill();
           ctx.globalAlpha = fade;
           ctx.fillStyle = tone;
@@ -527,7 +656,7 @@ export function LearningGlobe({ data, now }: { data: LearningResponse | null; no
     : "SLOT1's learning network.";
 
   return (
-    <div ref={wrap} className="learn-globe relative h-[min(78vh,760px)] min-h-[420px] w-full touch-pan-y select-none">
+    <div ref={wrap} className="learn-globe relative h-full w-full touch-pan-y select-none">
       <canvas ref={canvas} className="absolute inset-0 h-full w-full cursor-grab active:cursor-grabbing" role="img" aria-label={summary} />
       {hover && (
         <div className="learn-tip pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full" style={{ left: hover.x, top: hover.y - 18 }}>
