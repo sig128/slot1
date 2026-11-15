@@ -1,6 +1,6 @@
 import { hostname } from "node:os";
 import { Queue, UnrecoverableError, Worker, type Job } from "bullmq";
-import { createPool, runMigrations } from "@slot1/db";
+import { createPool, runMigrations, backfillKnowledgeTags } from "@slot1/db";
 import { createBullConnection, createRedis, DEFAULT_JOB_OPTIONS, loadConfig, QUEUES, sanitizeErrorMessage } from "@slot1/platform";
 import { buildServerContext, reconcileEventSub, type Enqueue } from "@slot1/services";
 import { createLiveClip, createVodClip, downloadAndAnalyzeClip, renderOwnedClip } from "./jobs/clips";
@@ -76,6 +76,20 @@ async function main() {
   const applied = await runMigrations(db);
   if (applied.length) log.info({ applied }, "migrations applied");
   for (const p of config.problems) log.warn(p);
+  // Sort entries saved before activity and place tags existed, in the background, a batch at a time.
+  void (async () => {
+    let total = 0;
+    for (;;) {
+      const n = await backfillKnowledgeTags(db, 2000).catch((err: unknown) => {
+        log.warn({ err: sanitizeErrorMessage((err as Error).message) }, "tagging older entries failed");
+        return 0;
+      });
+      total += n;
+      if (n === 0) break;
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    if (total) log.info({ tagged: total }, "older entries tagged with activities and places");
+  })();
 
   const workers: Worker[] = [];
   for (const [queue, table] of Object.entries(handlers)) {

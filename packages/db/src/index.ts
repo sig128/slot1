@@ -15,3 +15,4 @@ export * from "./admin";
 export * from "./seo";
 export * from "./chat";
 export * from "./learning";
+export * from "./knowledge";

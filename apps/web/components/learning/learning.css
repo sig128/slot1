@@ -79,3 +79,133 @@
   border: 1px solid var(--color-line-strong);
   box-shadow: 0 12px 30px rgb(0 0 0 / 0.45);
 }
+
+/* Ask SLOT1 about the game ------------------------------------------------------------------ */
+.learn-ask-form {
+  display: flex;
+  gap: 10px;
+  max-width: 52rem;
+}
+.learn-ask-input {
+  flex: 1;
+  min-width: 0;
+  height: 56px;
+  padding: 0 16px;
+  border: 1px solid var(--color-line-strong);
+  border-bottom: 3px solid var(--color-apricot);
+  background: var(--color-graphite-900);
+  color: var(--color-ivory);
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+.learn-ask-input::placeholder {
+  color: var(--color-ivory-3);
+}
+.learn-ask-input:focus-visible {
+  outline: 2px solid var(--color-apricot);
+  outline-offset: 2px;
+}
+.learn-ask-go {
+  height: 56px;
+  padding: 0 22px;
+  font-size: 1.15rem;
+}
+.learn-ask-chip {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 2px;
+  color: var(--color-ivory-2);
+  font-size: 0.9rem;
+}
+.learn-ask-chip:hover:not(:disabled) {
+  border-color: var(--color-ivory-2);
+  color: var(--color-ivory);
+}
+.learn-answer {
+  padding: 4px 0 4px 18px;
+  border-left: 4px solid var(--color-apricot);
+}
+.learn-answer-general {
+  border-left-style: dashed;
+  border-left-color: var(--color-ivory-3);
+}
+.learn-answer-label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--color-ivory);
+}
+.learn-answer-general .learn-answer-label {
+  color: var(--color-ivory-2);
+}
+.learn-source {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 12px;
+  text-decoration: none;
+}
+.learn-source:hover > span:first-child {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Everything it has seen, sorted ------------------------------------------------------------- */
+.learn-cats {
+  columns: 19rem 4;
+  column-gap: 3rem;
+}
+.learn-cat {
+  break-inside: avoid;
+  margin-bottom: 2.25rem;
+}
+.learn-cat-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  border-bottom: 2px solid var(--color-apricot);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+.learn-act {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 0;
+  color: var(--color-ivory-3);
+  font-size: 0.95rem;
+}
+.learn-act .learn-leader {
+  flex: 1;
+  min-width: 1rem;
+}
+.learn-act.is-seen {
+  color: var(--color-ivory);
+}
+.learn-act.is-seen .tnum {
+  color: var(--color-apricot);
+  font-weight: 600;
+}
+
+/* Places on the map -------------------------------------------------------------------------- */
+.learn-places {
+  columns: 16rem 3;
+  column-gap: 3rem;
+}
+.learn-places li {
+  break-inside: avoid;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-line);
+}
+.learn-place-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.2rem;
+  letter-spacing: 0.01em;
+}

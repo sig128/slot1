@@ -61,6 +61,7 @@ export function buildVisionSystemPrompt(profile: GameProfile): string {
     "- Transcribe text exactly and only the legible part. Never guess missing words. visibleText is null unless you are reading on-screen text.",
     "- Vehicle colour and class only when clearly visible; say 'car' rather than guessing a model name.",
     "- Descriptions: at most 12 words, factual, present tense, no hype, no exclamation marks.",
+    "- When the frames plainly show a common activity, name it in plain words (for example: buying weapons, robbing a store, police chase, racing, modding a car, parachuting) and name the place if a sign or label shows it.",
     "- confidence is your own uncertainty from 0 to 1. It is not a measured accuracy.",
     "- If nothing notable is visible, return an empty findings list.",
     "",

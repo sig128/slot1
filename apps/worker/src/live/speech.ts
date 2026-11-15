@@ -48,6 +48,8 @@ export class LiveSpeech {
       sink: PipelineSink;
       timeline: SpeechTimeline;
       log: { warn: (o: object, msg: string) => void };
+      /** Seconds of audio sent to the service, for the creator's usage page. */
+      usage?: (u: { seconds: number; provider: string; model: string }) => Promise<void>;
     },
   ) {
     this.reader = new LiveSpeechReader(o.tools, { readUrl: o.readUrl, ioTimeoutSec: 15, chunkMs: CHUNK_MS });
@@ -90,6 +92,7 @@ export class LiveSpeech {
         await writeFile(file, wavFromPcm(chunk.pcm));
         const result = await this.o.provider.transcribe(file);
         this.stats.transcribed += 1;
+        await this.o.usage?.({ seconds: chunk.durationMs / 1000, provider: result.provider ?? this.o.provider.provider, model: result.model }).catch(() => undefined);
         const said = spokenText(result.text);
         const sounds = soundTags(result);
         if (!said && sounds.length === 0) continue;

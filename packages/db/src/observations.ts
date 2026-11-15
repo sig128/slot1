@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { OBSERVATION_SCHEMA_VERSION, type CorrectionInput, type Observation } from "@slot1/contracts";
+import { OBSERVATION_SCHEMA_VERSION, type CorrectionInput, type Observation, knowledgeTags } from "@slot1/contracts";
 import { iso, isoReq, num, type Queryable } from "./client";
 
-interface ObservationRow {
+export interface ObservationRow {
   id: string;
   schema_version: number;
   broadcaster_id: string;
@@ -27,7 +27,7 @@ interface ObservationRow {
   related_entities: Observation["relatedEntities"];
 }
 
-const O_COLS = `id, schema_version, broadcaster_id, session_id, source_id, media_start_ms, media_end_ms, captured_at, received_at,
+export const O_COLS = `id, schema_version, broadcaster_id, session_id, source_id, media_start_ms, media_end_ms, captured_at, received_at,
   analyzed_at, published_at, type, description, origin, interpretation, evidence, raw_text, model_provider, model_version,
   model_confidence, review_status, related_entities`;
 
@@ -71,8 +71,8 @@ export async function insertObservation(db: Queryable, o: NewObservation): Promi
   const { rows } = await db.query<ObservationRow>(
     `INSERT INTO observations (id, schema_version, broadcaster_id, session_id, source_id, media_start_ms, media_end_ms, captured_at,
         received_at, analyzed_at, published_at, type, description, origin, interpretation, evidence, raw_text, model_provider,
-        model_version, model_confidence, related_entities, dedupe_key)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+        model_version, model_confidence, related_entities, dedupe_key, tags)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
      ON CONFLICT (session_id, dedupe_key) WHERE dedupe_key IS NOT NULL DO NOTHING
      RETURNING ${O_COLS}`,
     [
@@ -97,6 +97,8 @@ export async function insertObservation(db: Queryable, o: NewObservation): Promi
       o.modelConfidence,
       JSON.stringify(o.relatedEntities),
       o.dedupeKey ?? null,
+      // What the entry is about (activities and places), so every stream adds to one sorted picture.
+      knowledgeTags({ type: o.type, description: o.description, rawText: o.rawText, origin: o.origin }),
     ],
   );
   if (rows[0]) return { observation: mapObservation(rows[0]), created: true };

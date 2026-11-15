@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { LearningResponse, NowResponse } from "@slot1/contracts";
+import { KnowledgeMap } from "./KnowledgeMap";
 import { LearningExperience } from "./LearningExperience";
 import "./learning.css";
 
@@ -23,7 +24,10 @@ export function LearningView({ data, now }: { data: LearningResponse | null; now
       </header>
 
       {data ? (
-        <LearningExperience initialLearning={data} initialNow={now} />
+        <>
+          <LearningExperience initialLearning={data} initialNow={now} />
+          <KnowledgeMap data={data} />
+        </>
       ) : (
         <p className="mt-16 text-ivory-2">The learning network didn’t load. Reload the page to try again.</p>
       )}

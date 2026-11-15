@@ -30,11 +30,12 @@ import {
   recordDroppedFrames,
   recordFrameReceived,
   recordOpsError,
+  recordUsage,
   setAnalysisState,
   setSourceSession,
-  upsertSourceHealth,
   type MediaSourceRow,
   type StreamSessionRow,
+  upsertSourceHealth,
 } from "@slot1/db";
 import { QUEUES, RedisLease, sanitizeErrorMessage, storageKeys } from "@slot1/platform";
 import {
@@ -321,6 +322,8 @@ class LiveRunner {
                 sink,
                 timeline: { latest: () => lastFrame },
                 log: ctx.log,
+                usage: (u) =>
+                  recordUsage(ctx.db, { broadcasterId: session.broadcaster_id, sessionId: session.id, kind: "transcription", provider: u.provider, model: u.model, audioSeconds: u.seconds }),
               })
             : null;
         speech?.start();

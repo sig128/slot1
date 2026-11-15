@@ -53,6 +53,23 @@ export const LearningResponse = z.object({
     labeledFrames: z.number().int().nonnegative(),
   }),
   skills: z.array(LearningSkill),
+  /**
+   * Everything SLOT1 saw, sorted: every activity of the game (contracts/game-knowledge.ts) with how
+   * often it was seen on public streams, in category order.
+   */
+  activities: z.array(
+    z.object({
+      key: z.string(),
+      category: z.string(),
+      categoryLabel: z.string(),
+      label: z.string(),
+      seen: z.number().int().nonnegative(),
+      streams: z.number().int().nonnegative(),
+      lastSeenAt: z.string().nullable(),
+    }),
+  ),
+  /** Places on the map SLOT1 saw (read on screen, recognized or named), most often first. */
+  places: z.array(z.object({ name: z.string(), seen: z.number().int().nonnegative(), streams: z.number().int().nonnegative() })),
   /** What SLOT1 heard said on public streams (speech transcripts), in any language. */
   heard: z.object({
     lines: z.number().int().nonnegative(),
@@ -104,3 +121,40 @@ export function skillLevel(s: Pick<LearningSkill, "examples" | "score">): number
   if (s.score !== null) return s.score;
   return Math.min(1, s.examples / LEARNING_EXAMPLES_GOAL) * 0.5;
 }
+
+/* Ask SLOT1 about the game ------------------------------------------------------------------- */
+
+export const LearningAskInput = z.object({ question: z.string().trim().min(3).max(300) }).strict();
+export type LearningAskInput = z.infer<typeof LearningAskInput>;
+
+/** One entry SLOT1 saw that the answer stands on, with where to watch it. */
+export const LearningSource = z.object({
+  observationId: z.string(),
+  description: z.string(),
+  channel: z.string(),
+  channelLogin: z.string(),
+  at: z.string(),
+  /** /m/<id>: the moment on its channel or replay. */
+  href: z.string(),
+});
+export type LearningSource = z.infer<typeof LearningSource>;
+
+export const LearningAnswer = z.object({
+  question: z.string(),
+  /** What SLOT1 saw on streams, from its own records; null when it hasn't seen anything about it. */
+  seen: z.object({ answer: z.string(), sources: z.array(LearningSource) }).nullable(),
+  /** General game knowledge (never presented as seen on stream); null without a text model. */
+  general: z.string().nullable(),
+  /** The activities and places the question was matched to. */
+  about: z.object({ activities: z.array(z.string()), places: z.array(z.string()) }),
+  mode: z.enum(["model", "retrieval"]),
+});
+export type LearningAnswer = z.infer<typeof LearningAnswer>;
+
+/** What the text model returns for a game question (validated, ids checked against the evidence). */
+export const GameAnswer = z.object({
+  seen: z.string().max(700),
+  general: z.string().max(700),
+  citedObservationIds: z.array(z.string()).max(8),
+});
+export type GameAnswer = z.infer<typeof GameAnswer>;

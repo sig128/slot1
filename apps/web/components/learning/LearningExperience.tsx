@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { LearningResponse, NowResponse } from "@slot1/contracts";
 import { skillLevel } from "@slot1/contracts";
+import { GameAsk } from "./GameAsk";
 import { knowledgeDots, LearningGlobe } from "./LearningGlobe";
 import { LiveEyes } from "./LiveEyes";
 
@@ -50,7 +51,7 @@ export function LearningExperience({ initialLearning, initialNow }: { initialLea
         ["Hours watched", learning.watched.hours.toLocaleString("en-US")],
         ["Frames learned", n(learning.learning.labeledFrames + learning.learning.frames)],
         ["Lines heard", n(learning.heard.lines)],
-        ["Skills started", `${started}/${skills.length}`],
+        ["Activities seen", `${learning.activities.filter((a) => a.seen > 0).length}/${learning.activities.length}`],
       ]
     : [];
 
@@ -92,6 +93,8 @@ export function LearningExperience({ initialLearning, initialNow }: { initialLea
             : "Hover a skill to see how far it’s come; drag to turn. It lights up as streams come in."}
         </span>
       </div>
+
+      <GameAsk />
 
       <section aria-labelledby="eyes-title" className="mt-16">
         <h2 id="eyes-title" className="font-display text-[length:var(--text-display-md)] font-bold leading-none">
