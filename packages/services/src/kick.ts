@@ -1,10 +1,12 @@
+import { createHash, randomBytes } from "node:crypto";
 import type { ServerContext } from "./context";
 
 /**
- * Kick's official public API, for featured Kick channels: live state, title, category, viewers and
- * thumbnail. It needs a Kick developer app (KICK_CLIENT_ID and KICK_CLIENT_SECRET, set in
- * Admin → Settings → Kick app). Without one, Kick channels still play through Kick's own embed and
- * their live state is shown as unknown, never guessed.
+ * Kick's official public API (docs.kick.com): live state, title, category, viewers and thumbnail
+ * for Kick channels, and "Sign in with Kick" (OAuth 2.1 with PKCE on id.kick.com). It needs a Kick
+ * developer app (KICK_CLIENT_ID and KICK_CLIENT_SECRET, set in Admin → Settings → Kick app). Without
+ * one, Kick channels still play through Kick's own embed and their live state is shown as unknown,
+ * never guessed.
  */
 
 export interface KickChannel {
@@ -86,10 +88,33 @@ interface ApiUser {
 
 const httpsOrNull = (v: string | null | undefined) => (v && /^https:\/\//.test(v) ? v : null);
 
-/** Kick's public data for channels by slug (lower-case). A slug Kick doesn't know is left out. */
+const CHANNEL_KEY = (slug: string) => `slot1:kick:channel:${slug}`;
+const CHANNEL_TTL_SEC = 30;
+
+/**
+ * Kick's public data for channels by slug (lower-case), cached 30 s per channel. A slug Kick
+ * doesn't know is left out.
+ */
 export async function kickChannels(ctx: ServerContext, slugs: string[]): Promise<Map<string, KickChannel>> {
   const out = new Map<string, KickChannel>();
   if (slugs.length === 0 || !kickConfigured(ctx)) return out;
+  const missing: string[] = [];
+  for (const slug of slugs) {
+    const raw = await ctx.redis.get(CHANNEL_KEY(slug)).catch(() => null);
+    if (raw) out.set(slug, JSON.parse(raw) as KickChannel);
+    else missing.push(slug);
+  }
+  if (missing.length === 0) return out;
+  const fresh = await fetchKickChannels(ctx, missing);
+  for (const [slug, c] of fresh) {
+    out.set(slug, c);
+    await ctx.redis.set(CHANNEL_KEY(slug), JSON.stringify(c), "EX", CHANNEL_TTL_SEC).catch(() => undefined);
+  }
+  return out;
+}
+
+async function fetchKickChannels(ctx: ServerContext, slugs: string[]): Promise<Map<string, KickChannel>> {
+  const out = new Map<string, KickChannel>();
   const q = slugs.map((s) => `slug=${encodeURIComponent(s)}`).join("&");
   const { data } = await get<{ data?: ApiChannel[] }>(ctx, `/channels?${q}`);
   const channels = (data ?? []).filter((c): c is ApiChannel & { slug: string } => typeof c.slug === "string");
@@ -122,4 +147,107 @@ export async function kickChannels(ctx: ServerContext, slugs: string[]): Promise
     });
   }
   return out;
+}
+
+/* ------------------------------------------------------------------------------------------ */
+/* Sign in with Kick (OAuth 2.1, authorization code with PKCE)                                */
+/* ------------------------------------------------------------------------------------------ */
+
+/** Signing in to chat: who you are on Kick, nothing else. */
+export const KICK_VIEWER_SCOPES = ["user:read"];
+/** Connecting a Kick channel: who you are and which channel is yours. */
+export const KICK_CREATOR_SCOPES = ["user:read", "channel:read"];
+
+/** Where Kick sends people back. Register exactly this as the Kick app's Redirect URL. */
+export function kickRedirectUri(ctx: Pick<ServerContext, "config">): string {
+  return `${ctx.config.publicOrigin}/api/auth/kick/callback`;
+}
+
+const b64url = (b: Buffer) => b.toString("base64url");
+
+/** A fresh PKCE pair: a 86-character verifier and its S256 challenge (RFC 7636). */
+export function kickPkce(): { verifier: string; challenge: string } {
+  const verifier = b64url(randomBytes(64));
+  return { verifier, challenge: b64url(createHash("sha256").update(verifier).digest()) };
+}
+
+export function kickAuthorizeUrl(ctx: Pick<ServerContext, "config">, input: { scopes: string[]; state: string; challenge: string }): string {
+  const env = ctx.config.env;
+  const q = new URLSearchParams({
+    response_type: "code",
+    client_id: env.KICK_CLIENT_ID ?? "",
+    redirect_uri: kickRedirectUri(ctx),
+    scope: input.scopes.join(" "),
+    code_challenge: input.challenge,
+    code_challenge_method: "S256",
+    state: input.state,
+  });
+  return `${env.KICK_ID_BASE.replace(/\/$/, "")}/oauth/authorize?${q.toString()}`;
+}
+
+export interface KickUserTokens {
+  access_token: string;
+  refresh_token?: string;
+  expires_in?: number;
+  scope?: string;
+}
+
+/** Exchanges the authorization code (with the PKCE verifier) for a user token. */
+export async function kickExchangeCode(ctx: ServerContext, input: { code: string; verifier: string; redirectUri: string }): Promise<KickUserTokens> {
+  const env = ctx.config.env;
+  const res = await fetch(`${env.KICK_ID_BASE.replace(/\/$/, "")}/oauth/token`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
+    body: new URLSearchParams({
+      grant_type: "authorization_code",
+      client_id: env.KICK_CLIENT_ID ?? "",
+      client_secret: env.KICK_CLIENT_SECRET ?? "",
+      redirect_uri: input.redirectUri,
+      code_verifier: input.verifier,
+      code: input.code,
+    }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) {
+    const said = await res.text().catch(() => "");
+    throw new KickApiError(`Kick refused the sign-in code (${res.status}): ${said.slice(0, 200)}`, res.status);
+  }
+  const body = (await res.json()) as Partial<KickUserTokens>;
+  if (!body.access_token) throw new KickApiError("Kick answered without a token", 502);
+  return body as KickUserTokens;
+}
+
+async function userGet<T>(ctx: ServerContext, token: string, path: string): Promise<T> {
+  const res = await fetch(`${ctx.config.env.KICK_API_BASE.replace(/\/$/, "")}${path}`, {
+    headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) throw new KickApiError(`Kick answered ${res.status}`, res.status);
+  return (await res.json()) as T;
+}
+
+/** The signed-in Kick account (user:read). Kick also returns an email; SLOT1 doesn't keep it. */
+export async function kickTokenUser(ctx: ServerContext, token: string): Promise<{ userId: string; name: string; avatarUrl: string | null }> {
+  const { data } = await userGet<{ data?: ApiUser[] }>(ctx, token, "/users");
+  const u = data?.[0];
+  if (!u || typeof u.user_id !== "number") throw new KickApiError("Kick named no account for this sign-in", 502);
+  return { userId: String(u.user_id), name: (u.name ?? "").trim() || `kick_${u.user_id}`, avatarUrl: httpsOrNull(u.profile_picture) };
+}
+
+/** The signed-in account's own Kick channel (channel:read), or null when Kick returns none. */
+export async function kickTokenChannel(ctx: ServerContext, token: string): Promise<{ slug: string; userId: string | null } | null> {
+  const { data } = await userGet<{ data?: ApiChannel[] }>(ctx, token, "/channels");
+  const c = data?.[0];
+  if (!c || typeof c.slug !== "string" || !/^[A-Za-z0-9_-]{1,25}$/.test(c.slug)) return null;
+  return { slug: c.slug.toLowerCase(), userId: typeof c.broadcaster_user_id === "number" ? String(c.broadcaster_user_id) : null };
+}
+
+/** SLOT1 keeps no Kick token: after sign-in it is revoked (best effort). */
+export async function kickRevoke(ctx: ServerContext, token: string): Promise<void> {
+  const q = new URLSearchParams({ token, token_hint_type: "access_token" });
+  await fetch(`${ctx.config.env.KICK_ID_BASE.replace(/\/$/, "")}/oauth/revoke?${q.toString()}`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    signal: AbortSignal.timeout(5000),
+  }).catch(() => undefined);
 }

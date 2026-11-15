@@ -117,7 +117,7 @@ async function build(ctx: ServerContext): Promise<NowResponse> {
   const directory = await listDirectoryBroadcasters(ctx.db);
   const twitchOwners: BroadcasterRow[] = live
     .filter((r) => r.broadcaster_kind === "twitch" && r.twitch_user_id)
-    .map((r) => ({ id: r.broadcaster_id, owner_user_id: r.owner_user_id, kind: r.broadcaster_kind, twitch_user_id: r.twitch_user_id, login: r.login, display_name: r.display_name, avatar_url: r.avatar_url }) as BroadcasterRow);
+    .map((r) => ({ id: r.broadcaster_id, owner_user_id: r.owner_user_id, kind: r.broadcaster_kind, twitch_user_id: r.twitch_user_id, kick_user_id: null, login: r.login, display_name: r.display_name, avatar_url: r.avatar_url }) as BroadcasterRow);
   const snaps = await liveSnapshots(ctx, [...directory, ...twitchOwners.filter((b) => !directory.some((d) => d.id === b.id))]);
 
   const streams: NowStream[] = [];
@@ -158,7 +158,7 @@ async function build(ctx: ServerContext): Promise<NowResponse> {
   // Directory channels live on Twitch without a public SLOT1 stream: watch-only, not analyzed.
   const listed = new Set(streams.map((s) => s.broadcasterId));
   const twitchOnly = directory
-    .filter((b) => !listed.has(b.id) && snaps.get(b.id)?.state === "live")
+    .filter((b) => b.kind === "twitch" && !listed.has(b.id) && snaps.get(b.id)?.state === "live")
     .sort((a, b) => (snaps.get(b.id)?.viewerCount ?? -1) - (snaps.get(a.id)?.viewerCount ?? -1));
   for (const b of twitchOnly) {
     const snap = snaps.get(b.id)!;

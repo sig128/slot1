@@ -65,21 +65,25 @@ export default function SetupPage() {
           <h2 id="brief-h" className="su-h2">
             What SLOT1 sees depends on the route
           </h2>
-          <p className="su-intro">A console sends its broadcast to Twitch only. SLOT1 analyzes gameplay only when it gets its own copy of the video.</p>
+          <p className="su-intro">
+            A console’s built-in broadcast goes to Twitch (or YouTube), never to Kick. SLOT1 analyzes gameplay only when it gets its own copy of the video, and
+            passes that same stream on to Twitch and Kick.
+          </p>
           <div className="su-brief-top">
             <RouteMap />
             <div className="su-brief-side">
               <h3 className="su-panel-title">Your setup, in four steps</h3>
               <ol className="su-objectives">
                 <li className="su-objective">
-                  <b>Connect Twitch</b>
+                  <b>Sign in with Twitch or Kick</b>
                   <span>
-                    <a href="/api/auth/twitch/start?returnTo=%2Fstudio">Sign in with Twitch</a> with the account you broadcast from. One approval covers everything.
+                    <a href="/api/auth/twitch/start?returnTo=%2Fstudio">Sign in with Twitch</a> or <a href="/api/auth/kick/start?returnTo=%2Fstudio">with Kick</a>, using
+                    the account you broadcast from. One approval covers everything.
                   </span>
                 </li>
                 <li className="su-objective">
                   <b>Turn on the bot</b>
-                  <span>Its replies stay off until you switch them on in Studio → Bot and chat.</span>
+                  <span>Its replies in Twitch chat stay off until you switch them on in Studio → Bot and chat. On Kick, it answers in SLOT1 chat on your page.</span>
                 </li>
                 <li className="su-objective">
                   <b>Send your video</b>
@@ -87,7 +91,7 @@ export default function SetupPage() {
                 </li>
                 <li className="su-objective">
                   <b>Go live everywhere</b>
-                  <span>SLOT1 passes the same stream on to Twitch (you choose, in the same setup), and to YouTube or Kick if you add them.</span>
+                  <span>SLOT1 passes the same stream on to Twitch and Kick (you choose, in the same setup), and to YouTube if you add it.</span>
                 </li>
               </ol>
             </div>

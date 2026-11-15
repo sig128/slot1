@@ -72,7 +72,7 @@ export const BroadcasterRef = z.object({
   login: z.string(),
   displayName: z.string(),
   avatarUrl: z.string().nullable(),
-  kind: z.enum(["twitch", "local"]),
+  kind: z.enum(["twitch", "local", "kick"]),
 });
 export type BroadcasterRef = z.infer<typeof BroadcasterRef>;
 
@@ -81,7 +81,7 @@ export const MeResponse = z.object({
     .object({
       id: z.string(),
       displayName: z.string(),
-      kind: z.enum(["twitch", "local"]),
+      kind: z.enum(["twitch", "local", "kick"]),
       isOperator: z.boolean(),
     })
     .nullable(),
@@ -436,7 +436,7 @@ export const ChannelSettingsPatch = z
   .strict();
 export type ChannelSettingsPatch = z.infer<typeof ChannelSettingsPatch>;
 
-export const ReadinessStepId = z.enum(["twitch_connected", "bot_ready", "clip_permissions_ready", "video_source_ready", "agent_enabled"]);
+export const ReadinessStepId = z.enum(["twitch_connected", "kick_connected", "bot_ready", "clip_permissions_ready", "video_source_ready", "agent_enabled"]);
 export type ReadinessStepId = z.infer<typeof ReadinessStepId>;
 
 export const ReadinessStep = z.object({

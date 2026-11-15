@@ -61,16 +61,17 @@ function sections(cfg: LegalConfig): LegalSection[] {
       body: (
         <>
           <p>
-            You must be at least 13 years old and old enough to use Twitch where you live. Where local law sets a higher age for agreeing to online
-            services, you need a parent’s or guardian’s permission until you reach it.
+            You must be at least 13 years old and old enough to use Twitch or Kick (whichever you sign in with) where you live. Where local law sets a
+            higher age for agreeing to online services, you need a parent’s or guardian’s permission until you reach it.
           </p>
           <p>
-            Signing in uses your Twitch account. Everything you do on Twitch through SLOT1, including the bot’s messages in your chat and clips it
-            creates, is also subject to Twitch’s{" "}
+            Signing in uses your Twitch or Kick account. Everything you do on Twitch through SLOT1, including the bot’s messages in your chat and clips
+            it creates, is also subject to Twitch’s{" "}
             <a href="https://legal.twitch.com/legal/terms-of-service/" target="_blank" rel="noreferrer noopener">
               Terms of Service
             </a>{" "}
-            and Community Guidelines. Keep your Twitch account and your SLOT1 stream keys secure; you are responsible for what happens with them.
+            and Community Guidelines, and what you do with a Kick account to Kick’s own terms and rules. Keep your Twitch or Kick account and your SLOT1
+            stream keys secure; you are responsible for what happens with them.
           </p>
         </>
       ),

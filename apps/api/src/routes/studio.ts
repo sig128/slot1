@@ -119,55 +119,76 @@ function readiness(
   const link = (label: string, href: string) => ({ label, kind: "link" as const, href, actionId: null });
   const action = (label: string, actionId: string) => ({ label, kind: "action" as const, href: null, actionId });
 
-  const missing = twitchOk ? missingScopes(grant!.scopes, BROADCASTER_CONNECT_SCOPES) : [];
-  if (twitchOk && missing.length)
+  if (b.kind === "kick") {
+    // A Kick channel: Twitch's chat bot and clip tools don't apply. SLOT1 chat and Clipper do.
+    const slug = b.login.replace(/^kick-/, "");
+    steps.push({ id: "kick_connected", label: "Kick connected", status: "done", detail: `Signed in with Kick as ${b.display_name} (kick.com/${slug}).`, action: null });
     steps.push({
-      id: "twitch_connected",
-      label: "Twitch connected",
-      status: "todo",
-      detail: `Signed in as ${grant!.twitch_login}. Twitch still has to allow ${missing.join(", ")}: one approval adds them all.`,
-      action: link(GRANT_LABEL, GRANT_PERMISSIONS_URL),
+      id: "bot_ready",
+      label: "Bot ready",
+      status: "unavailable",
+      detail: "On Kick, the SLOT1 bot answers !slot1 commands in SLOT1 chat on your channel page. It doesn't post in Kick chat yet.",
+      action: null,
     });
-  else if (twitchOk) steps.push({ id: "twitch_connected", label: "Twitch connected", status: "done", detail: `Signed in as ${grant!.twitch_login}`, action: null });
-  else if (!caps.twitch.available)
-    steps.push({ id: "twitch_connected", label: "Twitch connected", status: "unavailable", detail: setupText(ctx, "twitch", setupDetails, "Twitch sign-in isn't open yet."), action: null });
-  else if (b.kind === "local")
-    steps.push({ id: "twitch_connected", label: "Twitch connected", status: "todo", detail: "Local workspace — uploads only.", action: link("Connect Twitch", "/api/auth/twitch/start?returnTo=/studio") });
-  else
-    steps.push({ id: "twitch_connected", label: "Twitch connected", status: "todo", detail: "Twitch authorization needs renewing.", action: link("Reconnect Twitch", "/api/auth/twitch/start?returnTo=/studio") });
-
-  if (!caps.bot.available) steps.push({ id: "bot_ready", label: "Bot ready", status: "unavailable", detail: setupText(ctx, "bot", setupDetails, "The chat bot isn't switched on yet."), action: null });
-  else if (!twitchOk) steps.push({ id: "bot_ready", label: "Bot ready", status: "blocked", detail: "Needs Twitch connected first.", action: null });
-  else if (!botGrant || botGrant.status !== "active")
-    steps.push(
-      isOperator
-        ? {
-            id: "bot_ready",
-            label: "Bot ready",
-            status: "todo",
-            detail: `Link the dedicated bot account: sign in to Twitch as ${ctx.config.env.SLOT1_BOT_TWITCH_LOGIN ?? "the bot"}.`,
-            action: link("Link bot account", "/api/auth/twitch/start?role=bot&returnTo=/studio"),
-          }
-        : { id: "bot_ready", label: "Bot ready", status: "blocked", detail: "The operator hasn't linked the SLOT1 bot account yet.", action: null },
-    );
-  else if (!grant!.scopes.includes("channel:bot"))
-    steps.push({ id: "bot_ready", label: "Bot ready", status: "todo", detail: "Allow the SLOT1 bot in your chat (channel:bot).", action: link(GRANT_LABEL, GRANT_PERMISSIONS_URL) });
-  else if (!settings.botEnabled || settings.botKilled)
-    steps.push({ id: "bot_ready", label: "Bot ready", status: "todo", detail: settings.botKilled ? "Kill switch is on." : "Bot is off for your channel.", action: action("Turn on bot", "enable_bot") });
-  else steps.push({ id: "bot_ready", label: "Bot ready", status: "done", detail: `SLOT1 answers !slot1 commands as ${botGrant.twitch_login}.`, action: null });
-
-  if (!twitchOk) steps.push({ id: "clip_permissions_ready", label: "Clip permissions ready", status: "blocked", detail: "Needs Twitch connected first.", action: null });
-  else if (!grant!.scopes.includes("clips:edit"))
-    steps.push({ id: "clip_permissions_ready", label: "Clip permissions ready", status: "todo", detail: "Allow SLOT1 to create clips (clips:edit).", action: link(GRANT_LABEL, GRANT_PERMISSIONS_URL) });
-  else if (!hasScopes(grant!.scopes, BROADCASTER_CLIP_ANALYSIS_SCOPES))
     steps.push({
       id: "clip_permissions_ready",
       label: "Clip permissions ready",
-      status: "todo",
-      detail: "Live clips work. Downloading clips for analysis needs channel:manage:clips.",
-      action: link(GRANT_LABEL, GRANT_PERMISSIONS_URL),
+      status: "unavailable",
+      detail: "Live clips use Twitch's clip tools. On Kick, make clips from SLOT1's own recording in Clipper.",
+      action: null,
     });
-  else steps.push({ id: "clip_permissions_ready", label: "Clip permissions ready", status: "done", detail: "Clips can be created, downloaded and analyzed.", action: null });
+  } else {
+    const missing = twitchOk ? missingScopes(grant!.scopes, BROADCASTER_CONNECT_SCOPES) : [];
+    if (twitchOk && missing.length)
+      steps.push({
+        id: "twitch_connected",
+        label: "Twitch connected",
+        status: "todo",
+        detail: `Signed in as ${grant!.twitch_login}. Twitch still has to allow ${missing.join(", ")}: one approval adds them all.`,
+        action: link(GRANT_LABEL, GRANT_PERMISSIONS_URL),
+      });
+    else if (twitchOk) steps.push({ id: "twitch_connected", label: "Twitch connected", status: "done", detail: `Signed in as ${grant!.twitch_login}`, action: null });
+    else if (!caps.twitch.available)
+      steps.push({ id: "twitch_connected", label: "Twitch connected", status: "unavailable", detail: setupText(ctx, "twitch", setupDetails, "Twitch sign-in isn't open yet."), action: null });
+    else if (b.kind === "local")
+      steps.push({ id: "twitch_connected", label: "Twitch connected", status: "todo", detail: "Local workspace — uploads only.", action: link("Connect Twitch", "/api/auth/twitch/start?returnTo=/studio") });
+    else
+      steps.push({ id: "twitch_connected", label: "Twitch connected", status: "todo", detail: "Twitch authorization needs renewing.", action: link("Reconnect Twitch", "/api/auth/twitch/start?returnTo=/studio") });
+
+    if (!caps.bot.available) steps.push({ id: "bot_ready", label: "Bot ready", status: "unavailable", detail: setupText(ctx, "bot", setupDetails, "The chat bot isn't switched on yet."), action: null });
+    else if (!twitchOk) steps.push({ id: "bot_ready", label: "Bot ready", status: "blocked", detail: "Needs Twitch connected first.", action: null });
+    else if (!botGrant || botGrant.status !== "active")
+      steps.push(
+        isOperator
+          ? {
+              id: "bot_ready",
+              label: "Bot ready",
+              status: "todo",
+              detail: `Link the dedicated bot account: sign in to Twitch as ${ctx.config.env.SLOT1_BOT_TWITCH_LOGIN ?? "the bot"}.`,
+              action: link("Link bot account", "/api/auth/twitch/start?role=bot&returnTo=/studio"),
+            }
+          : { id: "bot_ready", label: "Bot ready", status: "blocked", detail: "The operator hasn't linked the SLOT1 bot account yet.", action: null },
+      );
+    else if (!grant!.scopes.includes("channel:bot"))
+      steps.push({ id: "bot_ready", label: "Bot ready", status: "todo", detail: "Allow the SLOT1 bot in your chat (channel:bot).", action: link(GRANT_LABEL, GRANT_PERMISSIONS_URL) });
+    else if (!settings.botEnabled || settings.botKilled)
+      steps.push({ id: "bot_ready", label: "Bot ready", status: "todo", detail: settings.botKilled ? "Kill switch is on." : "Bot is off for your channel.", action: action("Turn on bot", "enable_bot") });
+    else steps.push({ id: "bot_ready", label: "Bot ready", status: "done", detail: `SLOT1 answers !slot1 commands as ${botGrant.twitch_login}.`, action: null });
+
+    if (!twitchOk) steps.push({ id: "clip_permissions_ready", label: "Clip permissions ready", status: "blocked", detail: "Needs Twitch connected first.", action: null });
+    else if (!grant!.scopes.includes("clips:edit"))
+      steps.push({ id: "clip_permissions_ready", label: "Clip permissions ready", status: "todo", detail: "Allow SLOT1 to create clips (clips:edit).", action: link(GRANT_LABEL, GRANT_PERMISSIONS_URL) });
+    else if (!hasScopes(grant!.scopes, BROADCASTER_CLIP_ANALYSIS_SCOPES))
+      steps.push({
+        id: "clip_permissions_ready",
+        label: "Clip permissions ready",
+        status: "todo",
+        detail: "Live clips work. Downloading clips for analysis needs channel:manage:clips.",
+        action: link(GRANT_LABEL, GRANT_PERMISSIONS_URL),
+      });
+    else steps.push({ id: "clip_permissions_ready", label: "Clip permissions ready", status: "done", detail: "Clips can be created, downloaded and analyzed.", action: null });
+
+  }
 
   const ready = liveSourceReady(sources, settings);
   const ingest = sources.filter((s) => s.source.kind === "live_ingest" && s.source.status !== "revoked");
@@ -294,7 +315,7 @@ export const studioRoutes =
         patch.directoryOptIn = false;
         patch.publicAnalysis = false;
       }
-      if (patch.directoryOptIn && b.kind !== "twitch") throw badRequest("Only Twitch-connected channels can be listed in the directory");
+      if (patch.directoryOptIn && b.kind === "local") throw badRequest("Only Twitch or Kick channels can be listed in the directory");
       if ((patch.directoryOptIn || patch.publicAnalysis) && visibility !== "public") throw badRequest("Make the channel public first");
       if (patch.rollingBufferEnabled && !(patch.recordingConsent ?? current.recordingConsent)) {
         throw badRequest("The rolling buffer records your stream — confirm recording consent first");

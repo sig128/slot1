@@ -83,7 +83,7 @@ export function OverviewSection({ ctx }: { ctx: StudioCtx }) {
                 <dt className="text-ivory-3">Processing delay</dt>
                 <dd>{s.analysis.measuredDelayMs ? formatAge(s.analysis.measuredDelayMs) : "—"}</dd>
               </dl>
-              {overview.broadcaster.kind === "twitch" && (
+              {overview.broadcaster.kind !== "local" && (
                 <Link href={`/watch/${overview.broadcaster.login}`} className="btn btn-ghost btn-sm">
                   Open my watch page
                 </Link>
@@ -612,7 +612,8 @@ export function BotSection({ ctx }: { ctx: StudioCtx }) {
 
 export function PrivacySection({ ctx }: { ctx: StudioCtx }) {
   const s = ctx.overview.settings;
-  const isTwitch = ctx.overview.broadcaster.kind === "twitch";
+  // Twitch and Kick channels can be listed; a local workspace has no channel to list.
+  const listable = ctx.overview.broadcaster.kind !== "local";
   const [confirm, setConfirm] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   return (
@@ -627,9 +628,9 @@ export function PrivacySection({ ctx }: { ctx: StudioCtx }) {
         />
         <Toggle
           label="List me on On Air"
-          description={isTwitch ? "Appear in the SLOT1 directory with your live status." : "Only Twitch-connected channels can be listed."}
+          description={listable ? "Appear in the SLOT1 directory with your live status." : "Only Twitch or Kick channels can be listed."}
           checked={s.directoryOptIn}
-          disabled={!isTwitch || s.visibility !== "public"}
+          disabled={!listable || s.visibility !== "public"}
           onChange={(v) => void ctx.save({ directoryOptIn: v })}
         />
         <Toggle
@@ -683,7 +684,7 @@ export function PrivacySection({ ctx }: { ctx: StudioCtx }) {
         </form>
         {msg && <p className="mt-2 text-sm text-ivory-2">{msg}</p>}
       </Group>
-      {isTwitch && (
+      {ctx.overview.broadcaster.kind === "twitch" && (
         <Group title="Twitch connection">
           <p className="text-sm text-ivory-2">
             Connected as {ctx.overview.twitch.login}. Disconnecting revokes SLOT1’s Twitch tokens, removes you from the directory, turns the bot off and revokes

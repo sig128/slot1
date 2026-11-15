@@ -183,12 +183,12 @@ export type ChatRoom =
 export async function resolveChatRoom(ctx: ServerContext, req: FastifyRequest, rawLogin: string): Promise<ChatRoom | null> {
   const login = rawLogin.toLowerCase();
   if (!/^[a-z0-9_-]{2,32}$/.test(login)) return null;
-  const b = login.startsWith("kick-") ? null : await getBroadcasterByLogin(ctx.db, login);
+  const b = await getBroadcasterByLogin(ctx.db, login);
   if (b && !hiddenDemo(ctx.config, b)) {
     const settings = await getSettings(ctx.db, b.id);
     const owner = isOwner(req.auth.viewer, b.id);
     const conn = b.kind === "twitch" ? await getConnection(ctx.db, b.id) : null;
-    if (owner || (settings.visibility === "public" && (b.kind === "local" || conn?.status === "active"))) {
+    if (owner || (settings.visibility === "public" && (b.kind !== "twitch" || conn?.status === "active"))) {
       return { kind: "slot1", login, displayName: b.display_name, broadcaster: b, settings, owner };
     }
   }

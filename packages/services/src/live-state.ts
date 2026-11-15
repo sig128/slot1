@@ -10,6 +10,7 @@ import { sanitizeErrorMessage } from "@slot1/platform";
 import { sizeThumbnail } from "@slot1/twitch";
 import type { ServerContext } from "./context";
 import { emitBroadcastStatus } from "./events";
+import { kickChannels, kickConfigured } from "./kick";
 import { withAppToken } from "./twitch";
 
 interface CachedLive {
@@ -45,6 +46,7 @@ export async function liveSnapshots(ctx: ServerContext, broadcasters: Broadcaste
   const out = new Map<string, BroadcastSnapshot>();
   const twitchOnes = broadcasters.filter((b) => b.kind === "twitch" && b.twitch_user_id);
   for (const b of broadcasters) out.set(b.id, unknown());
+  await kickSnapshots(ctx, broadcasters.filter((b) => b.kind === "kick"), out);
   if (!ctx.helix || twitchOnes.length === 0) return out;
 
   const missing: BroadcasterRow[] = [];
@@ -89,6 +91,32 @@ export async function liveSnapshots(ctx: ServerContext, broadcasters: Broadcaste
     for (const b of missing) out.set(b.id, { ...unknown(), state: "error" });
   }
   return out;
+}
+
+/** Kick channels' live state from Kick's public API (cached 30 s); unknown without a Kick app. */
+async function kickSnapshots(ctx: ServerContext, kick: BroadcasterRow[], out: Map<string, BroadcastSnapshot>): Promise<void> {
+  if (kick.length === 0 || !kickConfigured(ctx)) return;
+  const slugOf = (b: BroadcasterRow) => b.login.toLowerCase().replace(/^kick-/, "");
+  try {
+    const data = await kickChannels(ctx, kick.map(slugOf));
+    const now = new Date().toISOString();
+    for (const b of kick) {
+      const k = data.get(slugOf(b));
+      if (!k) continue;
+      out.set(b.id, {
+        state: k.live ? "live" : "offline",
+        title: k.title,
+        category: k.category,
+        thumbnailUrl: k.thumbnailUrl,
+        viewerCount: k.viewers,
+        startedAt: k.startedAt,
+        lastRefreshedAt: now,
+      });
+    }
+  } catch (err) {
+    ctx.log.warn({ err: sanitizeErrorMessage((err as Error).message) }, "Kick live lookup failed");
+    for (const b of kick) out.set(b.id, { ...unknown(), state: "error" });
+  }
 }
 
 function toSnapshot(c: CachedLive): BroadcastSnapshot {

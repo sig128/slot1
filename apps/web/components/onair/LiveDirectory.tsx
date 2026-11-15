@@ -125,7 +125,7 @@ export function LiveDirectory({ directory }: { directory: DirectoryResponse }) {
         <LinkOpener />
       </div>
       {directory.refreshedAt && (
-        <p className="mt-12 text-[0.8rem] text-ivory-3">Live status, viewers and followers come from Twitch, refreshed {relativeAge(directory.refreshedAt)}.</p>
+        <p className="mt-12 text-[0.8rem] text-ivory-3">Live status, viewers, followers and Kick subscribers come from Twitch and Kick, refreshed {relativeAge(directory.refreshedAt)}.</p>
       )}
     </section>
   );

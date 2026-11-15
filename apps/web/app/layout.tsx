@@ -33,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </main>
         <footer className="border-t hairline print:hidden">
           <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-6 gap-y-2 px-4 py-6 text-[0.82rem] text-ivory-3 sm:px-6 lg:px-10">
-            <span>SLOT1 is independent and not affiliated with Rockstar Games, Take-Two, Sony or Twitch.</span>
+            <span>SLOT1 is independent and not affiliated with Rockstar Games, Take-Two, Sony, Twitch or Kick.</span>
             <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2">
               <Link href="/setup" className="hover:text-ivory">
                 How SLOT1 works

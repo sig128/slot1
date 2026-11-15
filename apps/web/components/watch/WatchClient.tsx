@@ -10,6 +10,19 @@ import { SessionWorkspace } from "./SessionWorkspace";
 import { KickPlayer } from "./KickPlayer";
 import { TwitchPlayer } from "./TwitchPlayer";
 
+/**
+ * The channel's audience, from its platform: followers (Twitch), or subscribers where the platform
+ * gives no follower total (Kick's API doesn't), and how many are watching while it's live.
+ */
+function audience(c: WatchChannelResponse["channel"]): string[] {
+  const out: string[] = [];
+  const plural = (n: number, one: string) => `${compactNumber(n)} ${n === 1 ? one : `${one}s`}`;
+  if (typeof c.followers === "number") out.push(plural(c.followers, "follower"));
+  else if (typeof c.subscribers === "number") out.push(plural(c.subscribers, "subscriber"));
+  if (c.broadcast.state === "live" && typeof c.broadcast.viewerCount === "number") out.push(`${compactNumber(c.broadcast.viewerCount)} watching`);
+  return out;
+}
+
 export function WatchClient({
   watch,
   page,
@@ -36,8 +49,9 @@ export function WatchClient({
   const session = watch.session;
   // SLOT1-only channels (the demo) have no Twitch channel, player or chat.
   const onTwitch = Boolean(c.twitchUrl);
-  // Featured Kick channels ("kick-<slug>"): Kick's player, no Twitch chat.
+  // Kick channels ("kick-<slug>"), featured or signed in with Kick: Kick's player and Kick chat.
   const onKick = c.platform === "kick";
+  const platformName = onKick ? "Kick" : "Twitch";
   const kickSlug = c.login.replace(/^kick-/, "");
   // Admin → Featured channels: shown like any channel, without the watch-only notes.
   const featured = !watch.authorized && Boolean(c.preview);
@@ -54,6 +68,9 @@ export function WatchClient({
         referrerPolicy="strict-origin-when-cross-origin"
       />
     </div>
+  ) : watch.authorized && session && session.kind !== "replay" && onKick ? (
+    // A Kick creator sending to SLOT1: SLOT1's own video (full quality), or Kick's player.
+    <LivePlayerSwitch sessionId={session.id} title={`Live video from ${c.displayName}`} platform="kick" twitch={<KickPlayer slug={kickSlug} displayName={c.displayName} />} />
   ) : watch.authorized && session && session.kind !== "replay" && !onTwitch ? (
     // No Twitch behind this channel: SLOT1's own video, or else the frames the AI analyzed.
     <LivePlayerSwitch
@@ -105,8 +122,8 @@ export function WatchClient({
     <div className="space-y-2 text-sm text-ivory-2">
       <p className="font-display text-xl font-bold text-ivory">SLOT1 can’t see this broadcast</p>
       <p>
-        The Twitch player and chat are platform data, not gameplay video. Nothing is analyzed until the creator connects an authorized video source or
-        analyzes a clip. Chat commands and clips still work.
+        The {platformName} player and chat are platform data, not gameplay video. Nothing is analyzed until the creator connects an authorized video
+        source or analyzes a clip.{onKick ? "" : " Chat commands and clips still work."}
       </p>
     </div>
   ) : session.analysis.state === "stale" ? (
@@ -126,7 +143,7 @@ export function WatchClient({
         avatarUrl: c.avatarUrl,
         title: c.broadcast.title,
         category: c.broadcast.category,
-        subtitle: typeof c.followers === "number" ? `${compactNumber(c.followers)} ${c.followers === 1 ? "follower" : "followers"}` : undefined,
+        stats: audience(c),
         twitchUrl: onTwitch ? c.twitchUrl : null,
         kickUrl: onKick ? `https://kick.com/${kickSlug}` : null,
       }}

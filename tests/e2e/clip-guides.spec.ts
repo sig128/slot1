@@ -32,8 +32,12 @@ test.describe("clipping guides", () => {
       const crumbs = page.getByRole("navigation", { name: "Breadcrumb" });
       await expect(crumbs.getByRole("listitem")).toHaveText(g.crumbs);
       await expect(crumbs.locator('[aria-current="page"]')).toHaveText(g.crumbs.at(-1)!);
-      // Sign in goes straight to Twitch, then into Studio.
-      await expect(page.getByRole("link", { name: "Sign in with Twitch" }).first()).toHaveAttribute("href", /^\/api\/auth\/twitch\/start\?returnTo=/);
+      // Sign in offers Twitch or Kick; each goes straight there, then into Studio.
+      await page.getByRole("main").getByRole("button", { name: "Sign in", exact: true }).first().click();
+      const chooser = page.getByRole("dialog", { name: "Sign in with" });
+      await expect(chooser.getByRole("link", { name: "Twitch" })).toHaveAttribute("href", /^\/api\/auth\/twitch\/start\?returnTo=/);
+      await expect(chooser.getByRole("link", { name: "Kick" })).toHaveAttribute("href", /^\/api\/auth\/kick\/start\?returnTo=/);
+      await page.keyboard.press("Escape");
 
       // Questions open in place; the answers are in the page either way.
       const first = page.locator("details.cg-q").first();

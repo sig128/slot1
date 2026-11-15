@@ -7,16 +7,27 @@ import type { Queryable } from "./client";
 
 export interface UserRow {
   id: string;
-  kind: "twitch" | "local";
+  kind: "twitch" | "local" | "kick";
   twitch_user_id: string | null;
+  kick_user_id: string | null;
   display_name: string;
   is_operator: boolean;
 }
 
+const U_COLS = `id, kind, twitch_user_id, kick_user_id, display_name, is_operator`;
+
 export async function createLocalUser(db: Queryable, displayName: string): Promise<UserRow> {
+  const { rows } = await db.query<UserRow>(`INSERT INTO users (kind, display_name) VALUES ('local', $1) RETURNING ${U_COLS}`, [displayName]);
+  return rows[0]!;
+}
+
+/** A Kick account. Never an operator: operators are Twitch logins (SLOT1_OPERATOR_TWITCH_LOGINS). */
+export async function upsertKickUser(db: Queryable, kickUserId: string, displayName: string): Promise<UserRow> {
   const { rows } = await db.query<UserRow>(
-    `INSERT INTO users (kind, display_name) VALUES ('local', $1) RETURNING id, kind, twitch_user_id, display_name, is_operator`,
-    [displayName],
+    `INSERT INTO users (kind, kick_user_id, display_name) VALUES ('kick', $1, $2)
+     ON CONFLICT (kick_user_id) DO UPDATE SET display_name = EXCLUDED.display_name
+     RETURNING ${U_COLS}`,
+    [kickUserId, displayName],
   );
   return rows[0]!;
 }
@@ -25,14 +36,14 @@ export async function upsertTwitchUser(db: Queryable, twitchUserId: string, disp
   const { rows } = await db.query<UserRow>(
     `INSERT INTO users (kind, twitch_user_id, display_name, is_operator) VALUES ('twitch', $1, $2, $3)
      ON CONFLICT (twitch_user_id) DO UPDATE SET display_name = EXCLUDED.display_name, is_operator = EXCLUDED.is_operator
-     RETURNING id, kind, twitch_user_id, display_name, is_operator`,
+     RETURNING ${U_COLS}`,
     [twitchUserId, displayName, isOperator],
   );
   return rows[0]!;
 }
 
 export async function getUser(db: Queryable, id: string): Promise<UserRow | null> {
-  const { rows } = await db.query<UserRow>(`SELECT id, kind, twitch_user_id, display_name, is_operator FROM users WHERE id = $1`, [id]);
+  const { rows } = await db.query<UserRow>(`SELECT ${U_COLS} FROM users WHERE id = $1`, [id]);
   return rows[0] ?? null;
 }
 
@@ -71,22 +82,35 @@ export async function deleteSessionsForUser(db: Queryable, userId: string) {
 /* OAuth state                                                                                */
 /* ------------------------------------------------------------------------------------------ */
 
+export type OAuthProvider = "twitch" | "kick";
+
 export interface OAuthStateRow {
   /** "viewer": signing in only to chat (identity, no channel connected). */
   role: "broadcaster" | "bot" | "viewer";
   redirect_uri: string;
   requested_scopes: string[];
   return_to: string | null;
+  /** Kick only: the PKCE code verifier, encrypted with the token cipher. */
+  pkce_verifier_enc: string | null;
 }
 
 export async function createOAuthState(
   db: Queryable,
-  input: { stateHash: Buffer; sessionIdHash: Buffer; role: "broadcaster" | "bot" | "viewer"; redirectUri: string; scopes: string[]; returnTo: string | null },
+  input: {
+    stateHash: Buffer;
+    sessionIdHash: Buffer;
+    role: "broadcaster" | "bot" | "viewer";
+    redirectUri: string;
+    scopes: string[];
+    returnTo: string | null;
+    provider?: OAuthProvider;
+    pkceVerifierEnc?: string | null;
+  },
 ) {
   await db.query(
-    `INSERT INTO oauth_states (state_hash, session_id_hash, role, redirect_uri, requested_scopes, return_to, expires_at)
-     VALUES ($1, $2, $3, $4, $5, $6, now() + interval '10 minutes')`,
-    [input.stateHash, input.sessionIdHash, input.role, input.redirectUri, input.scopes, input.returnTo],
+    `INSERT INTO oauth_states (state_hash, session_id_hash, role, redirect_uri, requested_scopes, return_to, provider, pkce_verifier_enc, expires_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now() + interval '10 minutes')`,
+    [input.stateHash, input.sessionIdHash, input.role, input.redirectUri, input.scopes, input.returnTo, input.provider ?? "twitch", input.pkceVerifierEnc ?? null],
   );
 }
 
@@ -94,12 +118,12 @@ export async function createOAuthState(
  * Consume an OAuth state exactly once. It must exist, be unexpired, unconsumed and bound to the
  * same browser session that started the flow. Anything else returns null (rejected).
  */
-export async function consumeOAuthState(db: Queryable, stateHash: Buffer, sessionIdHash: Buffer): Promise<OAuthStateRow | null> {
+export async function consumeOAuthState(db: Queryable, stateHash: Buffer, sessionIdHash: Buffer, provider: OAuthProvider = "twitch"): Promise<OAuthStateRow | null> {
   const { rows } = await db.query<OAuthStateRow>(
     `UPDATE oauth_states SET consumed_at = now()
-     WHERE state_hash = $1 AND session_id_hash = $2 AND consumed_at IS NULL AND expires_at > now()
-     RETURNING role, redirect_uri, requested_scopes, return_to`,
-    [stateHash, sessionIdHash],
+     WHERE state_hash = $1 AND session_id_hash = $2 AND provider = $3 AND consumed_at IS NULL AND expires_at > now()
+     RETURNING role, redirect_uri, requested_scopes, return_to, pkce_verifier_enc`,
+    [stateHash, sessionIdHash, provider],
   );
   return rows[0] ?? null;
 }
@@ -111,14 +135,36 @@ export async function consumeOAuthState(db: Queryable, stateHash: Buffer, sessio
 export interface BroadcasterRow {
   id: string;
   owner_user_id: string;
-  kind: "twitch" | "local";
+  /** "kick": a Kick channel, login "kick-<slug>". */
+  kind: "twitch" | "local" | "kick";
   twitch_user_id: string | null;
+  kick_user_id: string | null;
   login: string;
   display_name: string;
   avatar_url: string | null;
 }
 
-const B_COLS = `id, owner_user_id, kind, twitch_user_id, login, display_name, avatar_url`;
+const B_COLS = `id, owner_user_id, kind, twitch_user_id, kick_user_id, login, display_name, avatar_url`;
+
+/** A Kick channel's SLOT1 login. */
+export const kickLogin = (slug: string) => `kick-${slug.toLowerCase()}`;
+
+/** A Kick creator's channel, from their own Kick sign-in. */
+export async function upsertKickBroadcaster(
+  db: Queryable,
+  input: { ownerUserId: string; kickUserId: string; slug: string; displayName: string; avatarUrl: string | null },
+): Promise<BroadcasterRow> {
+  const { rows } = await db.query<BroadcasterRow>(
+    `INSERT INTO broadcasters (owner_user_id, kind, kick_user_id, login, display_name, avatar_url)
+     VALUES ($1, 'kick', $2, $3, $4, $5)
+     ON CONFLICT (kick_user_id) DO UPDATE SET login = EXCLUDED.login, display_name = EXCLUDED.display_name,
+       avatar_url = EXCLUDED.avatar_url, owner_user_id = EXCLUDED.owner_user_id, updated_at = now()
+     RETURNING ${B_COLS}`,
+    [input.ownerUserId, input.kickUserId, kickLogin(input.slug), input.displayName, input.avatarUrl],
+  );
+  await ensureSettings(db, rows[0]!.id);
+  return rows[0]!;
+}
 
 export function toBroadcasterRef(b: BroadcasterRow): BroadcasterRef {
   return { id: b.id, login: b.login, displayName: b.display_name, avatarUrl: b.avatar_url, kind: b.kind };
@@ -177,10 +223,10 @@ export async function getBroadcasterForOwner(db: Queryable, ownerUserId: string)
 
 export async function listDirectoryBroadcasters(db: Queryable): Promise<BroadcasterRow[]> {
   const { rows } = await db.query<BroadcasterRow>(
-    `SELECT b.id, b.owner_user_id, b.kind, b.twitch_user_id, b.login, b.display_name, b.avatar_url
+    `SELECT b.id, b.owner_user_id, b.kind, b.twitch_user_id, b.kick_user_id, b.login, b.display_name, b.avatar_url
      FROM broadcasters b JOIN channel_settings cs ON cs.broadcaster_id = b.id
-     JOIN broadcaster_connections bc ON bc.broadcaster_id = b.id
-     WHERE b.kind = 'twitch' AND cs.directory_opt_in AND cs.visibility = 'public' AND bc.status = 'active'
+     LEFT JOIN broadcaster_connections bc ON bc.broadcaster_id = b.id
+     WHERE ((b.kind = 'twitch' AND bc.status = 'active') OR b.kind = 'kick') AND cs.directory_opt_in AND cs.visibility = 'public'
      ORDER BY b.display_name`,
   );
   return rows;

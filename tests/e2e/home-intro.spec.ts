@@ -39,12 +39,18 @@ test.describe("home intro (reduced motion)", () => {
     await expect(page.getByRole("heading", { level: 1, name: "SLOT1: Your AI sidekick for GTA." })).toBeVisible();
     await expect(page.getByText(/watches your stream live, clips your big moments for you/)).toBeVisible();
     await expect(page.getByText("Stream GTA. Get clips. Train the AI.")).toBeVisible();
-    // Signed out, the hero's first button signs in with Twitch (straight to Twitch), or explains how
-    // creators connect when sign-in isn't set up on this site. There is no demo any more.
+    // Signed out, the hero's first button signs in with Twitch or Kick (each straight there), or
+    // explains how creators connect when sign-in isn't set up on this site. There is no demo any more.
     const hero = page.locator("[data-scene]");
-    const first = hero.getByRole("link", { name: /^(Sign in with Twitch|How creators connect)$/ }).first();
+    const first = hero.getByRole("button", { name: "Sign in", exact: true }).or(hero.getByRole("link", { name: "How creators connect" })).first();
     await expect(first).toBeVisible();
-    if ((await first.textContent())?.includes("Sign in")) expect(await first.getAttribute("href")).toMatch(/^\/api\/auth\/twitch\/start\?returnTo=/);
+    if ((await first.textContent())?.includes("Sign in")) {
+      await first.click();
+      const chooser = page.getByRole("dialog", { name: "Sign in with" });
+      await expect(chooser.getByRole("link", { name: "Twitch" })).toHaveAttribute("href", /^\/api\/auth\/twitch\/start\?returnTo=/);
+      await expect(chooser.getByRole("link", { name: "Kick" })).toHaveAttribute("href", /^\/api\/auth\/kick\/start\?returnTo=/);
+      await page.keyboard.press("Escape");
+    }
     await expect(page.getByRole("link", { name: /demo/i })).toHaveCount(0);
 
     // The money-style counter shows channels live right now, from the same directory the page uses.
@@ -61,11 +67,13 @@ test.describe("home intro (reduced motion)", () => {
     await expect(gtaAi.getByText(/It isn’t used for the log yet/)).toBeVisible();
     await expect(gtaAi.getByText(/getting ready to learn its world as soon as players stream it/)).toBeVisible();
 
-    // "How it works": three numbered steps right after the intro (when nobody is live).
+    // "How it works": three numbered steps right after the intro when no channel is listed (featured
+    // channels are listed even while offline, and then come first).
     const how = page.getByRole("region", { name: "How it works" });
     await expect(how.getByRole("listitem")).toHaveCount(3);
     await expect(how.getByRole("heading", { level: 3 }).first()).toHaveText("Step 1: Stream GTA like you always do");
-    if (live === 0) {
+    const listed = await page.evaluate(async () => ((await (await fetch("/api/channels")).json()) as { channels: unknown[] }).channels.length);
+    if (listed === 0) {
       const order = await page.evaluate(() => {
         const intro = document.querySelector("[data-scene]");
         const steps = document.querySelector("section[aria-labelledby='how-it-works']");
@@ -105,7 +113,7 @@ test.describe("home intro (with motion)", () => {
     const hero = page.locator("[data-scene]");
 
     // The loading screen resolves into the title card within about three seconds.
-    await expect(hero.getByRole("link", { name: /^(Sign in with Twitch|How creators connect)$/ }).first()).toBeVisible();
+    await expect(hero.getByRole("button", { name: "Sign in", exact: true }).or(hero.getByRole("link", { name: "How creators connect" })).first()).toBeVisible();
     await expect.poll(() => page.locator(".gx-reveal").first().evaluate((el) => Number(getComputedStyle(el).opacity)), { timeout: 6_000 }).toBe(1);
     expect(await hero.evaluate((el) => el.getAnimations({ subtree: true }).length)).toBeGreaterThan(10);
     await shot(page, "home-intro-motion");

@@ -6,7 +6,7 @@ import type { MeResponse } from "@slot1/contracts";
 import { HeaderAvatar } from "./HeaderAvatar";
 import { MORE_NAV, PRIMARY_NAV, WIDE_QUERY } from "./site-nav";
 import { Wordmark } from "./Wordmark";
-import { twitchSignInHref } from "@/lib/signin-notice";
+import { SignInChooser, SignInOptions } from "./SignInChooser";
 
 const MENU_ID = "site-menu";
 
@@ -88,9 +88,7 @@ export function MobileMenu({ pathname, me }: { pathname: string; me: MeResponse 
             <HeaderAvatar broadcaster={broadcaster} className="h-8 w-8 text-[0.95rem]" />
           </Link>
         ) : (
-          <a href={twitchSignInHref()} className="btn btn-coral sh-bar-connect">
-            Sign in
-          </a>
+          <SignInChooser className="btn btn-coral sh-bar-connect" />
         )}
         <button
           ref={triggerRef}
@@ -167,14 +165,12 @@ export function MobileMenu({ pathname, me }: { pathname: string; me: MeResponse 
                 <span className="min-w-0">
                   <span className="sh-me-name">{broadcaster.displayName}</span>
                   <span id="sh-me-hint" className="sh-me-hint" aria-hidden>
-                    {broadcaster.kind === "twitch" ? "Signed in with Twitch" : "Local workspace"}
+                    {broadcaster.kind === "twitch" ? "Signed in with Twitch" : broadcaster.kind === "kick" ? "Signed in with Kick" : "Local workspace"}
                   </span>
                 </span>
               </Link>
             ) : (
-              <a href={twitchSignInHref()} className="btn btn-coral sh-connect">
-                Sign in with Twitch
-              </a>
+              <SignInOptions prefix="Sign in with " size="lg" />
             )}
           </div>
 

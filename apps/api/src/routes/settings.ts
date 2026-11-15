@@ -10,7 +10,7 @@ import {
   type SettingsRequestResult,
   type TwitchSignInEvent,
 } from "@slot1/contracts";
-import type { ServerContext } from "@slot1/services";
+import { kickRedirectUri, type ServerContext } from "@slot1/services";
 import { requireAdmin } from "../lib/admin-access";
 import { ADMIN_PASSWORD_MAX_LENGTH, ADMIN_PASSWORD_MIN_LENGTH, adminPasswordConfigured, hashAdminPassword, passwordLength, verifyAdminPassword } from "../lib/admin-password";
 import { ApiProblem } from "../lib/errors";
@@ -153,6 +153,7 @@ export const settingsRoutes =
           kick: Boolean(env.KICK_CLIENT_ID && env.KICK_CLIENT_SECRET),
         },
         twitchRedirectUrl: `${ctx.config.publicOrigin}/api/auth/twitch/callback`,
+        kickRedirectUrl: kickRedirectUri(ctx),
         version: env.SLOT1_VERSION,
         apiStartedAt: STARTED_AT.toISOString(),
         deploy,

@@ -9,12 +9,27 @@ import {
   listSources,
   upsertConnection,
   upsertGrant,
+  upsertKickBroadcaster,
+  upsertKickUser,
   upsertTwitchBroadcaster,
   upsertTwitchUser,
 } from "@slot1/db";
 import { QUEUES, randomToken, sanitizeErrorMessage, sha256 } from "@slot1/platform";
 import type { TwitchSignInWhy } from "@slot1/contracts";
-import type { ServerContext } from "@slot1/services";
+import {
+  KICK_CREATOR_SCOPES,
+  KICK_VIEWER_SCOPES,
+  KickApiError,
+  kickAuthorizeUrl,
+  kickConfigured,
+  kickExchangeCode,
+  kickPkce,
+  kickRedirectUri,
+  kickRevoke,
+  kickTokenChannel,
+  kickTokenUser,
+  type ServerContext,
+} from "@slot1/services";
 import {
   BOT_SCOPES,
   BROADCASTER_CONNECT_SCOPES,
@@ -61,6 +76,15 @@ const StartQuery = z.object({
   relay: z.enum(["0", "1"]).default("0"),
   returnTo: z.string().optional(),
 });
+
+/** Sign in with Kick: a creator connecting their Kick channel, or a viewer signing in to chat. */
+const KickStartQuery = z.object({
+  role: z.enum(["broadcaster", "viewer"]).default("broadcaster"),
+  returnTo: z.string().optional(),
+});
+
+/** Why a Kick sign-in didn't finish, as ?kick=error&why=<code> on the page it returns to. */
+export type KickSignInWhy = "not_configured" | "expired" | "code" | "app" | "kick_down" | "no_channel" | "server";
 
 const CallbackQuery = z.object({
   code: z.string().max(200).optional(),
@@ -234,6 +258,88 @@ export const authRoutes =
       } catch (err) {
         req.log.error({ err }, "Twitch sign-in: saving the connection failed");
         return fail(st.role === "bot" ? "/studio" : returnTo, "server", sanitizeErrorMessage((err as Error).message));
+      }
+    });
+
+    /**
+     * Sign in with Kick (OAuth 2.1 with PKCE). The same two ways in as Twitch: a creator connects
+     * their Kick channel (it becomes /watch/kick-<slug> with Studio, streaming to SLOT1 and the live
+     * log), or a viewer signs in only to chat. Kick's token is used to read who you are, then revoked.
+     */
+    app.get("/api/auth/kick/start", { config: { csrf: false, rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (req, reply) => {
+      const parsed = KickStartQuery.safeParse(req.query);
+      const q = parsed.success ? parsed.data : KickStartQuery.parse({});
+      reply.header("cache-control", "no-store");
+      const returnTo = safeReturnTo(q.returnTo, q.role === "viewer" ? "/" : "/studio");
+      if (!kickConfigured(ctx) || !ctx.cipher.available) return back(ctx, reply, returnTo, { kick: "error", why: "not_configured" });
+      const { idHash } = await ensureSession(ctx, req, reply);
+      const state = randomToken(32);
+      const { verifier, challenge } = kickPkce();
+      const scopes = q.role === "viewer" ? KICK_VIEWER_SCOPES : KICK_CREATOR_SCOPES;
+      await createOAuthState(ctx.db, {
+        stateHash: sha256(state),
+        sessionIdHash: idHash,
+        role: q.role,
+        redirectUri: kickRedirectUri(ctx),
+        scopes,
+        returnTo,
+        provider: "kick",
+        pkceVerifierEnc: ctx.cipher.encrypt(verifier).value,
+      });
+      return reply.redirect(kickAuthorizeUrl(ctx, { scopes, state, challenge }), 302);
+    });
+
+    app.get("/api/auth/kick/callback", { config: { csrf: false, rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (req, reply) => {
+      const parsed = CallbackQuery.safeParse(req.query);
+      const q = parsed.success ? parsed.data : {};
+      reply.header("cache-control", "no-store");
+      const fail = (path: string, why: KickSignInWhy | "denied", detail: string | null = null) => {
+        if (detail) req.log.warn({ kick: why, detail }, "Kick sign-in didn't finish");
+        return back(ctx, reply, path, why === "denied" ? { kick: "denied" } : { kick: "error", why });
+      };
+      if (!kickConfigured(ctx)) return fail("/studio", "not_configured");
+      if (!q.state || !req.auth.sessionIdHash) return fail("/studio", "expired");
+      const st = await consumeOAuthState(ctx.db, sha256(q.state), req.auth.sessionIdHash, "kick");
+      if (!st || !st.pkce_verifier_enc) return fail("/studio", "expired");
+      const returnTo = st.return_to ?? "/studio";
+      if (q.error) return fail(returnTo, "denied", sanitizeErrorMessage(q.error_description ?? q.error));
+      if (!q.code) return fail(returnTo, "code");
+
+      let token: string;
+      try {
+        const verifier = ctx.cipher.decrypt(st.pkce_verifier_enc);
+        token = (await kickExchangeCode(ctx, { code: q.code, verifier, redirectUri: st.redirect_uri })).access_token;
+      } catch (err) {
+        const status = err instanceof KickApiError ? err.status : 0;
+        // 401: Kick didn't accept the app's credentials. Other 4xx: the code was used or expired.
+        const why: KickSignInWhy = status === 401 ? "app" : status >= 400 && status < 500 ? "code" : "kick_down";
+        return fail(returnTo, why, sanitizeErrorMessage((err as Error).message));
+      }
+
+      try {
+        let me;
+        let channel = null;
+        try {
+          me = await kickTokenUser(ctx, token);
+          if (st.role === "broadcaster") channel = await kickTokenChannel(ctx, token);
+        } catch (err) {
+          return fail(returnTo, "kick_down", sanitizeErrorMessage((err as Error).message));
+        }
+        if (st.role === "viewer") {
+          const user = await upsertKickUser(ctx.db, me.userId, me.name);
+          await signIn(ctx, req, reply, user.id);
+          return back(ctx, reply, returnTo, { kick: "signed_in" });
+        }
+        if (!channel) return fail(returnTo, "no_channel");
+        const user = await upsertKickUser(ctx.db, me.userId, me.name);
+        const b = await upsertKickBroadcaster(ctx.db, { ownerUserId: user.id, kickUserId: channel.userId ?? me.userId, slug: channel.slug, displayName: me.name, avatarUrl: me.avatarUrl });
+        await signIn(ctx, req, reply, user.id);
+        return back(ctx, reply, await connectLanding(ctx, b.id, st.return_to), { kick: "connected" });
+      } catch (err) {
+        req.log.error({ err }, "Kick sign-in: saving the account failed");
+        return fail(returnTo, "server", sanitizeErrorMessage((err as Error).message));
+      } finally {
+        void kickRevoke(ctx, token);
       }
     });
 

@@ -39,6 +39,8 @@ export interface WorkspaceIdentity {
   /** A featured Kick channel's page on Kick. */
   kickUrl?: string | null;
   subtitle?: string;
+  /** Audience numbers from the platform, each shown on its own ("12.3K followers", "1,204 watching"). */
+  stats?: string[];
 }
 
 interface Props {
@@ -231,8 +233,13 @@ export function SessionWorkspace(p: Props) {
             <Name className="poster-title text-[length:var(--text-display-md)] font-black leading-[0.92]">{p.identity.displayName}</Name>
             {p.identity.title && <p className="mt-1.5 max-w-[70ch] text-[1.02rem] text-ivory-2">{p.identity.title}</p>}
             <div className="mt-1 flex flex-wrap gap-x-5 text-sm text-ivory-3">
-              {p.identity.category && <span title="Category set by the creator on Twitch">{p.identity.category}</span>}
+              {p.identity.category && <span title={`Category set by the creator on ${p.identity.kickUrl ? "Kick" : "Twitch"}`}>{p.identity.category}</span>}
               {p.identity.subtitle && <span suppressHydrationWarning>{p.identity.subtitle}</span>}
+              {p.identity.stats?.map((s) => (
+                <span key={s} className="tnum">
+                  {s}
+                </span>
+              ))}
             </div>
           </div>
         </div>

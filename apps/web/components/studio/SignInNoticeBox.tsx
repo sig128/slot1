@@ -1,5 +1,5 @@
 import type { SignInNotice } from "@/lib/signin-notice";
-import { twitchSignInHref } from "@/lib/signin-notice";
+import { signInHref } from "@/lib/signin-notice";
 
 const BAR: Record<SignInNotice["tone"], string> = {
   ok: "border-apricot",
@@ -7,7 +7,7 @@ const BAR: Record<SignInNotice["tone"], string> = {
   error: "border-coral",
 };
 
-/** The result of "Sign in with Twitch", right where the person lands. */
+/** The result of "Sign in with Twitch" or "Sign in with Kick", right where the person lands. */
 export function SignInNoticeBox({ notice, showRetry = true }: { notice: SignInNotice; showRetry?: boolean }) {
   return (
     <div
@@ -20,8 +20,8 @@ export function SignInNoticeBox({ notice, showRetry = true }: { notice: SignInNo
       {notice.body && <p className="mt-1 text-ivory-2">{notice.body}</p>}
       {notice.owner && <p className="mt-2 text-sm text-ivory-3">{notice.owner}</p>}
       {showRetry && notice.retry && (
-        <a href={twitchSignInHref()} className="btn btn-coral btn-sm mt-3">
-          Sign in with Twitch again
+        <a href={signInHref(notice.platform)} className="btn btn-coral btn-sm mt-3">
+          Sign in with {notice.platform === "kick" ? "Kick" : "Twitch"} again
         </a>
       )}
     </div>

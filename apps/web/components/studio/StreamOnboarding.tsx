@@ -130,8 +130,13 @@ export function StreamOnboarding({ ctx, data, onChange, onExit }: { ctx: StudioC
         </div>
 
         <div className="border-t hairline pt-5">
-          <h3 className="font-display text-lg font-bold">2. Your stream on Twitch</h3>
-          {!twitchLinked ? (
+          <h3 className="font-display text-lg font-bold">2. Your stream on {ctx.overview.broadcaster.kind === "kick" ? "Kick" : "Twitch"}</h3>
+          {ctx.overview.broadcaster.kind === "kick" ? (
+            <p className="mt-1 max-w-[64ch] text-sm text-ivory-3">
+              To keep your Kick viewers, add Kick in Stream setup under “Choose where it goes”: paste the Stream URL and Stream Key from your Kick creator
+              dashboard → Settings → Stream. SLOT1 then passes your stream on to Kick, unchanged.
+            </p>
+          ) : !twitchLinked ? (
             <p className="mt-1 max-w-[64ch] text-sm text-ivory-3">This is a local workspace, so there’s no Twitch channel to forward to. Add YouTube or Kick later in Stream setup.</p>
           ) : !data.available ? (
             <p className="mt-1 max-w-[64ch] text-sm text-ivory-3">

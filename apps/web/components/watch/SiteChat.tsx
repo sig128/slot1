@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CHAT_MESSAGE_MAX, type ChatBadge, type ChatMessage, type ChatRoomResponse } from "@slot1/contracts";
 import { api, ApiError } from "@/lib/api";
-import { chatSignInHref } from "@/lib/signin-notice";
+import { SignInOptions } from "@/components/brand/SignInChooser";
 
 /** A readable, stable color per name on the dark rail. */
 function nameColor(name: string): string {
@@ -327,16 +327,15 @@ export function SiteChat({ room, visible, onUnread }: { room: string; visible: b
         ) : v.blocked === "banned" ? (
           <p className="text-sm text-ivory-2">You can’t post in this chat.</p>
         ) : (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <a
-              href={chatSignInHref("/")}
+          <div>
+            <p className="mb-2 text-[0.85rem] text-ivory-2">Sign in to chat. Only your name is used.</p>
+            <SignInOptions
+              purpose="chat"
+              size="sm"
+              returnTo="/"
               // Come back to this page, with SLOT1 chat open.
-              onClick={(e) => (e.currentTarget.href = chatSignInHref(`${window.location.pathname}?chat=slot1`))}
-              className="btn btn-coral btn-sm"
-            >
-              Sign in with Twitch to chat
-            </a>
-            <span className="text-[0.85rem] text-ivory-3">Only your Twitch name is used.</span>
+              onPick={() => `${window.location.pathname}?chat=slot1`}
+            />
           </div>
         )}
         <p className="mt-2 text-[0.78rem] text-ivory-3">

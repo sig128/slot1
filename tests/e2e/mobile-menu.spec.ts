@@ -68,8 +68,13 @@ test.describe("phone header and menu", () => {
 
     // The bar: the wordmark, the sign-in action and a labelled Menu button; the tab row is tucked away.
     await expect(header.getByRole("link", { name: "SLOT1 home" })).toBeVisible();
-    // Sign in goes straight to Twitch, then back into Studio.
-    await expect(header.getByRole("link", { name: "Sign in", exact: true })).toHaveAttribute("href", "/api/auth/twitch/start?returnTo=%2Fstudio");
+    // Sign in offers Twitch or Kick; each goes straight there, then back into Studio.
+    await header.getByRole("button", { name: "Sign in", exact: true }).click();
+    const chooser = page.getByRole("dialog", { name: "Sign in with" });
+    await expect(chooser.getByRole("link", { name: "Twitch" })).toHaveAttribute("href", "/api/auth/twitch/start?returnTo=%2Fstudio");
+    await expect(chooser.getByRole("link", { name: "Kick" })).toHaveAttribute("href", "/api/auth/kick/start?returnTo=%2Fstudio");
+    await page.keyboard.press("Escape");
+    await expect(chooser).toBeHidden();
     await expect(menuButton).toBeVisible();
     await expect(menuButton).toHaveAttribute("aria-expanded", "false");
     await expect(menuButton).toHaveAttribute("aria-haspopup", "dialog");
@@ -92,13 +97,14 @@ test.describe("phone header and menu", () => {
     await expect(menuButton).toHaveAttribute("aria-expanded", "true");
     expect(await menu.evaluate((el) => getComputedStyle(el).animationName), "no motion with reduced motion").toBe("none");
     const nav = menu.getByRole("navigation", { name: "Primary" });
-    await expect(nav.getByRole("link")).toHaveText(["On Air", "Right now", "Moments", "Studio", "Setup"].map((n) => new RegExp(`^${n}`)));
+    await expect(nav.getByRole("link")).toHaveText(["On Air", "Right now", "Moments", "Studio", "Setup", "Learning"].map((n) => new RegExp(`^${n}`)));
     const onAir = nav.getByRole("link", { name: "On Air" });
     await expect(onAir).toBeFocused();
     await expect(onAir).toHaveAttribute("aria-current", "page");
     await expect(onAir).toHaveAccessibleDescription("Live channels and what SLOT1 logs");
     await expect(nav.getByRole("link", { name: "Right now" })).not.toHaveAttribute("aria-current");
     await expect(menu.getByRole("link", { name: "Sign in with Twitch" })).toHaveAttribute("href", "/api/auth/twitch/start?returnTo=%2Fstudio");
+    await expect(menu.getByRole("link", { name: "Sign in with Kick" })).toHaveAttribute("href", "/api/auth/kick/start?returnTo=%2Fstudio");
     const more = menu.getByRole("navigation", { name: "More" });
     await expect(more.getByRole("link", { name: /demo/i })).toHaveCount(0);
     for (const [name, href] of [
@@ -232,6 +238,7 @@ test.describe("phone header and menu", () => {
     const avatar = header.getByRole("link", { name: "Night Shift" });
     await expect(avatar).toHaveAttribute("href", "/studio");
     await expect(header.getByRole("link", { name: /^Sign in/ })).toHaveCount(0);
+    await expect(header.getByRole("button", { name: /^Sign in/ })).toHaveCount(0);
     await expectTapTargets(avatar);
     await page.getByRole("button", { name: "Menu", exact: true }).click();
     const account = page.getByRole("dialog", { name: "Menu" }).getByRole("link", { name: "Night Shift" });

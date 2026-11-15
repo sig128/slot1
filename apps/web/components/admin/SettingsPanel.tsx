@@ -503,6 +503,7 @@ function TwitchGroup({ view, off, busy, save, send }: GroupProps) {
 function KickGroup({ view, off, busy, save, send }: GroupProps) {
   const id = useId();
   const v = view.values;
+  const [copied, setCopied] = useState(false);
   const g = useGroup(["kickClientId", "kickClientSecret"], { kickClientId: v.kickClientId ?? "", kickClientSecret: "" });
   const str = (f: SettingsField) => String(g.value(f) ?? "");
   return (
@@ -512,15 +513,33 @@ function KickGroup({ view, off, busy, save, send }: GroupProps) {
       status={
         <Working
           ok={view.working.kick}
-          yes="Featured Kick channels show their live status, viewers and title."
-          no="Featured Kick channels play, but their live status stays unknown until the app's Client ID and Client Secret are saved."
+          yes="Sign in with Kick is on, and Kick channels show their live status, viewers and title."
+          no="Sign in with Kick is off, and Kick channels' live status stays unknown, until the app's Client ID and Client Secret are saved."
           server={null}
         />
       }
     >
       <p className="max-w-[60ch] text-[0.9rem] text-ivory-2">
-        From your app on kick.com: Settings → Developer. Kick asks for two-factor sign-in before it lets you create one.
+        From your app on kick.com: Settings → Developer. Kick asks for two-factor sign-in before it lets you create one. For Sign in with Kick, the
+        app&apos;s Redirect URL must be exactly:
       </p>
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <code className="min-w-0 max-w-full border hairline bg-graphite-800 px-2 py-1 text-[0.85rem] [overflow-wrap:anywhere]" data-testid="kick-redirect-url">
+          {view.kickRedirectUrl}
+        </code>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() => {
+            void navigator.clipboard?.writeText(view.kickRedirectUrl).then(() => {
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            });
+          }}
+        >
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
       <Field label="Client ID" htmlFor={`${id}-kid`} error={g.errors.kickClientId}>
         <TextInput id={`${id}-kid`} value={str("kickClientId")} onChange={(x) => g.set("kickClientId", x)} disabled={off || busy} error={g.errors.kickClientId} />
       </Field>

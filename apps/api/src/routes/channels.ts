@@ -57,11 +57,12 @@ export async function channelCard(
     login: b.login,
     displayName: b.display_name,
     avatarUrl: b.avatar_url,
-    // SLOT1-only channels (the demo) have no Twitch channel: empty means "no Twitch link".
+    // SLOT1-only channels (the demo) and Kick channels have no Twitch channel: empty means "no Twitch link".
     twitchUrl: b.kind === "twitch" ? channelUrl(b.login) : "",
     broadcast: snapshot,
     analysis: session ? analysisStatus(session, ctx.config) : NO_SOURCE_STATUS(ctx.config.capabilities.vision.available),
     publicAnalysis,
+    ...(b.kind === "kick" ? { platform: "kick" as const } : b.kind === "twitch" ? { platform: "twitch" as const } : {}),
   };
 }
 
@@ -169,13 +170,14 @@ export const channelRoutes =
     app.get("/api/channels/:login/watch", async (req): Promise<WatchChannelResponse> => {
       // "-" only occurs in SLOT1's own demo login; Twitch logins never contain it.
       const { login } = z.object({ login: z.string().min(2).max(32).regex(/^[a-zA-Z0-9_-]+$/) }).parse(req.params);
-      if (/^kick-/i.test(login)) {
-        // A featured Kick channel ("kick-<slug>"): Kick's player and public data only.
+      const b = await getBroadcasterByLogin(ctx.db, login);
+      if (!b && /^kick-/i.test(login)) {
+        // A featured Kick channel ("kick-<slug>") that hasn't connected SLOT1: Kick's player and
+        // public data only. A Kick creator who signed in with Kick is a SLOT1 channel (below).
         const card = (await isFeatured(ctx, login)) ? (await previewCards(ctx, await getPreviewLogins(ctx))).find((c) => c.login === login.toLowerCase()) : undefined;
         if (!card) throw notFound("Channel not found");
         return { channel: card, authorized: false, session: null, viewer: { isCreator: false, canAsk: false, askPolicy: "off" }, recentReplays: [] };
       }
-      const b = await getBroadcasterByLogin(ctx.db, login);
       if (b && hiddenDemo(ctx.config, b)) throw notFound("The demo broadcast is off on this server");
       if (!b && login.includes("-")) throw notFound("Channel not found");
       const viewer = req.auth.viewer;
@@ -234,7 +236,8 @@ export const channelRoutes =
       const settings = await getSettings(ctx.db, b.id);
       const owner = isOwner(viewer, b.id);
       const conn = b.kind === "twitch" ? await getConnection(ctx.db, b.id) : null;
-      const authorized = owner || (settings.visibility === "public" && (b.kind === "local" || conn?.status === "active"));
+      // Twitch channels need their Twitch connection; Kick and local channels need none.
+      const authorized = owner || (settings.visibility === "public" && (b.kind !== "twitch" || conn?.status === "active"));
       const snaps = await liveSnapshots(ctx, [b]);
       const session = await getCurrentLiveSession(ctx.db, b.id);
       const visibleSession = session && canViewSession(viewer, session, settings) ? session : null;

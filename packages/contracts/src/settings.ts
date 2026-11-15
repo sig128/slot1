@@ -262,6 +262,8 @@ export interface AdminSettingsView {
   working: { twitch: boolean; twitchReason: string | null; ai: boolean; aiReason: string | null; kick: boolean };
   /** The OAuth Redirect URL the Twitch app must list, exactly. */
   twitchRedirectUrl: string;
+  /** "Sign in with Kick" returns here; the Kick app's Redirect URL must be exactly this. */
+  kickRedirectUrl: string;
   version: string | null;
   /** When this API process started: after a save that restarts SLOT1, the page waits for a newer one. */
   apiStartedAt: string;

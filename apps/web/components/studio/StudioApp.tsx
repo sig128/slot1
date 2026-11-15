@@ -8,7 +8,8 @@ import { SkylineArt } from "@/components/brand/SkylineArt";
 import { api, ApiError, getMe } from "@/lib/api";
 import { requirementText } from "@/lib/requirements";
 import { SetupFix } from "@/components/ui/SetupFix";
-import { signInNotice, twitchSignInHref, type SignInNotice } from "@/lib/signin-notice";
+import { kickSignInHref, signInNotice, type SignInNotice } from "@/lib/signin-notice";
+import { SignInOptions } from "@/components/brand/SignInChooser";
 import { SignInNoticeBox } from "./SignInNoticeBox";
 import { AdvancedSection, BotSection, JobsSection, OverviewSection, PrivacySection, SourcesSection } from "./StudioSections";
 import { GtaModelSection } from "./GtaModelSection";
@@ -146,7 +147,14 @@ export function StudioApp() {
 
   const ctx: StudioCtx = { overview, caps, me, reload, save, saving, saveError, runAction };
 
-  const where = overview.broadcaster.kind === "local" ? "Local workspace" : overview.twitch.login ? `twitch.tv/${overview.twitch.login}` : null;
+  const where =
+    overview.broadcaster.kind === "local"
+      ? "Local workspace"
+      : overview.broadcaster.kind === "kick"
+        ? `kick.com/${overview.broadcaster.login.replace(/^kick-/, "")}`
+        : overview.twitch.login
+          ? `twitch.tv/${overview.twitch.login}`
+          : null;
   const nextStep = overview.readiness.find((st) => st.status === "todo");
   const flagged = nextStep ? STEP_SECTION[nextStep.id] : undefined;
 
@@ -375,13 +383,12 @@ function SignIn({ caps, notice, onSignedIn }: { caps: Capabilities; notice: Sign
           )}
           <h1 className="poster-title text-[length:var(--text-display-lg)] font-black leading-[0.88]">Bring your channel on air.</h1>
           <p className="mt-5 max-w-[56ch] text-ivory-2">
-            Connect the Twitch account you broadcast from. SLOT1 only ever analyzes video you authorize, and nothing is public until you switch it on.
+            Connect the Twitch or Kick account you broadcast from. SLOT1 only ever analyzes video you authorize, and nothing is public until you switch it
+            on.
           </p>
-          <div className="mt-8">
+          <div className="mt-8 max-w-[34rem]">
             {caps.twitch.available ? (
-              <a href={twitchSignInHref()} className="btn btn-coral h-12 px-5 text-[1.12rem]">
-                {notice?.retry ? "Sign in with Twitch again" : "Sign in with Twitch"}
-              </a>
+              <SignInOptions size="lg" prefix={notice?.retry ? "Try again with " : "Sign in with "} />
             ) : (
               <div className="max-w-[60ch] border-l-2 border-apricot pl-3 text-sm text-ivory-2" data-testid="twitch-signin-closed">
                 <p className="font-display text-lg font-bold text-ivory">{caps.twitch.setup ? requirementText(caps.twitch.reason) : "Twitch sign-in isn’t open yet."}</p>
@@ -393,6 +400,9 @@ function SignIn({ caps, notice, onSignedIn }: { caps: Capabilities; notice: Sign
                   .
                 </p>
                 <SetupFix cap={caps.twitch} />
+                <a href={kickSignInHref()} className="btn btn-ghost btn-sm mt-4">
+                  Sign in with Kick
+                </a>
               </div>
             )}
           </div>

@@ -23,8 +23,9 @@ export function relativeAge(iso: string | null | undefined, now = Date.now()): s
   return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
+/** 1,234 / 12.3K / 1.2M, always in English (the site is English, whatever the browser's language). */
 export function compactNumber(n: number): string {
-  return new Intl.NumberFormat(undefined, { notation: n >= 10_000 ? "compact" : "standard", maximumFractionDigits: 1 }).format(n);
+  return new Intl.NumberFormat("en-US", { notation: n >= 10_000 ? "compact" : "standard", maximumFractionDigits: 1 }).format(n);
 }
 
 export function bytes(n: number | null | undefined): string {

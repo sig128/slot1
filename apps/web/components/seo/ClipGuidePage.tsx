@@ -7,7 +7,7 @@ import type { ClipGuide, GuidePanel } from "@/lib/clip-guides";
 import { breadcrumbList, faqPage, graph, organization, webApplication, webPage, website } from "@/lib/jsonld";
 import { legalConfig } from "@/lib/legal";
 import { publicOrigin } from "@/lib/origin";
-import { twitchSignInHref } from "@/lib/signin-notice";
+import { SignInChooser } from "@/components/brand/SignInChooser";
 import { SITE } from "@/lib/site";
 
 function Panels({ items }: { items: GuidePanel[] }) {
@@ -73,9 +73,7 @@ export async function ClipGuidePage({ guide: g }: { guide: ClipGuide }) {
             <p className="su-lede">{g.lede}</p>
           </div>
           <div className="su-head-cta">
-            <a href={twitchSignInHref()} className="btn btn-coral">
-              Sign in with Twitch
-            </a>
+            <SignInChooser className="btn btn-coral" align="start" />
             <Link href="/setup" className="btn btn-ghost">
               How SLOT1 works
             </Link>
@@ -150,9 +148,7 @@ export async function ClipGuidePage({ guide: g }: { guide: ClipGuide }) {
         <div className="su-end">
           <p className="cg-end-line">Free, no watermark, in your browser.</p>
           <div className="flex flex-wrap gap-2">
-            <a href={twitchSignInHref()} className="btn btn-coral">
-              Sign in with Twitch
-            </a>
+            <SignInChooser className="btn btn-coral" align="start" />
             <Link href="/studio" className="btn btn-ghost">
               Open Studio
             </Link>

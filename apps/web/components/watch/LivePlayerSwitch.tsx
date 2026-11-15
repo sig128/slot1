@@ -16,11 +16,14 @@ export function LivePlayerSwitch({
   title,
   twitch,
   fallback,
+  platform = "twitch",
 }: {
   sessionId: string;
   title: string;
-  /** What plays when SLOT1's own video isn't available: Twitch's player, normally. */
+  /** What plays when SLOT1's own video isn't available: Twitch's player, normally (Kick's on Kick channels). */
   twitch: React.ReactNode;
+  /** Whose player `twitch` is. */
+  platform?: "twitch" | "kick";
   /**
    * Channels without Twitch (SLOT1's demo): the fallback is SLOT1's own frame feed, so it is
    * named differently and instant replays may sit over it.
@@ -53,9 +56,13 @@ export function LivePlayerSwitch({
     <div className="min-w-0">
       {useTwitch ? twitch : <LiveVideoPlayer sessionId={sessionId} title={title} onEnded={() => setAvailable(false)} />}
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.8rem] text-ivory-3">
-        <span>{useTwitch ? (fallback?.note ?? "Twitch’s player, usually a few seconds behind.") : "SLOT1’s own stream, straight from the creator’s setup."}</span>
+        <span>
+          {useTwitch
+            ? (fallback?.note ?? (platform === "kick" ? "Kick’s player, usually a few seconds behind." : "Twitch’s player, usually a few seconds behind."))
+            : "SLOT1’s own stream, straight from the creator’s setup."}
+        </span>
         <button type="button" className="underline underline-offset-4 hover:text-ivory" aria-pressed={useTwitch} onClick={() => setUseTwitch((v) => !v)}>
-          {useTwitch ? "Switch to SLOT1 video" : (fallback?.name ?? "Twitch player")}
+          {useTwitch ? "Switch to SLOT1 video" : (fallback?.name ?? (platform === "kick" ? "Kick player" : "Twitch player"))}
         </button>
       </div>
     </div>

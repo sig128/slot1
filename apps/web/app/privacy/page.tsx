@@ -112,6 +112,36 @@ function sections(cfg: LegalConfig): LegalSection[] {
             }
           />
 
+          <DataItem
+            title="Kick content on our pages"
+            what="Kick channels’ pages show Kick’s own player and chat, and pages show channel pictures and stream thumbnails from Kick’s servers."
+            why="So you can watch Kick streams on SLOT1."
+            keptLabel="Note"
+            kept={
+              <>
+                When these load, Kick receives your IP address and may set its own cookies. That is handled by Kick under the{" "}
+                <a href="https://kick.com/privacy-policy" target="_blank" rel="noreferrer noopener">
+                  Kick Privacy Policy
+                </a>
+                , not by us.
+              </>
+            }
+          />
+
+          <h3>If you sign in with Kick</h3>
+          <DataItem
+            title="Your Kick identity"
+            what="Your Kick user ID, username, profile picture address and, for creators, your channel’s name. Kick also sends your email address with your profile; SLOT1 doesn’t keep it. SLOT1 never sees your Kick password."
+            why="Signing you in and showing your channel on SLOT1."
+            kept="While your SLOT1 account exists."
+          />
+          <DataItem
+            title="Kick’s token"
+            what="The access token Kick gives us when you sign in. It is used once, to read who you are (and which channel is yours), then revoked at Kick and not kept."
+            why="Signing you in."
+            kept="Not kept."
+          />
+
           <h3>If you sign in with Twitch</h3>
           <DataItem
             title="Your Twitch identity"
@@ -216,13 +246,13 @@ function sections(cfg: LegalConfig): LegalSection[] {
           <h3>In SLOT1 chat</h3>
           <DataItem
             title="SLOT1 chat messages"
-            what="What you post in SLOT1 chat on a channel’s page, with your Twitch display name and the time. Everyone who opens that page can read it. Messages that start with “!slot1” or “@slot1” are answered by the SLOT1 bot in the same chat."
+            what="What you post in SLOT1 chat on a channel’s page, with your Twitch or Kick display name and the time. Everyone who opens that page can read it. Messages that start with “!slot1” or “@slot1” are answered by the SLOT1 bot in the same chat."
             why="Showing the chat to everyone on the page and answering bot commands. Counters keyed by your SLOT1 account, kept at most a minute, stop flooding and repeats."
             kept="24 hours, then deleted automatically. Sooner if a moderator deletes the message."
           />
           <DataItem
             title="Signing in to chat"
-            what="Signing in just to chat uses only your Twitch identity: user ID and display name. No permissions are asked for, no channel is connected, and Twitch’s token is used once and not kept."
+            what="Signing in just to chat uses only your Twitch or Kick identity: user ID and display name. No channel is connected, and the platform’s token is used once and not kept."
             why="Showing who wrote a message and letting moderators ban someone."
             kept="Your identity while your SLOT1 account exists. Your session as described above."
           />
@@ -313,6 +343,9 @@ function sections(cfg: LegalConfig): LegalSection[] {
             </li>
             <li>
               <strong>Twitch</strong> (Twitch Interactive, Inc.) for sign-in, chat, clips and stream status, when you use those features.
+            </li>
+            <li>
+              <strong>Kick</strong> (Kick Streaming Pty Ltd) for sign-in and Kick channels’ stream status, when you use those features.
             </li>
             <li>
               <strong>AI services, only when the operator switches them on.</strong>{" "}

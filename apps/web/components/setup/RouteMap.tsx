@@ -1,11 +1,15 @@
 /**
  * "How the video travels", drawn like an in-game map with GPS routes. Two lanes: a console
- * broadcasting straight to Twitch (SLOT1 shows Twitch's player and sees nothing), and a capture
- * card + OBS sending SLOT1 its own copy (analyzed, played live, forwarded). Large screens get the
- * map; smaller ones the same routes as a list. Original drawing: generic glyphs, no platform logos.
+ * broadcasting straight to Twitch (SLOT1 shows Twitch's player and sees nothing; a console can't
+ * stream to Kick at all), and a capture card + OBS sending SLOT1 its own copy (analyzed, played
+ * live, forwarded to Twitch and Kick alike, and YouTube). Large screens get the map; smaller ones
+ * the same routes as a list. Original drawing: generic glyphs, no platform logos; Twitch and Kick
+ * are told apart by their colors only.
  */
 
 const INK = "#140715";
+const TWITCH = "#a98be6";
+const KICK = "#7fe35a";
 
 function Label({
   x,
@@ -91,8 +95,9 @@ export function RouteMap() {
       <svg viewBox="0 0 1000 480" className="su-map-svg" role="img" aria-labelledby="su-map-title su-map-desc">
         <title id="su-map-title">How the video travels</title>
         <desc id="su-map-desc">
-          Console only: the PS5 broadcasts to Twitch, and SLOT1’s watch page shows Twitch’s own player, so SLOT1 sees nothing. With a capture card and OBS: your
-          video goes to SLOT1, which analyzes it, plays it live to viewers with the AI log, and can forward the same stream to Twitch, YouTube and Kick.
+          Console only: the PS5 broadcasts to Twitch (a console can’t stream to Kick), and SLOT1’s watch page shows Twitch’s own player, so SLOT1 sees nothing.
+          With a capture card and OBS: your video goes to SLOT1, which analyzes it, plays it live to viewers with the AI log, and forwards the same stream to
+          Twitch and Kick, and YouTube if you add it.
         </desc>
         {/* the map */}
         <rect width="1000" height="480" fill="#221f2a" />
@@ -126,13 +131,16 @@ export function RouteMap() {
         <Label x={290} y={108} size={16} tone="#d9d1c5">
           built-in broadcast
         </Label>
+        <Label x={290} y={148} size={14} tone="#a39b90">
+          Twitch or YouTube, never Kick
+        </Label>
         <Label x={660} y={108} size={16} tone="#d9d1c5">
           Twitch’s player, watch only
         </Label>
         <Blip x={110} y={120} fill="#d9d1c5">
           {Console}
         </Blip>
-        <Blip x={470} y={120} fill="#a98be6">
+        <Blip x={470} y={120} fill={TWITCH}>
           {Screen}
         </Blip>
         <Blip x={850} y={120} fill="#8a847b">
@@ -158,7 +166,8 @@ export function RouteMap() {
         <Route d="M137 330H440" color="#ffc94d" delay={150} />
         <Route d="M500 330H822" color="#ff4f87" delay={650} />
         <Route d="M470 300V150" color="#ffad72" delay={1050} />
-        <Route d="M470 360V398H380V418M470 398H560V418" color="#ffad72" delay={1150} />
+        <Route d="M470 360V418" color="#ffad72" delay={1050} />
+        <Route d="M470 394H330V418" color="#ffad72" delay={1250} />
         <Label x={290} y={316} size={16} tone="#ffe2a0">
           your video
         </Label>
@@ -168,8 +177,11 @@ export function RouteMap() {
         <Label x={484} y={232} anchor="start" size={16} tone="#ffd3b0">
           forwarded to Twitch
         </Label>
-        <Label x={584} y={393} anchor="start" size={16} tone="#ffd3b0">
-          forwarded, not re-encoded
+        <Label x={488} y={386} anchor="start" size={16} tone="#ffd3b0">
+          forwarded to Kick
+        </Label>
+        <Label x={400} y={384} size={14} tone="#ffd3b0">
+          or YouTube
         </Label>
         <Blip x={110} y={330} fill="#d9d1c5">
           {Screen}
@@ -191,11 +203,11 @@ export function RouteMap() {
         <Blip x={850} y={330} fill="#ff4f87">
           {Eye}
         </Blip>
-        <Blip x={380} y={440} fill="#d9d1c5">
+        <Blip x={330} y={440} fill="#d9d1c5">
           {Play}
         </Blip>
-        <Blip x={560} y={440} fill="#d9d1c5">
-          {Play}
+        <Blip x={470} y={440} fill={KICK}>
+          {Screen}
         </Blip>
         <Label x={110} y={380}>
           PC + OBS
@@ -206,11 +218,14 @@ export function RouteMap() {
         <Label x={850} y={380}>
           Viewers on SLOT1
         </Label>
-        <Label x={340} y={447} anchor="end">
+        <Label x={294} y={447} anchor="end">
           YouTube
         </Label>
-        <Label x={600} y={447} anchor="start">
+        <Label x={506} y={447} anchor="start">
           Kick
+        </Label>
+        <Label x={562} y={447} anchor="start" size={14} tone="#a39b90">
+          same stream, not re-encoded
         </Label>
       </svg>
 
@@ -223,7 +238,7 @@ export function RouteMap() {
           <ol className="su-stops" data-tone="faint">
             <li>
               <span className="su-stop-name">PS5</span>
-              <span className="su-stop-note">broadcasts with its built-in feature</span>
+              <span className="su-stop-note">broadcasts with its built-in feature, to Twitch or YouTube (a console can’t stream to Kick)</span>
             </li>
             <li>
               <span className="su-stop-name">Twitch</span>
@@ -246,7 +261,7 @@ export function RouteMap() {
             </li>
             <li>
               <span className="su-stop-name">SLOT1</span>
-              <span className="su-stop-note">analyzes it, and can forward it to Twitch, YouTube and Kick without re-encoding</span>
+              <span className="su-stop-note">analyzes it, and forwards it to Twitch and Kick, and YouTube if you add it, without re-encoding</span>
             </li>
             <li>
               <span className="su-stop-name">Viewers on SLOT1</span>
