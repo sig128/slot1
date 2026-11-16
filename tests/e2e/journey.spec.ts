@@ -42,7 +42,7 @@ test.describe("SLOT1 journey", () => {
 
   test("a pasted channel link opens watch-only with no analysis", async ({ page }) => {
     await page.goto("/watch/someone_else");
-    await expect(page.getByText("Not analyzed").first()).toBeVisible();
+    await expect(page.getByText("Learning on").first()).toBeVisible();
     // The official Twitch player where it fits (≥400×300), otherwise a plain link to Twitch.
     const embed = page.locator('iframe[src^="https://player.twitch.tv/"]');
     const fallback = page.getByRole("link", { name: /Watch on Twitch/ });

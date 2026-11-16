@@ -77,7 +77,7 @@ describe("Preview channels and follower counts", () => {
       const card = DirectoryResponse.parse(res.json()).channels.find((c) => c.login === "vader");
       expect(card).toMatchObject({ preview: true, displayName: "Vader", publicAnalysis: false, followers: 512345 });
       expect(card!.broadcast).toMatchObject({ state: "live", title: "SUNDAY STREAM - ROLEPLAY", category: "Grand Theft Auto V", viewerCount: 1234 });
-      expect(card!.analysis.state).toBe("no_source");
+      expect(card!.analysis).toMatchObject({ state: "ready", reason: "Learning is on for this stream." });
     }
   });
 

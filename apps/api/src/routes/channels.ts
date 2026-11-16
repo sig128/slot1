@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
-import type { BroadcastSnapshot, ChannelCard, DirectoryResponse, ResolveLinkResponse, WatchChannelResponse } from "@slot1/contracts";
+import { armedLearningStatus, type BroadcastSnapshot, type ChannelCard, type DirectoryResponse, type ResolveLinkResponse, type WatchChannelResponse } from "@slot1/contracts";
 import {
   getBroadcasterByLogin,
   getConnection,
@@ -32,18 +32,7 @@ import { badRequest, notFound } from "../lib/errors";
 import { getPreviewLogins, isFeatured, previewCards } from "../lib/preview-channels";
 import { reasonForRequest } from "../lib/setup-details";
 
-const NO_SOURCE_STATUS = (visionConfigured: boolean) => ({
-  state: "no_source" as const,
-  reason: "No authorized video source — chat and clips only",
-  sourceLabel: null,
-  lastReceivedFrameAt: null,
-  lastAnalyzedFrameAt: null,
-  lastResultAt: null,
-  measuredCadenceMs: null,
-  measuredDelayMs: null,
-  staleAfterMs: null,
-  visionConfigured,
-});
+const learningFor = (broadcast: BroadcastSnapshot["state"], visionConfigured: boolean) => armedLearningStatus(broadcast, visionConfigured);
 
 export async function channelCard(
   ctx: ServerContext,
@@ -60,7 +49,7 @@ export async function channelCard(
     // SLOT1-only channels (the demo) and Kick channels have no Twitch channel: empty means "no Twitch link".
     twitchUrl: b.kind === "twitch" ? channelUrl(b.login) : "",
     broadcast: snapshot,
-    analysis: session ? analysisStatus(session, ctx.config) : NO_SOURCE_STATUS(ctx.config.capabilities.vision.available),
+    analysis: session ? analysisStatus(session, ctx.config) : learningFor(snapshot.state, ctx.config.capabilities.vision.available),
     publicAnalysis,
     ...(b.kind === "kick" ? { platform: "kick" as const } : b.kind === "twitch" ? { platform: "twitch" as const } : {}),
   };
@@ -76,8 +65,8 @@ export const channelRoutes =
   async (app) => {
     /**
      * ON AIR directory: creators who connected AND opted in, plus the real Twitch channels an admin
-     * features under Admin → Featured channels, marked `preview` (watch-only: not on SLOT1, nothing
-     * analyzed). Never padded with made-up channels.
+     * features under Admin → Featured channels, marked `preview`. Learning is on for every channel;
+     * a channel is offline only while that channel is offline. Never padded with made-up channels.
      */
     app.get("/api/channels", { config: { rateLimit: { max: 120, timeWindow: "1 minute" } } }, async (req): Promise<DirectoryResponse> => {
       const { q } = z.object({ q: z.string().trim().max(80).optional() }).parse(req.query);
@@ -222,7 +211,7 @@ export const channelRoutes =
             avatarUrl: avatar,
             twitchUrl: channelUrl(login),
             broadcast: snapshot,
-            analysis: NO_SOURCE_STATUS(ctx.config.capabilities.vision.available),
+            analysis: learningFor(snapshot.state, ctx.config.capabilities.vision.available),
             publicAnalysis: false,
             followers,
             ...(featured ? { preview: true } : {}),

@@ -65,7 +65,7 @@ interface Props {
   notice?: React.ReactNode;
   /** Public channel that hasn't connected SLOT1: Twitch player only, no analysis UI. */
   watchOnly?: boolean;
-  /** Admin → Featured channels: a watch-only channel shown like any channel (no "Not analyzed" chip). */
+  /** Admin → Featured channels: shown like any channel. Learning is on either way. */
   featured?: boolean;
   /** Design demo only: fixtures, no network. */
   fixture?: { details: Record<string, ObservationDetail>; answer: (q: string) => AskResponse };
@@ -280,12 +280,12 @@ export function SessionWorkspace(p: Props) {
                 <span className="text-[0.78rem] text-ivory-3">Broadcast</span>
                 <BroadcastChip state={broadcastState} platform={p.identity.kickUrl ? "kick" : "twitch"} />
               </div>
-              {!p.featured && (
-                <div className="flex items-center gap-2">
-                  <span className="text-[0.78rem] text-ivory-3">Analysis</span>
-                  <span className="chip chip-muted">Not analyzed</span>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <span className="text-[0.78rem] text-ivory-3">Analysis</span>
+                <span className="chip chip-vision" title={broadcastState === "offline" ? "This stream is offline. Learning stays on for when it goes live." : "Learning is on for this stream."}>
+                  Learning on
+                </span>
+              </div>
             </div>
           ) : (
             <StatusPair broadcast={broadcastState} analysis={status} platform={p.identity.twitchUrl || p.fixture ? "twitch" : "slot1"} />

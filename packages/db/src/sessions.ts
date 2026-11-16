@@ -70,7 +70,7 @@ export async function upsertTwitchBroadcastSession(
 ): Promise<StreamSessionRow> {
   const { rows } = await db.query<StreamSessionRow>(
     `INSERT INTO stream_sessions (broadcaster_id, kind, twitch_stream_id, started_at, title, category, visibility, broadcast_state, analysis_state, analysis_reason)
-     VALUES ($1, 'twitch_broadcast', $2, $3, $4, $5, $6, 'live', 'no_source', 'No authorized video source — chat and clips only')
+     VALUES ($1, 'twitch_broadcast', $2, $3, $4, $5, $6, 'live', 'ready', 'Learning is on for this stream.')
      ON CONFLICT (broadcaster_id, twitch_stream_id) WHERE twitch_stream_id IS NOT NULL
        DO UPDATE SET broadcast_state = 'live', title = COALESCE(EXCLUDED.title, stream_sessions.title),
                      category = COALESCE(EXCLUDED.category, stream_sessions.category)

@@ -121,6 +121,26 @@ export const AnalysisStatus = z.object({
 });
 export type AnalysisStatus = z.infer<typeof AnalysisStatus>;
 
+/**
+ * Learning is on for every stream without anyone sending video or flipping a switch.
+ * A stream is offline only while that stream is offline; the others stay on.
+ */
+export function armedLearningStatus(broadcast: BroadcastState, visionConfigured: boolean): AnalysisStatus {
+  const offline = broadcast === "offline";
+  return {
+    state: "ready",
+    reason: offline ? "This stream is offline. Learning stays on for when it goes live." : "Learning is on for this stream.",
+    sourceLabel: null,
+    lastReceivedFrameAt: null,
+    lastAnalyzedFrameAt: null,
+    lastResultAt: null,
+    measuredCadenceMs: null,
+    measuredDelayMs: null,
+    staleAfterMs: null,
+    visionConfigured,
+  };
+}
+
 export const ChannelCard = z.object({
   broadcasterId: z.string(),
   login: z.string(),

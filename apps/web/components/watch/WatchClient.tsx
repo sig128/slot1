@@ -96,34 +96,32 @@ export function WatchClient({
     <TwitchPlayer login={c.login} displayName={c.displayName} parents={embedParents} thumbnailUrl={c.broadcast.thumbnailUrl} twitchUrl={c.twitchUrl} />
   );
 
-  const empty = featured ? (
+  const streamOffline = c.broadcast.state === "offline";
+  const empty = featured || !watch.authorized ? (
     <div className="space-y-2 text-sm text-ivory-2">
-      <p className="font-display text-xl font-bold text-ivory">Live log</p>
-      <p>Nothing logged for this stream yet.</p>
-    </div>
-  ) : !watch.authorized ? (
-    <div className="space-y-3 text-sm text-ivory-2">
-      <p className="font-display text-xl font-bold text-ivory">Watch-only</p>
-      <p>{c.displayName} hasn’t connected SLOT1, so nothing on this page is analyzed or recorded. You’re watching Twitch’s own player.</p>
-      <Link href="/setup#modes" className="underline hover:text-ivory">
-        What SLOT1 needs to analyze a channel
-      </Link>
+      <p className="font-display text-xl font-bold text-ivory">{streamOffline ? "Offline" : "Learning on"}</p>
+      <p>
+        {streamOffline
+          ? "This stream is offline. Learning stays on for when it goes live."
+          : "Learning is on for this stream. Nothing has been logged yet."}
+      </p>
     </div>
   ) : !session ? (
     <div className="space-y-2 text-sm text-ivory-2">
       <p className="font-display text-xl font-bold text-ivory">No session yet</p>
       <p>
-        {c.broadcast.state === "live"
-          ? "The broadcast is live, but this channel's analysis isn't public or hasn't started."
-          : "When this channel goes live, its session log will appear here."}
+        {streamOffline
+          ? "This stream is offline. Learning stays on for when it goes live."
+          : "Learning is on for this stream. The log fills when there is something to cite."}
       </p>
     </div>
   ) : session.analysis.state === "no_source" ? (
     <div className="space-y-2 text-sm text-ivory-2">
-      <p className="font-display text-xl font-bold text-ivory">SLOT1 can’t see this broadcast</p>
+      <p className="font-display text-xl font-bold text-ivory">{streamOffline ? "Offline" : "Learning on"}</p>
       <p>
-        The {platformName} player and chat are platform data, not gameplay video. Nothing is analyzed until the creator connects an authorized video
-        source or analyzes a clip.{onKick ? "" : " Chat commands and clips still work."}
+        {streamOffline
+          ? "This stream is offline. Learning stays on for when it goes live."
+          : `Learning is on for this stream. The ${platformName} player is up${onKick ? "" : ", and chat commands and clips still work"}. The log fills when there is something to cite.`}
       </p>
     </div>
   ) : session.analysis.state === "stale" ? (

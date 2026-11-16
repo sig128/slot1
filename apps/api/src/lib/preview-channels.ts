@@ -1,12 +1,13 @@
-import { PREVIEW_CHANNELS_MAX, type AnalysisStatus, type ChannelCard } from "@slot1/contracts";
+import { armedLearningStatus, PREVIEW_CHANNELS_MAX, type ChannelCard } from "@slot1/contracts";
 import { followerTotals, kickChannels, withAppToken, type KickChannel, type ServerContext } from "@slot1/services";
 import { channelUrl, parseTwitchUrl, sizeThumbnail } from "@slot1/twitch";
 import { badRequest } from "./errors";
 
 /**
  * Admin → Featured channels: Twitch and Kick channels shown on the home page (Live now and On air)
- * for everyone, like any other channel. They haven't connected SLOT1, so they carry `preview`: their
- * platform's own player, nothing analyzed or recorded, no bot in their chat. Kept in Redis, so a
+ * for everyone, like any other channel. They carry `preview`: their platform's own player. Learning
+ * is on for each of them without anyone sending the stream; a channel shows offline only while that
+ * channel is offline. Kept in Redis, so a
  * change shows on the next page load without a restart.
  *
  * Entries are Twitch logins ("vader") or Kick slugs as "kick:<slug>". On the site a Kick channel's
@@ -85,19 +86,8 @@ export async function setPreviewLogins(ctx: ServerContext, logins: string[]): Pr
 let cache: { key: string; at: number; cards: ChannelCard[] } | null = null;
 const TTL_MS = 30_000;
 
-function notAnalyzed(ctx: ServerContext): AnalysisStatus {
-  return {
-    state: "no_source",
-    reason: "SLOT1 isn’t reading this stream",
-    sourceLabel: null,
-    lastReceivedFrameAt: null,
-    lastAnalyzedFrameAt: null,
-    lastResultAt: null,
-    measuredCadenceMs: null,
-    measuredDelayMs: null,
-    staleAfterMs: null,
-    visionConfigured: ctx.config.capabilities.vision.available,
-  };
+function learningStatus(ctx: ServerContext, broadcast: "live" | "offline" | "unknown" | "error") {
+  return armedLearningStatus(broadcast, ctx.config.capabilities.vision.available);
 }
 
 async function twitchCards(ctx: ServerContext, logins: string[], now: string): Promise<Map<string, ChannelCard>> {
@@ -128,7 +118,7 @@ async function twitchCards(ctx: ServerContext, logins: string[], now: string): P
         startedAt: s?.started_at ?? null,
         lastRefreshedAt: now,
       },
-      analysis: notAnalyzed(ctx),
+      analysis: learningStatus(ctx, s ? "live" : "offline"),
       publicAnalysis: false,
       followers: followers.get(u.id) ?? null,
       preview: true,
@@ -167,7 +157,7 @@ async function kickCards(ctx: ServerContext, slugs: string[], now: string): Prom
         startedAt: k?.startedAt ?? null,
         lastRefreshedAt: k ? now : null,
       },
-      analysis: notAnalyzed(ctx),
+      analysis: learningStatus(ctx, k ? (k.live ? "live" : "offline") : failed ? "error" : known ? "offline" : "unknown"),
       publicAnalysis: false,
       followers: null,
       subscribers: k?.subscribers ?? null,

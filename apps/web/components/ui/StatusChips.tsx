@@ -54,6 +54,7 @@ export function AnalysisChip({ status }: { status: AnalysisStatus }) {
   if (s === "replay") return <span className="chip chip-replay" title={status.reason ?? undefined}>Replay</span>;
   if (s === "error") return <span className="chip chip-error" title={status.reason ?? undefined}>Analysis error</span>;
   if (s === "no_source") return <span className="chip chip-muted" title={status.reason ?? undefined}>Chat & clips only</span>;
+  if (s === "ready" && status.reason?.startsWith("Learning")) return <span className="chip chip-vision" title={status.reason}>Learning on</span>;
   if (s === "analyzing_clip") return <span className="chip chip-vision" title={status.reason ?? undefined}>Analyzing clip</span>;
   if (s === "delayed") return <span className="chip chip-vision" title={status.reason ?? undefined}>Delayed</span>;
   return <span className="chip chip-muted" title={status.reason ?? undefined}>{ANALYSIS_STATE_LABEL[s]}</span>;

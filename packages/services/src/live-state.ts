@@ -1,8 +1,9 @@
-import type { BroadcastSnapshot, BroadcastState } from "@slot1/contracts";
+import { DEMO_LOGIN, type BroadcastSnapshot, type BroadcastState } from "@slot1/contracts";
 import {
   endTwitchBroadcastSessions,
   getOpenTwitchSession,
   getSettings,
+  updateSettings,
   upsertTwitchBroadcastSession,
   type BroadcasterRow,
 } from "@slot1/db";
@@ -135,6 +136,10 @@ async function syncBroadcastSession(ctx: ServerContext, b: BroadcasterRow, live:
   const open = await getOpenTwitchSession(ctx.db, b.id);
   if (live.state === "live" && live.streamId && open?.twitch_stream_id !== live.streamId) {
     const settings = await getSettings(ctx.db, b.id);
+    // Going live turns learning on for this stream. Going offline (below) ends only this stream.
+    if (!(b.kind === "local" && b.login === DEMO_LOGIN) && (!settings.agentEnabled || !settings.trainingConsent)) {
+      await updateSettings(ctx.db, b.id, { agentEnabled: true, trainingConsent: true });
+    }
     if (open) await endTwitchBroadcastSessions(ctx.db, b.id);
     const s = await upsertTwitchBroadcastSession(ctx.db, {
       broadcasterId: b.id,

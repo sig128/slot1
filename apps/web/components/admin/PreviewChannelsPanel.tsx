@@ -9,7 +9,7 @@ const names = (l: string[]) => (l.length <= 1 ? l.join("") : `${l.slice(0, -1).j
 
 /**
  * Admin → Featured channels: Twitch and Kick channels shown on the home page for everyone (Live now and On
- * air) like any channel, with Twitch's player and chat. Nothing is analyzed or recorded.
+ * air) like any channel. Learning is on for each one; a channel shows offline only while it is offline.
  */
 export function PreviewChannelsPanel() {
   const id = useId();
@@ -49,8 +49,7 @@ export function PreviewChannelsPanel() {
   return (
     <div className="max-w-[44rem]">
       <p className="text-[0.95rem] text-ivory-2">
-        Twitch and Kick channels to show on the home page. When they’re live they appear in Live now and On air for everyone, with their platform’s player, Twitch chat for Twitch channels, and SLOT1
-        chat for all of them.
+        Twitch and Kick channels to show on the home page. Learning is on for each one without anyone sending the stream. A channel shows offline only while that channel is offline. When it’s live it appears in Live now and On air, with its platform’s player and SLOT1 chat.
       </p>
       <form
         className="mt-5"
