@@ -58,6 +58,35 @@ export async function createClipSource(db: Queryable, broadcasterId: string, ses
   return rows[0]!;
 }
 
+/** The public-preview watcher reuses one clip source per channel. Not a publishing ingest. */
+export const PREVIEW_SOURCE_NAME = "Website stream";
+
+export async function ensurePreviewSource(db: Queryable, broadcasterId: string, sessionId: string): Promise<MediaSourceRow> {
+  const { rows } = await db.query<MediaSourceRow>(
+    `SELECT ${M_COLS} FROM media_sources
+     WHERE broadcaster_id = $1 AND name = $2 AND status <> 'deleted'
+     ORDER BY created_at DESC LIMIT 1`,
+    [broadcasterId, PREVIEW_SOURCE_NAME],
+  );
+  const existing = rows[0];
+  if (existing) {
+    if (existing.session_id !== sessionId) {
+      const { rows: updated } = await db.query<MediaSourceRow>(
+        `UPDATE media_sources SET session_id = $2, status = 'ready', updated_at = now() WHERE id = $1 RETURNING ${M_COLS}`,
+        [existing.id, sessionId],
+      );
+      return updated[0]!;
+    }
+    return existing;
+  }
+  const { rows: inserted } = await db.query<MediaSourceRow>(
+    `INSERT INTO media_sources (broadcaster_id, session_id, kind, label, name, status)
+     VALUES ($1, $2, 'twitch_clip', 'clip', $3, 'ready') RETURNING ${M_COLS}`,
+    [broadcasterId, sessionId, PREVIEW_SOURCE_NAME],
+  );
+  return inserted[0]!;
+}
+
 export async function createIngestSource(
   db: Queryable,
   input: { broadcasterId: string; name: string; label: "live" | "test"; publishPath: string; keyHash: Buffer; keyHint: string },

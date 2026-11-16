@@ -103,7 +103,9 @@ export function WatchClient({
       <p>
         {streamOffline
           ? "This stream is offline. Learning stays on for when it goes live."
-          : "Learning is on for this stream. Nothing has been logged yet."}
+          : c.analysis.lastReceivedFrameAt
+            ? (c.analysis.reason ?? "Watching this stream and learning from it.")
+            : "Learning is on for this stream. Nothing has been logged yet."}
       </p>
     </div>
   ) : !session ? (

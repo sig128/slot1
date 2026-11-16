@@ -254,6 +254,9 @@ export const channelRoutes =
         Boolean(visibleSession) &&
         (owner || settings.viewerQuestions === "anyone" || (settings.viewerQuestions === "signed_in" && viewer.userId !== null));
       const card = await channelCard(ctx, b, snaps.get(b.id)!, visibleSession, settings.publicAnalysis);
+      // A channel an admin added to the site keeps its platform player. Its session, when public,
+      // is the one the watcher is learning from.
+      if (await isFeatured(ctx, b.login)) card.preview = true;
       if (b.twitch_user_id) card.followers = (await followerTotals(ctx, [b.twitch_user_id])).get(b.twitch_user_id) ?? null;
       return {
         channel: card,

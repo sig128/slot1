@@ -14,3 +14,5 @@ export * from "./ai-view";
 export * from "./demo";
 export * from "./clip-ai";
 export * from "./kick";
+export * from "./preview-list";
+export * from "./added-watch";

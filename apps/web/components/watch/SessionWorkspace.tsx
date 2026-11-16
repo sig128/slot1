@@ -16,7 +16,7 @@ import {
 } from "@slot1/contracts";
 import { chatEmbedUrl } from "@slot1/twitch/url";
 import { ClipperActions } from "@/components/clipper/ClipperActions";
-import { BroadcastChip, SourceLabelChip, StatusPair } from "@/components/ui/StatusChips";
+import { AnalysisChip, BroadcastChip, SourceLabelChip, StatusPair } from "@/components/ui/StatusChips";
 import { api, ApiError, newIdempotencyKey } from "@/lib/api";
 import { pct } from "@/lib/format";
 import { AiViewPanel } from "./AiView";
@@ -121,7 +121,7 @@ export function SessionWorkspace(p: Props) {
     ["ask", "Ask SLOT1"],
     ["session", "Session"],
   ];
-  const [tab, setTab] = useState(p.watchOnly && chatAvailable ? "chat" : "log");
+  const [tab, setTab] = useState(p.watchOnly && chatAvailable && !p.session ? "chat" : "log");
   const [focusSlot1, setFocusSlot1] = useState(false);
   const railRef = useRef<HTMLElement>(null);
 
@@ -282,9 +282,13 @@ export function SessionWorkspace(p: Props) {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[0.78rem] text-ivory-3">Analysis</span>
-                <span className="chip chip-vision" title={broadcastState === "offline" ? "This stream is offline. Learning stays on for when it goes live." : "Learning is on for this stream."}>
-                  Learning on
-                </span>
+                {p.session ? (
+                  <AnalysisChip status={status} />
+                ) : (
+                  <span className="chip chip-vision" title={broadcastState === "offline" ? "This stream is offline. Learning stays on for when it goes live." : "Learning is on for this stream."}>
+                    Learning on
+                  </span>
+                )}
               </div>
             </div>
           ) : (
