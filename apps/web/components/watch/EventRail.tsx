@@ -10,17 +10,28 @@ import {
   type Observation,
   type SourceRef,
 } from "@slot1/contracts";
-import { clockTime, clockTimeSeconds } from "@/lib/format";
+import { clockTimeSeconds } from "@/lib/format";
 import { EvidenceGlyph } from "./EvidenceGlyph";
 import type { ConnectionState } from "./useSessionStream";
 
 export type RailMode = "live" | "replay";
 
-export function railTime(o: Observation, mode: RailMode, sources: Map<string, SourceRef>): string {
+/** A clip is a short cut: an offset past an hour isn't a place in one, so it isn't shown. */
+const CLIP_OFFSET_MAX_MS = 60 * 60_000;
+
+/**
+ * The left column of an entry. Live, it's the clock time SLOT1 logged it, so the column reads
+ * top to bottom like the log; an entry read from a clip carries a small tag with its place in
+ * that clip. In a recording or an upload it's the place in the video.
+ */
+export function railStamp(o: Observation, mode: RailMode, sources: Map<string, SourceRef>): { time: string; tag: string | null } {
   const src = o.sourceId ? sources.get(o.sourceId) : undefined;
-  if (mode === "replay" || src?.kind === "upload") return formatMediaTime(o.mediaStartMs);
-  if (src?.kind === "twitch_clip") return `clip ${formatMediaTime(o.mediaStartMs)}`;
-  return clockTime(o.receivedAt);
+  if (mode === "replay" || src?.kind === "upload") return { time: formatMediaTime(o.mediaStartMs), tag: null };
+  if (src?.kind === "twitch_clip") {
+    const at = o.mediaStartMs !== null && o.mediaStartMs >= 0 && o.mediaStartMs < CLIP_OFFSET_MAX_MS ? formatMediaTime(o.mediaStartMs) : null;
+    return { time: clockTimeSeconds(o.receivedAt), tag: at ? `Clip ${at}` : "Clip" };
+  }
+  return { time: clockTimeSeconds(o.receivedAt), tag: null };
 }
 
 const HIDE_IN_RAIL = new Set(["media_facts", "session_coverage"]);
@@ -157,29 +168,47 @@ export function EventRail({ mode, items, sources, status, showHeader, connection
             onScroll={onScroll}
             onKeyDown={onKeyDown}
             aria-label="SLOT1 observations"
-            className="h-full max-h-[min(70vh,720px)] overflow-y-auto overscroll-contain py-1 lg:max-h-none"
+            className="grid h-full max-h-[min(70vh,720px)] grid-cols-[minmax(4.5rem,max-content)_minmax(0,1fr)] content-start overflow-y-auto overscroll-contain lg:max-h-none"
           >
             {items.map((o) => {
               const cls = evidenceClass(o);
               const selected = o.id === selectedId;
               const replayable = Boolean(onReplay) && o.mediaStartMs !== null && o.origin !== "twitch" && o.reviewStatus !== "rejected";
+              const stamp = railStamp(o, mode, srcMap);
               return (
-                <li key={o.id} data-observation-id={o.id} className={`relative ${freshIds.has(o.id) ? "rail-enter" : ""}`}>
+                // Each row shares the list's two columns (subgrid), so every time lines up and the
+                // column is as wide as its longest entry: nothing can run into the text.
+                <li
+                  key={o.id}
+                  data-observation-id={o.id}
+                  className={`relative col-span-full grid grid-cols-subgrid border-b hairline last:border-b-0 ${freshIds.has(o.id) ? "rail-enter" : ""}`}
+                >
                   <button
                     type="button"
                     data-rail-item
                     aria-pressed={selected}
                     onClick={() => onSelect(o.id)}
-                    className={`grid w-full grid-cols-[4.1rem_1fr] gap-3 px-4 py-2.5 text-left transition-colors ${
+                    className={`col-span-full grid grid-cols-subgrid gap-x-3.5 px-4 py-3 text-left transition-colors ${
                       selected ? "select-bar" : "hover:bg-graphite-700"
                     } ${o.reviewStatus === "rejected" ? "opacity-50" : ""}`}
                   >
-                    <span className={`tnum pt-[1px] text-[0.82rem] ${selected ? "text-graphite/70" : "text-apricot"}`} suppressHydrationWarning>
-                      {railTime(o, mode, srcMap)}
+                    <span className="flex flex-col items-start gap-1.5 pt-[3px]">
+                      <span className={`tnum whitespace-nowrap text-[0.8rem] leading-none ${selected ? "text-graphite/75" : "text-apricot"}`} suppressHydrationWarning>
+                        {stamp.time}
+                      </span>
+                      {stamp.tag && (
+                        <span
+                          className={`tnum whitespace-nowrap rounded-[3px] border px-1 py-[2px] text-[0.68rem] leading-none ${
+                            selected ? "border-graphite/30 text-graphite/75" : "border-line-strong text-ivory-3"
+                          }`}
+                        >
+                          {stamp.tag}
+                        </span>
+                      )}
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-[0.93rem] leading-snug">{o.description}</span>
-                      <span className={`mt-1 flex items-center gap-1.5 text-[0.74rem] ${selected ? "text-graphite/70" : "text-ivory-3"} ${replayable ? "pr-20" : ""}`}>
+                      <span className="block text-pretty text-[0.94rem] leading-[1.42]">{o.description}</span>
+                      <span className={`mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.74rem] ${selected ? "text-graphite/75" : "text-ivory-3"} ${replayable ? "pr-20" : ""}`}>
                         <EvidenceGlyph cls={cls} />
                         {EVIDENCE_CLASS_LABEL[cls]}
                         {o.reviewStatus === "corrected" && <span>, corrected by creator</span>}
