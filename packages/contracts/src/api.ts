@@ -141,6 +141,28 @@ export function armedLearningStatus(broadcast: BroadcastState, visionConfigured:
   };
 }
 
+/** The reason every watch-only channel carries; the status chip keys off its first words. */
+export const WATCH_ONLY_REASON = "Watch only: SLOT1 doesn’t get this stream’s video, so nothing is analyzed or learned from it.";
+
+/**
+ * A channel that hasn't sent SLOT1 its video: Admin → Featured channels and any channel opened from a
+ * pasted link. Its platform's own player, nothing analyzed, recorded or learned from.
+ */
+export function watchOnlyStatus(visionConfigured: boolean): AnalysisStatus {
+  return {
+    state: "no_source",
+    reason: WATCH_ONLY_REASON,
+    sourceLabel: null,
+    lastReceivedFrameAt: null,
+    lastAnalyzedFrameAt: null,
+    lastResultAt: null,
+    measuredCadenceMs: null,
+    measuredDelayMs: null,
+    staleAfterMs: null,
+    visionConfigured,
+  };
+}
+
 export const ChannelCard = z.object({
   broadcasterId: z.string(),
   login: z.string(),

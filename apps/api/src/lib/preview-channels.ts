@@ -1,14 +1,13 @@
-import { armedLearningStatus, PREVIEW_CHANNELS_MAX, type ChannelCard } from "@slot1/contracts";
+import { PREVIEW_CHANNELS_MAX, watchOnlyStatus, type ChannelCard } from "@slot1/contracts";
 import { followerTotals, kickChannels, withAppToken, type KickChannel, type ServerContext } from "@slot1/services";
 import { channelUrl, parseTwitchUrl, sizeThumbnail } from "@slot1/twitch";
 import { badRequest } from "./errors";
 
 /**
  * Admin → Featured channels: Twitch and Kick channels shown on the home page (Live now and On air)
- * for everyone, like any other channel. They carry `preview`: their platform's own player. Learning
- * is on for each of them without anyone sending the stream; a channel shows offline only while that
- * channel is offline. Kept in Redis, so a
- * change shows on the next page load without a restart.
+ * for everyone, like any other channel. They haven't connected SLOT1, so they carry `preview` and
+ * are watch-only: their platform's own player, nothing analyzed, recorded or learned from, no bot in
+ * their chat. Kept in Redis, so a change shows on the next page load without a restart.
  *
  * Entries are Twitch logins ("vader") or Kick slugs as "kick:<slug>". On the site a Kick channel's
  * login is "kick-<slug>": Twitch logins never contain "-", so the two can't collide.
@@ -19,7 +18,16 @@ const KICK_RE = /^kick:[a-z0-9_-]{1,25}$/;
 const entryOk = (v: string) => TWITCH_RE.test(v) || KICK_RE.test(v);
 
 /** The list until an admin saves one (saving an empty list clears it for good). */
-export const DEFAULT_PREVIEW_LOGINS: readonly string[] = ["vader", "darkviperau", "missmikkaa", "darkzelk", "kick:lazenxd", "kick:manny_xers", "kick:rraenee"];
+export const DEFAULT_PREVIEW_LOGINS: readonly string[] = [
+  "vader",
+  "darkviperau",
+  "missmikkaa",
+  "darkzelk",
+  "grevethebarber",
+  "kick:lazenxd",
+  "kick:manny_xers",
+  "kick:rraenee",
+];
 
 /** The site login for an entry: "vader" stays, "kick:slug" becomes "kick-slug". */
 export const featuredLogin = (entry: string) => (entry.startsWith("kick:") ? `kick-${entry.slice(5)}` : entry);
@@ -86,9 +94,7 @@ export async function setPreviewLogins(ctx: ServerContext, logins: string[]): Pr
 let cache: { key: string; at: number; cards: ChannelCard[] } | null = null;
 const TTL_MS = 30_000;
 
-function learningStatus(ctx: ServerContext, broadcast: "live" | "offline" | "unknown" | "error") {
-  return armedLearningStatus(broadcast, ctx.config.capabilities.vision.available);
-}
+const watchOnly = (ctx: ServerContext) => watchOnlyStatus(ctx.config.capabilities.vision.available);
 
 async function twitchCards(ctx: ServerContext, logins: string[], now: string): Promise<Map<string, ChannelCard>> {
   const out = new Map<string, ChannelCard>();
@@ -118,7 +124,7 @@ async function twitchCards(ctx: ServerContext, logins: string[], now: string): P
         startedAt: s?.started_at ?? null,
         lastRefreshedAt: now,
       },
-      analysis: learningStatus(ctx, s ? "live" : "offline"),
+      analysis: watchOnly(ctx),
       publicAnalysis: false,
       followers: followers.get(u.id) ?? null,
       preview: true,
@@ -157,7 +163,7 @@ async function kickCards(ctx: ServerContext, slugs: string[], now: string): Prom
         startedAt: k?.startedAt ?? null,
         lastRefreshedAt: k ? now : null,
       },
-      analysis: learningStatus(ctx, k ? (k.live ? "live" : "offline") : failed ? "error" : known ? "offline" : "unknown"),
+      analysis: watchOnly(ctx),
       publicAnalysis: false,
       followers: null,
       subscribers: k?.subscribers ?? null,

@@ -98,13 +98,15 @@ export function WatchClient({
 
   const streamOffline = c.broadcast.state === "offline";
   const empty = featured || !watch.authorized ? (
-    <div className="space-y-2 text-sm text-ivory-2">
-      <p className="font-display text-xl font-bold text-ivory">{streamOffline ? "Offline" : "Learning on"}</p>
+    <div className="space-y-3 text-sm text-ivory-2">
+      <p className="font-display text-xl font-bold text-ivory">Watch only</p>
       <p>
-        {streamOffline
-          ? "This stream is offline. Learning stays on for when it goes live."
-          : "Learning is on for this stream. Nothing has been logged yet."}
+        {c.displayName} hasn’t connected SLOT1, so nothing on this page is analyzed, recorded or learned from. You’re watching {platformName}’s own
+        player.
       </p>
+      <Link href="/setup#modes" className="underline hover:text-ivory">
+        What SLOT1 needs to analyze a channel
+      </Link>
     </div>
   ) : !session ? (
     <div className="space-y-2 text-sm text-ivory-2">

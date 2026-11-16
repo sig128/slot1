@@ -1,6 +1,14 @@
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
-import { armedLearningStatus, type BroadcastSnapshot, type ChannelCard, type DirectoryResponse, type ResolveLinkResponse, type WatchChannelResponse } from "@slot1/contracts";
+import {
+  armedLearningStatus,
+  watchOnlyStatus,
+  type BroadcastSnapshot,
+  type ChannelCard,
+  type DirectoryResponse,
+  type ResolveLinkResponse,
+  type WatchChannelResponse,
+} from "@slot1/contracts";
 import {
   getBroadcasterByLogin,
   getConnection,
@@ -64,9 +72,9 @@ export const channelRoutes =
   (ctx: ServerContext): FastifyPluginAsync =>
   async (app) => {
     /**
-     * ON AIR directory: creators who connected AND opted in, plus the real Twitch channels an admin
-     * features under Admin → Featured channels, marked `preview`. Learning is on for every channel;
-     * a channel is offline only while that channel is offline. Never padded with made-up channels.
+     * ON AIR directory: creators who connected AND opted in, plus the real Twitch and Kick channels an
+     * admin features under Admin → Featured channels, marked `preview` (watch-only: not on SLOT1,
+     * nothing analyzed or learned from). Never padded with made-up channels.
      */
     app.get("/api/channels", { config: { rateLimit: { max: 120, timeWindow: "1 minute" } } }, async (req): Promise<DirectoryResponse> => {
       const { q } = z.object({ q: z.string().trim().max(80).optional() }).parse(req.query);
@@ -211,7 +219,8 @@ export const channelRoutes =
             avatarUrl: avatar,
             twitchUrl: channelUrl(login),
             broadcast: snapshot,
-            analysis: learningFor(snapshot.state, ctx.config.capabilities.vision.available),
+            // Not on SLOT1 (featured or a pasted link): SLOT1 never gets this video.
+            analysis: watchOnlyStatus(ctx.config.capabilities.vision.available),
             publicAnalysis: false,
             followers,
             ...(featured ? { preview: true } : {}),
