@@ -57,13 +57,13 @@ export function HomeLanding() {
             The GTA AI we’re building together
           </h2>
           <p className="mt-6 max-w-[56ch] text-[1.1rem] text-ivory-2">
-            SLOT1 is training its own GTA AI. When creators opt in, frames from their streams teach it the missions, places, vehicles and moments of the
+            SLOT1 is training its own GTA AI. Frames from every live stream sent here teach it the missions, places, vehicles and moments of the
             game.
           </p>
           <ul className="mt-6 max-w-[56ch] space-y-3 text-ivory-2">
             <li>
-              <strong className="font-display text-[1.12rem] font-semibold text-ivory">Opt-in only.</strong> Nothing is used without the creator’s OK. Turn
-              it on in Studio, under GTA model.
+              <strong className="font-display text-[1.12rem] font-semibold text-ivory">On for every stream.</strong> Live analysis and learning are
+              connected by default. Turn learning off in Studio, under GTA model, if a channel should be left out.
             </li>
             <li>
               <strong className="font-display text-[1.12rem] font-semibold text-ivory">Change your mind any time.</strong> Switching it off stops
@@ -99,7 +99,7 @@ export function HomeLanding() {
                   <p className="font-display text-[1.3rem] font-bold leading-tight text-ivory">
                     SLOT1’s own GTA model <span className="ml-1 align-middle text-[0.85rem] font-semibold text-gold">{STAGE_LABEL.active}</span>
                   </p>
-                  <p className="mt-1 text-[0.95rem] text-ivory-2">Learning from opted-in gameplay. It isn’t used for the log yet.</p>
+                  <p className="mt-1 text-[0.95rem] text-ivory-2">Learning from live gameplay sent to SLOT1. It isn’t used for the log yet.</p>
                 </div>
               </li>
               <li className="flex gap-3.5">

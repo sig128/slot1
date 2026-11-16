@@ -3,8 +3,8 @@ import { GTA_BOX_LABEL, GTA_EVENT_LABEL, GTA_SCENE_LABEL, GTA_BOXES, GTA_EVENTS,
 
 /**
  * The Learning page: everything SLOT1's AI has watched, caught and learned, combined across every
- * stream sent to SLOT1. Only public streams count as "watched", and only channels that switched on
- * training count as "learned from". Every number comes from the database; nothing is estimated.
+ * stream sent to SLOT1. Only public streams count as "watched". Every channel is learned from
+ * unless the creator turns that off. Every number comes from the database; nothing is estimated.
  */
 
 /** Labeled examples at which a skill's bar fills up while no model has been tested on it. */
@@ -14,7 +14,7 @@ export const LearningSkill = z.object({
   group: z.enum(["event", "scene", "box"]),
   key: z.string(),
   label: z.string(),
-  /** Frames people labeled with it, from channels that let SLOT1 learn from their streams. */
+  /** Frames people labeled with it, from channels that still have learning on. */
   examples: z.number().int().nonnegative(),
   /** The active model's F1 for it on its own test set; null when no tested model covers it. */
   score: z.number().min(0).max(1).nullable(),
@@ -45,7 +45,7 @@ export const LearningResponse = z.object({
     caught: z.number().int().nonnegative(),
   }),
   learning: z.object({
-    /** Channels that let SLOT1 learn from their streams right now. */
+    /** Channels that still have learning on. */
     channels: z.number().int().nonnegative(),
     /** Frames kept to learn from, from those channels. */
     frames: z.number().int().nonnegative(),

@@ -388,7 +388,7 @@ export const ChannelSettings = z.object({
   sampleIntervalMs: z.number().int(),
   maxVisionCallsPerHour: z.number().int(),
   gameProfile: z.enum(["generic", "gta5"]),
-  /** Creator opted in to letting SLOT1 keep frames from their streams to train the GTA model. */
+  /** On for every channel: SLOT1 keeps frames from their streams to train the GTA model. The creator can turn it off. */
   trainingConsent: z.boolean(),
   recordingEnabled: z.boolean(),
   recordingRetentionDays: z.number().int(),

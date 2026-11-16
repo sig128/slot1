@@ -112,7 +112,7 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "How is SLOT1 training its own GTA AI?",
-    a: "Only with gameplay from creators who opt in, in Studio under GTA model. It learns from frames of their streams: missions, places, vehicles and moments. Switching it off stops collection and removes those frames from future training sets; copies already used in a training run can't be recalled. SLOT1's own GTA model is still being trained and isn't used for the log yet.",
+    a: "From every live stream sent to SLOT1, unless the creator turns learning off in Studio under GTA model. It learns from frames of those streams: missions, places, vehicles and moments. Switching it off stops collection and removes those frames from future training sets; copies already used in a training run can't be recalled. SLOT1's own GTA model is still being trained and isn't used for the log yet.",
   },
   {
     q: "Does SLOT1 work with GTA VI?",

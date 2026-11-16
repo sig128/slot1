@@ -56,8 +56,8 @@ export function GtaModelSection({ ctx }: { ctx: StudioCtx }) {
       <div className="mb-6">
         <h2 className="font-display text-[length:var(--text-display-md)] font-black leading-[0.92]">GTA model</h2>
         <p className="mt-2 max-w-[68ch] text-ivory-2">
-          SLOT1 is training its own GTA model from what happens in streams creators send here. You decide whether your streams help: frames are only
-          kept while this is on, and you label them so the model learns from what really happened.
+          SLOT1 trains its own GTA model from every live stream sent here. Learning is on for your channel unless you turn it off. Frames are kept
+          while it is on, and you label them so the model learns from what really happened.
         </p>
       </div>
 
@@ -65,7 +65,7 @@ export function GtaModelSection({ ctx }: { ctx: StudioCtx }) {
         <h3 className="mb-2 font-display text-xl font-bold">Your consent</h3>
         <Toggle
           label="Use frames from my streams to train SLOT1's GTA model"
-          description="SLOT1 keeps one frame every few seconds from your uploads, clips and video sources, plus moments its text reader flags. Frames follow your retention setting and are removed when you delete a session. Turning this off stops collection and removes your frames from future datasets; copies already downloaded for training can't be recalled."
+          description="On by default. SLOT1 keeps one frame every few seconds from your live streams, uploads and clips, plus moments its text reader flags. Frames follow your retention setting and are removed when you delete a session. Turning this off stops collection and removes your frames from future datasets; copies already downloaded for training can't be recalled."
           checked={consent}
           onChange={(v) => void ctx.save({ trainingConsent: v }).then(() => reload())}
         />

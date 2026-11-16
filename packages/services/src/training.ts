@@ -58,9 +58,10 @@ export function jpegSize(buf: Buffer): { width: number; height: number } | null 
 }
 
 /**
- * The training-pool side of the pipeline sink. Frames are only kept while the creator's
- * training consent is on (re-checked every 10 s, so switching it off stops collection quickly),
- * within per-session caps. Automatic labels and model predictions are stored as proposals.
+ * The training-pool side of the pipeline sink. Every live stream is kept for learning unless the
+ * creator has switched it off (re-checked every 10 s, so switching it off stops collection
+ * quickly), within per-session caps. TEST sources never enter the pool. Automatic labels and
+ * model predictions are stored as proposals.
  */
 export function createTrainingCollector(ctx: ServerContext, session: StreamSessionRow, source: MediaSourceRow) {
   let consent: { value: boolean; at: number } | null = null;
@@ -69,6 +70,7 @@ export function createTrainingCollector(ctx: ServerContext, session: StreamSessi
   let lastInteresting = -Infinity;
 
   return async (input: { frame: SampledFrame; weakLabels: WeakLabel[]; prediction: FramePrediction | null }): Promise<void> => {
+    if (source.label === "test") return;
     const now = Date.now();
     if (!consent || now - consent.at > 10_000) consent = { value: (await getSettings(ctx.db, session.broadcaster_id)).trainingConsent, at: now };
     if (!consent.value) return;

@@ -145,7 +145,7 @@ function EmptyBand({ twitchReady, capabilities }: { twitchReady: boolean; capabi
       <div className="mx-auto grid max-w-[1600px] gap-12 px-4 py-14 sm:px-6 lg:grid-cols-12 lg:px-10">
         <div className="lg:col-span-5">
           <h2 className="font-display text-2xl font-bold">Watch any public channel</h2>
-          <p className="mb-4 mt-1 text-sm text-ivory-3">Opens the official Twitch player. Without the creator’s opt-in there is no analysis.</p>
+          <p className="mb-4 mt-1 text-sm text-ivory-3">Opens the official Twitch player. SLOT1 analyzes a channel, and learns from it, when that channel sends its video here.</p>
           <LinkOpener />
         </div>
         <div className="lg:col-span-6 lg:col-start-7">

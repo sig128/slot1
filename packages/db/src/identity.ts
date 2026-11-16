@@ -464,10 +464,9 @@ export async function markDisconnected(db: Queryable, broadcasterId: string) {
     `UPDATE broadcaster_connections SET status = 'disconnected', disconnected_at = now(), grant_id = NULL WHERE broadcaster_id = $1`,
     [broadcasterId],
   );
-  // Withdraw public listing immediately; the creator must opt in again after reconnecting.
-  await db.query(`UPDATE channel_settings SET directory_opt_in = false, bot_enabled = false, agent_enabled = false WHERE broadcaster_id = $1`, [
-    broadcasterId,
-  ]);
+  // Withdraw the public listing and the bot. Analysis stays as the creator left it, so a live
+  // stream keeps the AI that was connected by default.
+  await db.query(`UPDATE channel_settings SET directory_opt_in = false, bot_enabled = false WHERE broadcaster_id = $1`, [broadcasterId]);
 }
 
 /* ------------------------------------------------------------------------------------------ */

@@ -1,6 +1,6 @@
 # SLOT1's GTA model
 
-SLOT1 trains its own GTA model from what happens in streams sent to SLOT1, **only from creators who opt in**. The loop is collect → label → freeze a dataset → train → evaluate → activate → run live → collect again. Each turn of the loop makes the model better at GTA, as long as people keep labeling.
+SLOT1 trains its own GTA model from what happens in streams sent to SLOT1. **Learning is on for every channel** unless the creator turns it off. The loop is collect → label → freeze a dataset → train → evaluate → activate → run live → collect again. Each turn of the loop makes the model better at GTA, as long as people keep labeling.
 
 ```
 uploads, clips, live ingest ──► shared observation pipeline ──► frame
@@ -22,8 +22,8 @@ uploads, clips, live ingest ──► shared observation pipeline ──► fram
 
 ## Consent
 
-- **Off by default.** The setting is per channel: Studio → GTA model → "Use frames from my streams to train SLOT1's GTA model".
-- **While it's on,** SLOT1 keeps one frame every 10 s of media from the creator's uploads, Twitch clips and live video sources. It also keeps frames at scene cuts and frames where on-screen text suggests something worth labeling, at most every 2 s. Each session is capped at 2,000 frames.
+- **On by default.** The setting is per channel: Studio → GTA model → "Use frames from my streams to train SLOT1's GTA model". A creator can turn it off. The synthetic demo and TEST sources never enter the pool. The AI that watches a stream (live analysis) is on by default too, until the creator stops or pauses it.
+- **While learning is on,** SLOT1 keeps one frame every 10 s of media from the creator's uploads, Twitch clips and live video sources. It also keeps frames at scene cuts and frames where on-screen text suggests something worth labeling, at most every 2 s. Each session is capped at 2,000 frames.
 - **Consent is re-checked every 10 s** during live analysis, so switching it off stops collection almost immediately. Each frame records when consent was given (`consent_at`).
 - **Revoking consent** removes the channel's frames from all **future** dataset versions. **Delete my training data** removes every frame and label right away.
 - **Deleting a session,** or all data, deletes its training frames and their files. Training frames follow the channel's retention setting like other session media.
@@ -97,6 +97,6 @@ Publishing rules match the rest of SLOT1:
 Gameplay footage is Rockstar Games / Take-Two content, and streams belong to their creators. Before training on gameplay footage or using a trained model commercially:
 
 - Check Rockstar/Take-Two's current terms for videos and other uses of game footage.
-- Make sure every contributing creator has opted in, which SLOT1 enforces.
+- Learning is on unless the creator turns it off in Studio. SLOT1 only keeps frames from channels that still have it on.
 
 This isn't legal advice.

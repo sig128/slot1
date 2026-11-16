@@ -61,15 +61,20 @@ describe("GTA model training engine", () => {
     await h?.close();
   });
 
-  it("collects nothing from creators who haven't opted in", async () => {
+  it("learns from a new channel by default, and collects nothing after the creator turns it off", async () => {
+    const studio = (await creator.get("/api/studio")).json<{ settings: { agentEnabled: boolean; trainingConsent: boolean } }>();
+    expect(studio.settings.agentEnabled).toBe(true);
+    expect(studio.settings.trainingConsent).toBe(true);
+    expect((await creator.get("/api/training")).json().consent).toBe(true);
+
+    expect((await other.request("PATCH", "/api/studio/settings", { json: { trainingConsent: false } })).status).toBe(200);
     const overview = (await other.get("/api/training")).json();
     expect(overview.consent).toBe(false);
     const { sessionId } = await upload(other, "No consent run");
     expect(await framesOf(sessionId)).toHaveLength(0);
   });
 
-  it("keeps sampled frames with automatic proposals once the creator opts in", async () => {
-    expect((await creator.request("PATCH", "/api/studio/settings", { json: { trainingConsent: true } })).status).toBe(200);
+  it("keeps sampled frames with automatic proposals from a channel that is still learning", async () => {
     const { sessionId } = await upload(creator, "Consented run");
     firstSession = sessionId;
     const frames = await framesOf(sessionId);

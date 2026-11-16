@@ -110,7 +110,7 @@ function sections(cfg: LegalConfig): LegalSection[] {
             forwarding your stream to destinations you added.
           </p>
           <p>
-            Your content is used to train SLOT1’s own model only if you switch on training consent, and you can switch it off at any time.
+            Live streams you send to SLOT1 are used to train SLOT1’s own model. That is on unless you switch it off in Studio, and you can switch it off at any time.
           </p>
           <p>
             The licence ends when you delete the content, except for copies in backups until they are overwritten (about a week), copies other people

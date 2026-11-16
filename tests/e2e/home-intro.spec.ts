@@ -63,7 +63,7 @@ test.describe("home intro (reduced motion)", () => {
     await page.getByRole("link", { name: "How it learns" }).click();
     await expect(page).toHaveURL(/#gta-ai$/);
     const gtaAi = page.getByRole("region", { name: "The GTA AI we’re building together" });
-    await expect(gtaAi.getByText("Opt-in only.")).toBeVisible();
+    await expect(gtaAi.getByText("On for every stream.")).toBeVisible();
     await expect(gtaAi.getByText(/It isn’t used for the log yet/)).toBeVisible();
     await expect(gtaAi.getByText(/getting ready to learn its world as soon as players stream it/)).toBeVisible();
 

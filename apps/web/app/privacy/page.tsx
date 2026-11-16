@@ -234,10 +234,10 @@ function sections(cfg: LegalConfig): LegalSection[] {
             kept="While your SLOT1 account exists."
           />
           <DataItem
-            title="Training data (only with your consent)"
-            what="If you switch on training consent in Studio, sampled frames from your streams and the labels added to them, used to train SLOT1’s own GTA model."
-            why="Improving SLOT1’s analysis. This is optional and off by default."
-            kept="Switching consent off removes your frames from all future training sets; “Delete my training data” removes every frame and label right away. Copies already exported into a finished training set can’t be recalled, which the consent text says before you agree."
+            title="Training data"
+            what="Sampled frames from your live streams and the labels added to them, used to train SLOT1’s own GTA model. This is on unless you switch it off in Studio."
+            why="Improving SLOT1’s analysis of live gameplay. You can switch it off at any time."
+            kept="Switching learning off removes your frames from all future training sets; “Delete my training data” removes every frame and label right away. Copies already exported into a finished training set can’t be recalled. Studio says so next to the switch."
           />
 
           <h3>In Twitch chat</h3>

@@ -2,8 +2,8 @@ import type { Queryable } from "./client";
 
 /**
  * Totals for the Learning page. "Watched" counts only what anyone could already see: public
- * channels with public analysis, public sessions, and never TEST sources. "Learned from" counts only
- * channels that have switched on training right now.
+ * channels with public analysis, public sessions, and never TEST sources. "Learned from" counts
+ * channels that still have learning on (it is on for every channel unless the creator turns it off).
  */
 
 const PUBLIC_SESSIONS = `
