@@ -17,3 +17,4 @@ export * from "./chat";
 export * from "./learning";
 export * from "./knowledge";
 export * from "./stories";
+export * from "./wipe";

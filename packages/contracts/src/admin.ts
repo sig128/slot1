@@ -251,3 +251,50 @@ export const AdminOverview = z.object({
   messages: z.object({ open: Count, total: Count }),
 });
 export type AdminOverview = z.infer<typeof AdminOverview>;
+
+/* Admin → Wipe data -------------------------------------------------------------------------- */
+
+/** What a wipe deletes: every stream and everything SLOT1's AI found, kept and learned from them. */
+export const WipeCounts = z.object({
+  streams: Count,
+  findings: Count,
+  /** Stored frames, clips, recordings and other media files the database points to. */
+  files: Count,
+  speech: Count,
+  missions: Count,
+  trainingFrames: Count,
+  clips: Count,
+  library: Count,
+  models: Count,
+  /** The Learning page's "hours watched", the number Ask SLOT1 waits on. */
+  hoursWatched: z.number().nonnegative(),
+});
+export type WipeCounts = z.infer<typeof WipeCounts>;
+
+export const WipeState = z.enum(["idle", "queued", "running", "done", "failed"]);
+export type WipeState = z.infer<typeof WipeState>;
+
+export const WipeStatus = z.object({
+  state: WipeState,
+  requestedAt: z.string().nullable(),
+  finishedAt: z.string().nullable(),
+  /** What the last finished wipe deleted. */
+  deleted: WipeCounts.nullable(),
+  /** Files removed from storage by the last finished wipe. */
+  filesRemoved: Count.nullable(),
+  error: z.string().nullable(),
+});
+export type WipeStatus = z.infer<typeof WipeStatus>;
+
+export const AdminWipeResponse = z.object({
+  /** What is stored right now. */
+  counts: WipeCounts,
+  status: WipeStatus,
+  /** Creators sending video to SLOT1 right now: a wipe waits until they stop. */
+  liveVideo: Count,
+});
+export type AdminWipeResponse = z.infer<typeof AdminWipeResponse>;
+
+/** The word an admin types to confirm a wipe. */
+export const WIPE_CONFIRM_WORD = "WIPE";
+export const AdminWipeRequest = z.object({ confirm: z.literal(WIPE_CONFIRM_WORD) });

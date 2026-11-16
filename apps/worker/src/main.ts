@@ -2,7 +2,7 @@ import { hostname } from "node:os";
 import { Queue, UnrecoverableError, Worker, type Job } from "bullmq";
 import { createPool, runMigrations, backfillKnowledgeTags, refreshSessionStories, sessionsNeedingStories } from "@slot1/db";
 import { createBullConnection, createRedis, DEFAULT_JOB_OPTIONS, loadConfig, QUEUES, sanitizeErrorMessage } from "@slot1/platform";
-import { buildServerContext, reconcileEventSub, type Enqueue } from "@slot1/services";
+import { buildServerContext, reconcileEventSub, runWipe, type Enqueue } from "@slot1/services";
 import { createLiveClip, createVodClip, downloadAndAnalyzeClip, renderOwnedClip } from "./jobs/clips";
 import { handleChatCommand, postReply } from "./jobs/chat";
 import { processEventSub } from "./jobs/eventsub";
@@ -63,6 +63,7 @@ const handlers: Record<string, Record<string, Handler>> = {
   [QUEUES.maintenance]: {
     "retention-sweep": () => retentionSweep(ctx),
     "delete-session": (j) => deleteSession(ctx, j.data),
+    "wipe-data": () => runWipe(ctx),
   },
 };
 
