@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -38,11 +37,10 @@ import { withAppToken } from "./twitch";
 
 const LOCK_KEY = "slot1:lock:added-watch";
 /**
- * The last preview picture's fingerprint per stream. A preview picture changes only every few
- * minutes, so a check that finds the same picture skips the AI instead of paying for it again.
+ * How often each added live stream's preview picture is fetched and shown to Claude. Every check
+ * goes to the AI, even when Twitch (every 5 minutes) or Kick (about every 90 s) hasn't published a
+ * new picture yet: SLOT1 keeps reading each live stream continuously. That is a deliberate choice.
  */
-const HASH_KEY = (broadcasterId: string) => `slot1:added-watch:jpeg:${broadcasterId}`;
-/** How often each added live stream's preview picture is fetched and shown to Claude. */
 const SAMPLE_MS = 5_000;
 const STATUS_TTL_SEC = 180;
 
@@ -255,7 +253,6 @@ async function creatorIsSending(ctx: ServerContext, broadcasterId: string): Prom
 async function stopWatching(ctx: ServerContext, broadcaster: BroadcasterRow | null, entry: string): Promise<void> {
   await ctx.redis.del(ADDED_WATCH_STATUS_KEY(entry)).catch(() => undefined);
   if (!broadcaster) return;
-  await ctx.redis.del(HASH_KEY(broadcaster.id)).catch(() => undefined);
   const open = await endTwitchBroadcastSessions(ctx.db, broadcaster.id);
   if (open.length === 0) return;
   ctx.log.info({ login: broadcaster.login }, "added stream went offline");
@@ -293,18 +290,6 @@ async function learnFrame(
   settings = await getSettings(ctx.db, input.broadcaster.id);
   if (settings.analysisPaused || !settings.agentEnabled) return "skipped";
 
-  // The same picture as last time: keep the stream marked as watched, but don't send it to the AI again.
-  const hash = createHash("sha256").update(input.jpeg).digest("hex");
-  const prev = await ctx.redis.get(HASH_KEY(input.broadcaster.id));
-  if (prev === hash) {
-    await ctx.db.query(
-      `UPDATE stream_sessions SET last_received_frame_at = now(), expected_interval_ms = $2, analysis_state = 'live_vision', analysis_reason = $3 WHERE id = $1`,
-      [session.id, SAMPLE_MS, input.reason],
-    );
-    await publishStatus(ctx, input.entry, session, input.reason, false);
-    return "unchanged";
-  }
-
   const size = jpegSize(input.jpeg);
   const now = new Date();
   const source = await ensurePreviewSource(ctx.db, input.broadcaster.id, session.id);
@@ -337,7 +322,6 @@ async function learnFrame(
   });
   await setAnalysisState(ctx.db, session.id, "live_vision", input.reason);
   await ctx.db.query(`UPDATE stream_sessions SET expected_interval_ms = $2 WHERE id = $1`, [session.id, SAMPLE_MS]);
-  await ctx.redis.set(HASH_KEY(input.broadcaster.id), hash, "EX", 6 * 3600);
   await publishStatus(ctx, input.entry, session, input.reason, pipeline.stats.observations > 0);
   return "learned";
 }
