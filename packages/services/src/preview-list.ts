@@ -15,7 +15,19 @@ const KICK_RE = /^kick:[a-z0-9_-]{1,25}$/;
 const entryOk = (v: string) => TWITCH_RE.test(v) || KICK_RE.test(v);
 
 /** The list until an admin saves one (saving an empty list clears it for good). */
-export const DEFAULT_PREVIEW_LOGINS: readonly string[] = ["vader", "darkviperau", "missmikkaa", "darkzelk", "kick:lazenxd", "kick:manny_xers", "kick:rraenee"];
+export const DEFAULT_PREVIEW_LOGINS: readonly string[] = [
+  "vader",
+  "darkviperau",
+  "missmikkaa",
+  "darkzelk",
+  "grevethebarber",
+  "deansocool",
+  "csyon",
+  "lpmassive",
+  "kick:lazenxd",
+  "kick:manny_xers",
+  "kick:rraenee",
+];
 
 /** The site login for an entry: "vader" stays, "kick:slug" becomes "kick-slug". */
 export const featuredLogin = (entry: string) => (entry.startsWith("kick:") ? `kick-${entry.slice(5)}` : entry);
