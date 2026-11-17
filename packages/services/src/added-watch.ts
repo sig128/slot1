@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -37,9 +36,8 @@ import { createPipelineSink } from "./pipeline-sink";
 import { withAppToken } from "./twitch";
 
 const LOCK_KEY = "slot1:lock:added-watch";
-const HASH_KEY = (broadcasterId: string) => `slot1:added-watch:jpeg:${broadcasterId}`;
-/** Public preview pictures refresh about once a minute. Three misses is the stale line. */
-const SAMPLE_MS = 60_000;
+/** How often each added live stream's preview picture is fetched and shown to Claude. */
+const SAMPLE_MS = 5_000;
 const STATUS_TTL_SEC = 180;
 
 export interface AddedWatchResult {
@@ -116,19 +114,19 @@ async function runWatch(
           users = [];
           streams = [];
         }
-        for (const login of twitchLogins) {
+        await Promise.all(twitchLogins.map(async (login) => {
           const user = users.find((u) => u.login.toLowerCase() === login);
-          if (!user) continue;
+          if (!user) return;
           const stream = streams.find((s) => s.user_login.toLowerCase() === login && s.type === "live");
           try {
             if (!stream) {
               await stopWatching(ctx, await getBroadcasterByTwitchId(ctx.db, user.id), login);
-              continue;
+              return;
             }
             const broadcaster = await ensureTwitch(ctx, user);
-            if (!broadcaster || (await creatorIsSending(ctx, broadcaster.id))) continue;
+            if (!broadcaster || (await creatorIsSending(ctx, broadcaster.id))) return;
             const jpeg = await fetchJpeg(sizeThumbnail(stream.thumbnail_url, 1280, 720), opts.toJpeg);
-            if (!jpeg) continue;
+            if (!jpeg) return;
             const learned = await learnFrame(ctx, {
               entry: login,
               broadcaster,
@@ -143,33 +141,33 @@ async function runWatch(
               gtaModel: opts.gtaModel,
               reason,
             });
-            if (learned === "skipped") continue;
+            if (learned === "skipped") return;
             result.watched += 1;
             if (learned === "learned") result.learned += 1;
             else result.unchanged += 1;
           } catch (err) {
             ctx.log.warn({ login, err: sanitizeErrorMessage((err as Error).message) }, "added stream watch failed");
           }
-        }
+        }));
       }
     }
 
     if (kickSlugs.length > 0 && kickConfigured(ctx)) {
       const data = await kickChannels(ctx, kickSlugs);
-      for (const slug of kickSlugs) {
+      await Promise.all(kickSlugs.map(async (slug) => {
         const channel = data.get(slug);
-        if (!channel) continue;
+        if (!channel) return;
         const entry = `kick:${slug}`;
         try {
           if (!channel.live) {
             await stopWatching(ctx, await getBroadcasterByLogin(ctx.db, kickLogin(slug)), entry);
-            continue;
+            return;
           }
           const broadcaster = await ensureKick(ctx, channel);
-          if (!broadcaster || (await creatorIsSending(ctx, broadcaster.id))) continue;
-          if (!channel.thumbnailUrl) continue;
+          if (!broadcaster || (await creatorIsSending(ctx, broadcaster.id))) return;
+          if (!channel.thumbnailUrl) return;
           const jpeg = await fetchJpeg(channel.thumbnailUrl, opts.toJpeg);
-          if (!jpeg) continue;
+          if (!jpeg) return;
           const learned = await learnFrame(ctx, {
             entry,
             broadcaster,
@@ -184,14 +182,14 @@ async function runWatch(
             gtaModel: opts.gtaModel,
             reason,
           });
-          if (learned === "skipped") continue;
+          if (learned === "skipped") return;
           result.watched += 1;
           if (learned === "learned") result.learned += 1;
           else result.unchanged += 1;
         } catch (err) {
           ctx.log.warn({ slug, err: sanitizeErrorMessage((err as Error).message) }, "added Kick stream watch failed");
         }
-      }
+      }));
     }
   } finally {
     await rm(work, { recursive: true, force: true }).catch(() => undefined);
@@ -251,7 +249,6 @@ async function creatorIsSending(ctx: ServerContext, broadcasterId: string): Prom
 async function stopWatching(ctx: ServerContext, broadcaster: BroadcasterRow | null, entry: string): Promise<void> {
   await ctx.redis.del(ADDED_WATCH_STATUS_KEY(entry)).catch(() => undefined);
   if (!broadcaster) return;
-  await ctx.redis.del(HASH_KEY(broadcaster.id)).catch(() => undefined);
   const open = await endTwitchBroadcastSessions(ctx.db, broadcaster.id);
   if (open.length === 0) return;
   ctx.log.info({ login: broadcaster.login }, "added stream went offline");
@@ -289,17 +286,6 @@ async function learnFrame(
   settings = await getSettings(ctx.db, input.broadcaster.id);
   if (settings.analysisPaused || !settings.agentEnabled) return "skipped";
 
-  const hash = createHash("sha256").update(input.jpeg).digest("hex");
-  const prev = await ctx.redis.get(HASH_KEY(input.broadcaster.id));
-  if (prev === hash) {
-    await ctx.db.query(
-      `UPDATE stream_sessions SET last_received_frame_at = now(), expected_interval_ms = $2, analysis_state = 'live_vision', analysis_reason = $3 WHERE id = $1`,
-      [session.id, SAMPLE_MS, input.reason],
-    );
-    await publishStatus(ctx, input.entry, session, input.reason, false);
-    return "unchanged";
-  }
-
   const size = jpegSize(input.jpeg);
   const now = new Date();
   const source = await ensurePreviewSource(ctx.db, input.broadcaster.id, session.id);
@@ -332,7 +318,6 @@ async function learnFrame(
   });
   await setAnalysisState(ctx.db, session.id, "live_vision", input.reason);
   await ctx.db.query(`UPDATE stream_sessions SET expected_interval_ms = $2 WHERE id = $1`, [session.id, SAMPLE_MS]);
-  await ctx.redis.set(HASH_KEY(input.broadcaster.id), hash, "EX", 6 * 3600);
   await publishStatus(ctx, input.entry, session, input.reason, pipeline.stats.observations > 0);
   return "learned";
 }

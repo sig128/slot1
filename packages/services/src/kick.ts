@@ -89,10 +89,10 @@ interface ApiUser {
 const httpsOrNull = (v: string | null | undefined) => (v && /^https:\/\//.test(v) ? v : null);
 
 const CHANNEL_KEY = (slug: string) => `slot1:kick:channel:${slug}`;
-const CHANNEL_TTL_SEC = 30;
+const CHANNEL_TTL_SEC = 5;
 
 /**
- * Kick's public data for channels by slug (lower-case), cached 30 s per channel. A slug Kick
+ * Kick's public data for channels by slug (lower-case), cached 5 s per channel. A slug Kick
  * doesn't know is left out.
  */
 export async function kickChannels(ctx: ServerContext, slugs: string[]): Promise<Map<string, KickChannel>> {

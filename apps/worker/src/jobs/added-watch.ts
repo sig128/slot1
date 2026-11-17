@@ -4,7 +4,7 @@ import { watchAddedStreams } from "@slot1/services";
 import { loadActiveGtaModel } from "../gta/onnx-model";
 
 /**
- * Featured channels are not sent into SLOT1. Once a minute, watch each live one's public
+ * Featured channels are not sent into SLOT1. Every 5 seconds, watch each live one's public
  * preview picture and learn from it. The describing model runs only when Admin → AI is configured.
  */
 export async function watchAdded(ctx: ServerContext): Promise<void> {

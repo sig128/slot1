@@ -121,7 +121,7 @@ async function main() {
   const maintQ = queues.get(QUEUES.maintenance)!;
   await twitchQ.upsertJobScheduler("validate-grants", { every: 3_600_000 }, { name: "validate-grants", data: {} });
   await twitchQ.upsertJobScheduler("refresh-directory", { every: 60_000 }, { name: "refresh-directory", data: {} });
-  await twitchQ.upsertJobScheduler("watch-added-streams", { every: 60_000 }, { name: "watch-added-streams", data: {} });
+  await twitchQ.upsertJobScheduler("watch-added-streams", { every: 5_000 }, { name: "watch-added-streams", data: {} });
   await maintQ.upsertJobScheduler("retention-sweep", { every: 3_600_000 }, { name: "retention-sweep", data: {} });
 
   // Reconcile EventSub subscriptions for every connected channel on start.
