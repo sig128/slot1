@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { DirectoryResponse, PreviewChannels, WatchChannelResponse } from "@slot1/contracts";
+import { DirectoryResponse, PREVIEW_CHANNELS_MAX, PreviewChannels, WatchChannelResponse } from "@slot1/contracts";
 import { clearPreviewCache, DEFAULT_PREVIEW_LOGINS } from "../../apps/api/src/lib/preview-channels";
 import { Browser, MockTwitch, startHarness, type Harness } from "./harness";
 
@@ -59,7 +59,9 @@ describe("Preview channels and follower counts", () => {
     const bad = await owner.request("PUT", "/api/admin/preview-channels", { json: { logins: ["vader", "not a channel!"] } });
     expect(bad.status).toBe(400);
     expect(bad.body).toContain("not a channel!");
-    const many = await owner.request("PUT", "/api/admin/preview-channels", { json: { logins: Array.from({ length: 13 }, (_, i) => `chan_${i}`) } });
+    const many = await owner.request("PUT", "/api/admin/preview-channels", {
+      json: { logins: Array.from({ length: PREVIEW_CHANNELS_MAX + 1 }, (_, i) => `chan_${i}`) },
+    });
     expect(many.status).toBe(400);
     // Kick channels as kick.com links or kick:name, kept as "kick:<slug>".
     const kick = await owner.request("PUT", "/api/admin/preview-channels", { json: { logins: ["https://kick.com/Manny_Xers", "kick:lazenxd", "vader"] } });

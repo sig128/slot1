@@ -165,7 +165,7 @@ export const ChannelCard = z.object({
 export type ChannelCard = z.infer<typeof ChannelCard>;
 
 /** Admin → Featured channels: Twitch and Kick channels shown on the home page like any channel. */
-export const PREVIEW_CHANNELS_MAX = 12;
+export const PREVIEW_CHANNELS_MAX = 24;
 export const PreviewChannels = z.object({ logins: z.array(z.string()).max(PREVIEW_CHANNELS_MAX) });
 export type PreviewChannels = z.infer<typeof PreviewChannels>;
 

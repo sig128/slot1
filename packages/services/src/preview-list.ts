@@ -25,6 +25,7 @@ export const DEFAULT_PREVIEW_LOGINS: readonly string[] = [
   "csyon",
   "lpmassive",
   "realzbluewater",
+  "gtasty",
   "kick:lazenxd",
   "kick:manny_xers",
   "kick:rraenee",
