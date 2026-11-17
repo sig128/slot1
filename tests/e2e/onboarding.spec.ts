@@ -36,7 +36,7 @@ async function shot(page: Page, name: string) {
   await page.screenshot({ path: path.join(HERE, "screenshots", test.info().project.name, `${name}.png`) });
 }
 
-test.describe("home hero: Get [money bag] Soon", () => {
+test.describe("home hero", () => {
   const errors: string[] = [];
   test.beforeEach(({ page }) => {
     errors.length = 0;
@@ -44,39 +44,15 @@ test.describe("home hero: Get [money bag] Soon", () => {
   });
   test.afterEach(() => expect(errors, "browser console errors").toEqual([]));
 
-  test("says creator rewards are coming, never that anyone is paid, and holds still under reduced motion", async ({ page }) => {
+  test("says what SLOT1 does, with no rewards tag and no talk of pay", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1, name: "SLOT1: Your AI sidekick for GTA." })).toBeVisible();
     await expect(page.getByText("Stream GTA. Get clips. Train the AI.")).toBeVisible();
-    const tag = page.getByTestId("creator-rewards");
-    await expect(tag).toBeVisible();
-    await expect(tag).toHaveAttribute("title", "Creator rewards are coming. Details soon.");
-    await expect(tag.getByText("Soon", { exact: true })).toBeVisible();
-    await expect(tag.locator("svg.mb-bag")).toBeVisible();
-    // Screen readers hear what it is, and that it isn't here yet.
-    await expect(tag).toContainText("creator rewards. Creator rewards are coming. Details soon.");
+    await expect(page.getByTestId("creator-rewards")).toHaveCount(0);
+    await expect(page.getByText(/creator rewards/i)).toHaveCount(0);
     await expect(page.getByText(/\b(get paid|earn money|payouts?|cash out)\b/i)).toHaveCount(0);
-    // Our own drawing: an inline SVG, no image file and no emoji.
-    expect(await tag.locator("img").count()).toBe(0);
-    expect(await tag.textContent()).not.toMatch(/\p{Extended_Pictographic}/u);
-    // Reduced motion (the default here): nothing moves.
-    expect(await tag.locator(".mb-hop").evaluate((el) => getComputedStyle(el).animationName)).toBe("none");
     await noHorizontalOverflow(page);
-    await shot(page, "hero-money-bag");
-  });
-
-  test("hops and glints with motion on, and pauses off screen", async ({ browser }, info) => {
-    const ctx = await browser.newContext({ baseURL: BASE, reducedMotion: "no-preference", viewport: info.project.use.viewport ?? undefined });
-    const page = await ctx.newPage();
-    await page.goto("/");
-    const tag = page.getByTestId("creator-rewards");
-    const hop = tag.locator(".mb-hop");
-    expect(await hop.evaluate((el) => getComputedStyle(el).animationName)).toBe("mb-hop");
-    expect(await tag.locator(".mb-glint").evaluate((el) => getComputedStyle(el).animationName)).toBe("mb-glint");
-    await expect.poll(() => hop.evaluate((el) => getComputedStyle(el).animationPlayState)).toBe("running");
-    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-    await expect.poll(() => hop.evaluate((el) => getComputedStyle(el).animationPlayState)).toBe("paused");
-    await ctx.close();
+    await shot(page, "hero");
   });
 });
 

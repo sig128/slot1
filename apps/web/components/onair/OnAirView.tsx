@@ -9,7 +9,6 @@ import { IntroSteps } from "@/components/home/IntroSteps";
 import { IntroTips } from "@/components/home/IntroTips";
 import { compactNumber } from "@/lib/format";
 import { SetupFix } from "@/components/ui/SetupFix";
-import { CreatorRewardsSoon } from "@/components/home/CreatorRewardsSoon";
 import { HeroActions } from "./HeroActions";
 import { LinkOpener } from "./LinkOpener";
 import { ChannelAvatar, LiveDirectory } from "./LiveDirectory";
@@ -45,7 +44,7 @@ export function OnAirView({ directory, capabilities, liveNow }: { directory: Dir
           </h1>
           <p className="gx-help gx-reveal mt-5" style={{ animationDelay: "2.7s" }}>
             <strong className="block font-display text-[1.3rem] font-bold tracking-[0.01em] text-ivory">
-              <span>Stream GTA. Get clips. Train the AI.</span> <CreatorRewardsSoon />
+              <span>Stream GTA. Get clips. Train the AI.</span>
             </strong>
             SLOT1 watches your stream live, clips your big moments for you, and learns the game from every stream you choose to share.
           </p>
