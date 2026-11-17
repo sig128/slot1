@@ -56,7 +56,8 @@ test.describe("home intro (reduced motion)", () => {
     // The money-style counter shows channels live right now, from the same directory the page uses.
     await expect(page.getByText(live === 1 ? "channel live" : "channels live", { exact: true })).toBeVisible();
     await expect(page.locator(".gx-money-num")).toHaveText(String(live));
-    await expect(page.locator(".gx-star-on")).toHaveCount(Math.min(5, live));
+    await expect(page.locator(".gx-star")).toHaveCount(6);
+    await expect(page.locator(".gx-star-on")).toHaveCount(Math.min(6, live));
 
     // The training line points to the honest explanation further down.
     await expect(page.getByText(/Building the GTA AI, one stream at a time\. Next stop:/)).toBeVisible();

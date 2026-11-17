@@ -3,15 +3,17 @@ import { rng } from "@/components/brand/skyline-geometry";
 /**
  * The home intro's HUD, in the conventions of an open-world game: wanted-style stars and a
  * money-style counter top right, a round radar bottom left. Every number is real: the stars and
- * the counter both show channels live on SLOT1 right now (stars capped at five); the radar's red
- * blips are those channels. Nothing here is money or a score.
+ * the counter both show channels live on SLOT1 right now (six stars, GTA VI's count, capped at
+ * six); the radar's red blips are those channels. Nothing here is money or a score.
  */
+const STAR_COUNT = 6;
+
 export function IntroHudCounter({ live }: { live: number }) {
-  const stars = Math.min(5, live);
+  const stars = Math.min(STAR_COUNT, live);
   return (
     <div className="gx-hud-tr gx-in">
       <div className="gx-stars" aria-hidden>
-        {[0, 1, 2, 3, 4].map((i) => (
+        {Array.from({ length: STAR_COUNT }, (_, i) => i).map((i) => (
           <svg key={i} viewBox="0 0 24 24" className={i < stars ? "gx-star gx-star-on" : "gx-star"}>
             <path d="M12 2.4l2.9 6.4 7 .7-5.3 4.6 1.6 6.9L12 17.4 5.8 21l1.6-6.9L2.1 9.5l7-.7z" />
           </svg>
