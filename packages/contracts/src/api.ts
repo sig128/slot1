@@ -141,6 +141,22 @@ export function armedLearningStatus(broadcast: BroadcastState, visionConfigured:
   };
 }
 
+/** Admin → Learning is off: a featured channel is shown, but SLOT1 isn't watching it. */
+export function pausedLearningStatus(broadcast: BroadcastState, visionConfigured: boolean): AnalysisStatus {
+  return {
+    state: "stopped",
+    reason: broadcast === "offline" ? "This stream is offline. Learning is paused right now." : "Learning is paused right now. SLOT1 isn't watching this stream.",
+    sourceLabel: null,
+    lastReceivedFrameAt: null,
+    lastAnalyzedFrameAt: null,
+    lastResultAt: null,
+    measuredCadenceMs: null,
+    measuredDelayMs: null,
+    staleAfterMs: null,
+    visionConfigured,
+  };
+}
+
 export const ChannelCard = z.object({
   broadcasterId: z.string(),
   login: z.string(),

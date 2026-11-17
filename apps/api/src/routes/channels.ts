@@ -1,6 +1,14 @@
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
-import { armedLearningStatus, type BroadcastSnapshot, type ChannelCard, type DirectoryResponse, type ResolveLinkResponse, type WatchChannelResponse } from "@slot1/contracts";
+import {
+  armedLearningStatus,
+  pausedLearningStatus,
+  type BroadcastSnapshot,
+  type ChannelCard,
+  type DirectoryResponse,
+  type ResolveLinkResponse,
+  type WatchChannelResponse,
+} from "@slot1/contracts";
 import {
   getBroadcasterByLogin,
   getConnection,
@@ -25,6 +33,7 @@ import {
   DEMO_SESSION_TITLE,
   hiddenDemo,
   isDemoBroadcaster,
+  readLearningSwitch,
   type ServerContext,
 } from "@slot1/services";
 import { channelUrl, parseTwitchUrl, sizeThumbnail } from "@slot1/twitch";
@@ -255,8 +264,13 @@ export const channelRoutes =
         (owner || settings.viewerQuestions === "anyone" || (settings.viewerQuestions === "signed_in" && viewer.userId !== null));
       const card = await channelCard(ctx, b, snaps.get(b.id)!, visibleSession, settings.publicAnalysis);
       // A channel an admin added to the site keeps its platform player. Its session, when public,
-      // is the one the watcher is learning from.
-      if (await isFeatured(ctx, b.login)) card.preview = true;
+      // is the one the watcher is learning from. While Admin → Learning is off nobody is watching it.
+      if (await isFeatured(ctx, b.login)) {
+        card.preview = true;
+        if (!visibleSession && !(await readLearningSwitch(ctx.redis)).on) {
+          card.analysis = pausedLearningStatus(card.broadcast.state, ctx.config.capabilities.vision.available);
+        }
+      }
       if (b.twitch_user_id) card.followers = (await followerTotals(ctx, [b.twitch_user_id])).get(b.twitch_user_id) ?? null;
       return {
         channel: card,

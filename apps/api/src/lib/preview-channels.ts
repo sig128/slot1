@@ -1,4 +1,11 @@
-import { AnalysisStatus, armedLearningStatus, PREVIEW_CHANNELS_MAX, type AnalysisStatus as AnalysisStatusT, type ChannelCard } from "@slot1/contracts";
+import {
+  AnalysisStatus,
+  armedLearningStatus,
+  pausedLearningStatus,
+  PREVIEW_CHANNELS_MAX,
+  type AnalysisStatus as AnalysisStatusT,
+  type ChannelCard,
+} from "@slot1/contracts";
 import {
   ADDED_WATCH_STATUS_KEY,
   DEFAULT_PREVIEW_LOGINS,
@@ -9,6 +16,7 @@ import {
   isFeatured,
   kickChannels,
   PREVIEW_CHANNELS_KEY,
+  readLearningSwitch,
   withAppToken,
   type KickChannel,
   type ServerContext,
@@ -67,8 +75,10 @@ export async function setPreviewLogins(ctx: ServerContext, logins: string[]): Pr
 let cache: { key: string; at: number; cards: ChannelCard[] } | null = null;
 const TTL_MS = 30_000;
 
-async function learningStatus(ctx: ServerContext, entry: string, broadcast: "live" | "offline" | "unknown" | "error"): Promise<AnalysisStatusT> {
+async function learningStatus(ctx: ServerContext, entry: string, broadcast: "live" | "offline" | "unknown" | "error", learningOn: boolean): Promise<AnalysisStatusT> {
   const vision = ctx.config.capabilities.vision.available;
+  // Admin → Learning is off: the watcher isn't looking at featured channels.
+  if (!learningOn) return pausedLearningStatus(broadcast, vision);
   if (broadcast === "live") {
     const raw = await ctx.redis.get(ADDED_WATCH_STATUS_KEY(entry)).catch(() => null);
     if (raw) {
@@ -86,7 +96,7 @@ async function learningStatus(ctx: ServerContext, entry: string, broadcast: "liv
   return armedLearningStatus(broadcast, vision);
 }
 
-async function twitchCards(ctx: ServerContext, logins: string[], now: string): Promise<Map<string, ChannelCard>> {
+async function twitchCards(ctx: ServerContext, logins: string[], now: string, learningOn: boolean): Promise<Map<string, ChannelCard>> {
   const out = new Map<string, ChannelCard>();
   if (logins.length === 0 || !ctx.helix) return out;
   const helix = ctx.helix;
@@ -114,7 +124,7 @@ async function twitchCards(ctx: ServerContext, logins: string[], now: string): P
         startedAt: s?.started_at ?? null,
         lastRefreshedAt: now,
       },
-      analysis: await learningStatus(ctx, login, s ? "live" : "offline"),
+      analysis: await learningStatus(ctx, login, s ? "live" : "offline", learningOn),
       publicAnalysis: false,
       followers: followers.get(u.id) ?? null,
       preview: true,
@@ -125,7 +135,7 @@ async function twitchCards(ctx: ServerContext, logins: string[], now: string): P
 }
 
 /** Kick channels always get a card (Kick's player works without the API); live data when Kick answers. */
-async function kickCards(ctx: ServerContext, slugs: string[], now: string): Promise<Map<string, ChannelCard>> {
+async function kickCards(ctx: ServerContext, slugs: string[], now: string, learningOn: boolean): Promise<Map<string, ChannelCard>> {
   const out = new Map<string, ChannelCard>();
   if (slugs.length === 0) return out;
   let data = new Map<string, KickChannel>();
@@ -153,7 +163,7 @@ async function kickCards(ctx: ServerContext, slugs: string[], now: string): Prom
         startedAt: k?.startedAt ?? null,
         lastRefreshedAt: k ? now : null,
       },
-      analysis: await learningStatus(ctx, `kick:${slug}`, k ? (k.live ? "live" : "offline") : failed ? "error" : known ? "offline" : "unknown"),
+      analysis: await learningStatus(ctx, `kick:${slug}`, k ? (k.live ? "live" : "offline") : failed ? "error" : known ? "offline" : "unknown", learningOn),
       publicAnalysis: false,
       followers: null,
       subscribers: k?.subscribers ?? null,
@@ -175,15 +185,16 @@ export async function previewCards(ctx: ServerContext, entries: string[]): Promi
   const now = new Date().toISOString();
   const twitch = entries.filter((e) => !e.startsWith("kick:"));
   const kick = entries.filter((e) => e.startsWith("kick:")).map((e) => e.slice(5));
+  const learningOn = (await readLearningSwitch(ctx.redis)).on;
   let t: Map<string, ChannelCard>;
   try {
-    t = await twitchCards(ctx, twitch, now);
+    t = await twitchCards(ctx, twitch, now, learningOn);
   } catch {
     // Twitch unreachable: keep the last answer for these channels, if any.
     if (cache?.key === key) return cache.cards;
     t = new Map();
   }
-  const k = await kickCards(ctx, kick, now);
+  const k = await kickCards(ctx, kick, now, learningOn);
   const cards = entries.flatMap((e) => {
     const c = t.get(e) ?? k.get(e);
     return c ? [c] : [];

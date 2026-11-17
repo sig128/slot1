@@ -97,15 +97,19 @@ export function WatchClient({
   );
 
   const streamOffline = c.broadcast.state === "offline";
+  // Admin → Learning is off: a featured channel is shown, but SLOT1 isn't watching it.
+  const learningPaused = c.analysis.state === "stopped" && Boolean(c.analysis.reason?.includes("Learning is paused"));
   const empty = featured || !watch.authorized ? (
     <div className="space-y-2 text-sm text-ivory-2">
-      <p className="font-display text-xl font-bold text-ivory">{streamOffline ? "Offline" : "Learning on"}</p>
+      <p className="font-display text-xl font-bold text-ivory">{learningPaused ? "Learning paused" : streamOffline ? "Offline" : "Learning on"}</p>
       <p>
-        {streamOffline
-          ? "This stream is offline. Learning stays on for when it goes live."
-          : c.analysis.lastReceivedFrameAt
-            ? (c.analysis.reason ?? "Watching this stream and learning from it.")
-            : "Learning is on for this stream. Nothing has been logged yet."}
+        {learningPaused
+          ? c.analysis.reason
+          : streamOffline
+            ? "This stream is offline. Learning stays on for when it goes live."
+            : c.analysis.lastReceivedFrameAt
+              ? (c.analysis.reason ?? "Watching this stream and learning from it.")
+              : "Learning is on for this stream. Nothing has been logged yet."}
       </p>
     </div>
   ) : !session ? (

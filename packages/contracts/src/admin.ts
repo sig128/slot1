@@ -298,3 +298,18 @@ export type AdminWipeResponse = z.infer<typeof AdminWipeResponse>;
 /** The word an admin types to confirm a wipe. */
 export const WIPE_CONFIRM_WORD = "WIPE";
 export const AdminWipeRequest = z.object({ confirm: z.literal(WIPE_CONFIRM_WORD) });
+
+/* Admin → Learning ---------------------------------------------------------------------------- */
+
+/**
+ * Whether SLOT1 watches and learns from the featured channels' live streams. Off until an admin
+ * turns it on; while off, featured channels still show on the site, but nothing is looked at or
+ * kept from them. Streams creators send to SLOT1 themselves aren't affected.
+ */
+export const AdminLearning = z.object({
+  on: z.boolean(),
+  /** When an admin last turned it on or off; null when nobody has yet. */
+  changedAt: z.string().nullable(),
+});
+export type AdminLearning = z.infer<typeof AdminLearning>;
+export const AdminLearningRequest = z.object({ on: z.boolean() });

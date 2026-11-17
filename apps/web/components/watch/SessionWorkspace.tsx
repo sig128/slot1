@@ -65,7 +65,7 @@ interface Props {
   notice?: React.ReactNode;
   /** Public channel that hasn't connected SLOT1: Twitch player only, no analysis UI. */
   watchOnly?: boolean;
-  /** Admin → Featured channels: shown like any channel. Learning is on either way. */
+  /** Admin → Featured channels: shown like any channel. SLOT1 learns from it while Admin → Learning is on. */
   featured?: boolean;
   /** Design demo only: fixtures, no network. */
   fixture?: { details: Record<string, ObservationDetail>; answer: (q: string) => AskResponse };
@@ -282,7 +282,7 @@ export function SessionWorkspace(p: Props) {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[0.78rem] text-ivory-3">Analysis</span>
-                {p.session ? (
+                {p.session || status.state === "stopped" ? (
                   <AnalysisChip status={status} />
                 ) : (
                   <span className="chip chip-vision" title={broadcastState === "offline" ? "This stream is offline. Learning stays on for when it goes live." : "Learning is on for this stream."}>

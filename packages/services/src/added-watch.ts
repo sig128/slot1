@@ -31,6 +31,7 @@ import { sanitizeErrorMessage } from "@slot1/platform";
 import { sizeThumbnail } from "@slot1/twitch";
 import type { ServerContext } from "./context";
 import { kickChannels, kickConfigured, type KickChannel } from "./kick";
+import { LEARNING_PAUSED_KEY, readLearningSwitch } from "./learning-switch";
 import { ADDED_WATCH_STATUS_KEY, featuredLogin, getPreviewLogins } from "./preview-list";
 import { createPipelineSink } from "./pipeline-sink";
 import { withAppToken } from "./twitch";
@@ -71,13 +72,42 @@ export async function watchAddedStreams(
   ctx: ServerContext,
   opts: { gtaModel: FrameModel | null; toJpeg?: (buf: Buffer, contentType: string) => Promise<Buffer | null> } = { gtaModel: null },
 ): Promise<AddedWatchResult> {
+  const idle = { watched: 0, learned: 0, unchanged: 0, vision: ctx.config.capabilities.vision.available };
   const locked = await ctx.redis.set(LOCK_KEY, "1", "EX", 90, "NX");
-  if (locked !== "OK") return { watched: 0, learned: 0, unchanged: 0, vision: ctx.config.capabilities.vision.available };
+  if (locked !== "OK") return idle;
   try {
+    // Admin → Learning is off: look at nothing, and close what was open when it went off.
+    if (!(await readLearningSwitch(ctx.redis)).on) {
+      await pauseWatching(ctx);
+      return idle;
+    }
     return await runWatch(ctx, opts);
   } finally {
     await ctx.redis.del(LOCK_KEY).catch(() => undefined);
   }
+}
+
+/**
+ * Once after learning goes off: every featured stream SLOT1 was watching stops showing as watched,
+ * and its open session ends (the database alone, no Twitch or Kick calls). A creator who connected
+ * SLOT1 keeps their session: their own stream's events end it.
+ */
+async function pauseWatching(ctx: ServerContext): Promise<void> {
+  if (await ctx.redis.get(LEARNING_PAUSED_KEY)) return;
+  let ended = 0;
+  for (const entry of await getPreviewLogins(ctx)) {
+    await ctx.redis.del(ADDED_WATCH_STATUS_KEY(featuredLogin(entry))).catch(() => undefined);
+    const broadcaster = await getBroadcasterByLogin(ctx.db, entry.startsWith("kick:") ? kickLogin(entry.slice(5)) : entry);
+    if (broadcaster && (await creatorConnected(ctx, broadcaster.id))) {
+      await ctx.redis.del(ADDED_WATCH_STATUS_KEY(entry)).catch(() => undefined);
+      continue;
+    }
+    const open = broadcaster ? await endTwitchBroadcastSessions(ctx.db, broadcaster.id) : [];
+    await ctx.redis.del(ADDED_WATCH_STATUS_KEY(entry)).catch(() => undefined);
+    ended += open.length;
+  }
+  await ctx.redis.set(LEARNING_PAUSED_KEY, new Date().toISOString());
+  ctx.log.info({ ended }, "learning is off: featured channels are no longer watched");
 }
 
 async function runWatch(

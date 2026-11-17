@@ -40,7 +40,7 @@ import {
   type TagCount,
 } from "@slot1/db";
 import { sanitizeErrorMessage } from "@slot1/platform";
-import type { ServerContext } from "@slot1/services";
+import { readLearningSwitch, type ServerContext } from "@slot1/services";
 import { adminAccess } from "../lib/admin-access";
 
 /** Text-model answers per day for "Ask SLOT1 about the game" (it's public); then records only. */
@@ -77,7 +77,7 @@ function latestEvaluation(metrics: unknown): ModelEvaluation | null {
 }
 
 async function compute(ctx: ServerContext): Promise<LearningResponse> {
-  const [watched, seen, frames, examples, channels, models, heard, counts, story] = await Promise.all([
+  const [watched, seen, frames, examples, channels, models, heard, counts, story, learningSwitch] = await Promise.all([
     learningWatched(ctx.db),
     learningSeen(ctx.db),
     learningFrames(ctx.db),
@@ -87,6 +87,7 @@ async function compute(ctx: ServerContext): Promise<LearningResponse> {
     learningHeard(ctx.db),
     knowledgeCounts(ctx.db),
     stories(ctx),
+    readLearningSwitch(ctx.redis),
   ]);
   const byTag = new Map(counts.map((c) => [c.tag, c]));
   const categoryLabel = new Map(ACTIVITY_CATEGORIES.map((c) => [c.key, c.label]));
@@ -163,6 +164,7 @@ async function compute(ctx: ServerContext): Promise<LearningResponse> {
     heard,
     models: modelViews,
     ask: { open: watched.analyzedMs / 3_600_000 >= ctx.config.env.SLOT1_ASK_OPENS_AT_HOURS, opensAtHours: ctx.config.env.SLOT1_ASK_OPENS_AT_HOURS },
+    learningOn: learningSwitch.on,
   };
 }
 

@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DirectoryResponse, PREVIEW_CHANNELS_MAX, PreviewChannels, WatchChannelResponse } from "@slot1/contracts";
+import { LEARNING_SWITCH_KEY } from "@slot1/services";
 import { clearPreviewCache, DEFAULT_PREVIEW_LOGINS } from "../../apps/api/src/lib/preview-channels";
 import { Browser, MockTwitch, startHarness, type Harness } from "./harness";
 
@@ -73,13 +74,26 @@ describe("Preview channels and follower counts", () => {
   });
 
   it("lists featured channels in everyone's On air, with Twitch's live data and followers", async () => {
+    // Admin → Learning starts off: the cards say SLOT1 isn't watching.
+    await h.ctx.redis.del(LEARNING_SWITCH_KEY);
+    clearPreviewCache();
     for (const who of [visitor, owner]) {
       const res = await who.get("/api/channels");
       expect(res.status).toBe(200);
       const card = DirectoryResponse.parse(res.json()).channels.find((c) => c.login === "vader");
       expect(card).toMatchObject({ preview: true, displayName: "Vader", publicAnalysis: false, followers: 512345 });
       expect(card!.broadcast).toMatchObject({ state: "live", title: "SUNDAY STREAM - ROLEPLAY", category: "Grand Theft Auto V", viewerCount: 1234 });
-      expect(card!.analysis).toMatchObject({ state: "ready", reason: "Learning is on for this stream." });
+      expect(card!.analysis).toMatchObject({ state: "stopped", reason: "Learning is paused right now. SLOT1 isn't watching this stream." });
+    }
+    expect((await owner.request("PUT", "/api/admin/learning", { json: { on: true } })).status).toBe(200);
+    try {
+      for (const who of [visitor, owner]) {
+        const card = DirectoryResponse.parse((await who.get("/api/channels")).json()).channels.find((c) => c.login === "vader");
+        expect(card!.analysis).toMatchObject({ state: "ready", reason: "Learning is on for this stream." });
+      }
+    } finally {
+      await h.ctx.redis.del(LEARNING_SWITCH_KEY);
+      clearPreviewCache();
     }
   });
 

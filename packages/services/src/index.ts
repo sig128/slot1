@@ -17,3 +17,4 @@ export * from "./kick";
 export * from "./preview-list";
 export * from "./added-watch";
 export * from "./wipe";
+export * from "./learning-switch";

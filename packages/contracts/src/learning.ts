@@ -131,6 +131,8 @@ export const LearningResponse = z.object({
   models: z.array(LearningModel),
   /** "Ask SLOT1 about the game" opens to everyone at `opensAtHours` hours watched. */
   ask: z.object({ open: z.boolean(), opensAtHours: z.number().nonnegative() }),
+  /** Admin → Learning: whether SLOT1 is watching and learning from the featured channels now. */
+  learningOn: z.boolean(),
 });
 export type LearningResponse = z.infer<typeof LearningResponse>;
 

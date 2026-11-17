@@ -180,7 +180,7 @@ export function LearningExperience({
           <h1 className="la-title">SLOT1 is learning</h1>
           <p className={`la-live ${live ? "is-live" : ""}`}>
             <span aria-hidden />
-            {live ? `Watching ${live} ${live === 1 ? "stream" : "streams"} now` : "No stream live right now"}
+            {live ? `Watching ${live} ${live === 1 ? "stream" : "streams"} now` : learning && !learning.learningOn ? "Learning is paused right now" : "No stream live right now"}
           </p>
         </div>
         <nav aria-label="On this page" className="la-mnav">

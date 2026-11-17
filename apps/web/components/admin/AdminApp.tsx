@@ -11,6 +11,7 @@ import { PreviewChannelsPanel } from "./PreviewChannelsPanel";
 import { SettingsAlert, SettingsPanel } from "./SettingsPanel";
 import { ago, compact, duration, Health, num, Ranked, Section, size, Stat } from "./parts";
 import { VisitorsChart } from "./VisitorsChart";
+import { LearningSwitchPanel } from "./LearningSwitchPanel";
 import { WipeDataPanel } from "./WipeDataPanel";
 
 const REFRESH_MS = 10_000;
@@ -42,6 +43,7 @@ const SECTIONS = [
   ["preview-channels", "Featured channels"],
   ["chat", "Chat"],
   ["settings", "Settings"],
+  ["learning", "Learning"],
   ["wipe", "Wipe data"],
 ] as const;
 
@@ -501,6 +503,11 @@ export function AdminApp({
           ) : (
             <p className="text-[0.95rem] text-ivory-3">Couldn’t load the settings. Reload the page.</p>
           )}
+        </Section>
+
+        {/* LEARNING ---------------------------------------------------------------------- */}
+        <Section id="learning" title="Learning">
+          <LearningSwitchPanel />
         </Section>
 
         {/* WIPE DATA --------------------------------------------------------------------- */}
