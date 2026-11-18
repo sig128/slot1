@@ -29,9 +29,9 @@ export async function writeWipeStatus(redis: Redis, status: WipeStatusT): Promis
 }
 
 /**
- * Delete every stream and everything SLOT1's AI found, kept, heard and learned from them, then
- * their files. The database goes first, in one transaction, so nothing deleted can still show;
- * files follow. Safe to run again: a retry finds nothing left and finishes.
+ * Delete what the AI found, kept, heard and learned, then those files. Streams stay. The database
+ * goes first, in one transaction, so nothing deleted can still show; files follow. The live
+ * "what the AI sees" pictures in Redis go too. Safe to run again: a retry finds nothing left.
  */
 export async function runWipe(ctx: ServerContext): Promise<WipeStatusT> {
   const before = await readWipeStatus(ctx.redis);
@@ -47,6 +47,7 @@ export async function runWipe(ctx: ServerContext): Promise<WipeStatusT> {
         .catch(() => false);
       if (gone) filesRemoved += 1;
     }
+    await dropKeys(ctx.redis, "slot1:aiview:*");
     const done: WipeStatusT = {
       state: "done",
       requestedAt: before.requestedAt,
@@ -56,7 +57,7 @@ export async function runWipe(ctx: ServerContext): Promise<WipeStatusT> {
       error: null,
     };
     await writeWipeStatus(ctx.redis, done);
-    ctx.log.warn({ deleted, filesRemoved }, "admin wipe: every stream and all learning data deleted");
+    ctx.log.warn({ deleted, filesRemoved }, "admin wipe: learning data deleted, streams kept");
     return done;
   } catch (err) {
     await writeWipeStatus(ctx.redis, {
@@ -67,4 +68,14 @@ export async function runWipe(ctx: ServerContext): Promise<WipeStatusT> {
     });
     throw err;
   }
+}
+
+/** Delete every Redis key matching a pattern. Used to drop the live AI-view pictures after a wipe. */
+async function dropKeys(redis: Redis, pattern: string): Promise<void> {
+  let cursor = "0";
+  do {
+    const [next, keys] = await redis.scan(cursor, "MATCH", pattern, "COUNT", 200);
+    cursor = next;
+    if (keys.length > 0) await redis.del(...keys);
+  } while (cursor !== "0");
 }

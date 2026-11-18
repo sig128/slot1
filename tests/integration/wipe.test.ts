@@ -9,11 +9,11 @@ import {
   createLocalBroadcaster,
   createLocalUser,
   getSettings,
+  insertAsset,
   insertObservation,
   insertTrainingFrame,
   markPublishing,
   updateSettings,
-  wipeStreamAndLearningData,
 } from "@slot1/db";
 import { runWipe } from "@slot1/services";
 import { ADMIN_COOKIE, mintAdminLink } from "../../apps/api/src/lib/admin-session";
@@ -22,9 +22,9 @@ import { Browser, ORIGIN, startHarness, type Harness } from "./harness";
 
 /**
  * Admin → Wipe data against the real API, SQL, Redis and storage: only an admin sees or starts it,
- * it needs the confirm word, it waits while someone is sending video, and it deletes every stream
- * with everything SLOT1 found, kept and learned, files included, while channels, their settings
- * and stream keys stay. The hours-watched counter is back at 0 afterwards.
+ * it needs the confirm word, it waits while someone is sending video, and it deletes what SLOT1
+ * found, kept and learned, files included, while the stream, its channel, settings and stream key
+ * stay. The hours-watched counter is back at 0 afterwards.
  */
 
 async function adminBrowser(h: Harness): Promise<Browser> {
@@ -58,8 +58,16 @@ describe("Admin → Wipe data", () => {
     anon = new Browser(h);
     await anon.refreshCsrf();
     admin = await adminBrowser(h);
-    // Earlier test files share this database: start from nothing so the counts are exact.
-    await wipeStreamAndLearningData(h.ctx.db);
+    // Earlier test files share this database. The wipe keeps stream rows, so clear leftovers here
+    // and the counts below are exact.
+    await h.ctx.db.query(`DELETE FROM stream_sessions`);
+    await h.ctx.db.query(`DELETE FROM models`);
+    await h.ctx.db.query(`DELETE FROM dataset_versions`);
+    await h.ctx.db.query(`DELETE FROM evidence_assets`);
+    await h.ctx.db.query(`DELETE FROM library_items`);
+    await h.ctx.db.query(`DELETE FROM project_media`);
+    await h.ctx.db.query(`DELETE FROM edit_projects`);
+    await h.ctx.db.query(`DELETE FROM media_sources WHERE kind <> 'live_ingest'`);
     await h.ctx.redis.del("slot1:admin:wipe");
 
     const user = await createLocalUser(h.ctx.db, "Wiper");
@@ -98,6 +106,16 @@ describe("Admin → Wipe data", () => {
       description: "Result screen read",
     });
     frameKey = `b/${b.id}/s/${s.id}/src/${source.id}/frames/0000001000.jpg`;
+    await insertAsset(h.ctx.db, {
+      broadcasterId: b.id,
+      sessionId: s.id,
+      sourceId: source.id,
+      kind: "frame",
+      storageKey: frameKey,
+      contentType: "image/jpeg",
+      bytes: 7,
+      mediaPtsMs: 1000,
+    });
     await h.ctx.storage.putBuffer(frameKey, Buffer.from("a frame"), "image/jpeg");
     trainingKey = `b/${b.id}/s/${s.id}/training/${randomUUID()}.jpg`;
     await h.ctx.storage.putBuffer(trainingKey, Buffer.from("a training frame"), "image/jpeg");
@@ -150,7 +168,7 @@ describe("Admin → Wipe data", () => {
     expect(h.jobs.filter((j) => j.name === "wipe-data")).toHaveLength(0);
   });
 
-  it("deletes every stream and all learning data, files included, and keeps channels and stream keys", async () => {
+  it("deletes the learning data and its files, and keeps the stream, channel and stream key", async () => {
     const res = await admin.request("POST", "/api/admin/wipe", { json: { confirm: "WIPE" } });
     expect(res.status).toBe(202);
     expect(AdminWipeResponse.parse(res.json()).status.state).toBe("queued");
@@ -164,12 +182,16 @@ describe("Admin → Wipe data", () => {
     expect(done.deleted).toMatchObject({ streams: 1, findings: 1, trainingFrames: 1, hoursWatched: 3 });
 
     const after = AdminWipeResponse.parse((await admin.get("/api/admin/wipe")).json());
-    expect(after.counts).toEqual({ streams: 0, findings: 0, files: 0, speech: 0, missions: 0, trainingFrames: 0, clips: 0, library: 0, models: 0, hoursWatched: 0 });
+    expect(after.counts).toEqual({ streams: 1, findings: 0, files: 0, speech: 0, missions: 0, trainingFrames: 0, clips: 0, library: 0, models: 0, hoursWatched: 0 });
     expect(after.status.state).toBe("done");
     expect(await exists(frameKey)).toBe(false);
     expect(await exists(trainingKey)).toBe(false);
-    const gone = await h.ctx.db.query(`SELECT count(*)::int AS n FROM stream_sessions WHERE id = $1`, [sessionId]);
-    expect(gone.rows[0].n).toBe(0);
+    const kept = await h.ctx.db.query<{ n: number; analyzed_ms: string }>(
+      `SELECT count(*)::int AS n, coalesce(max(analyzed_ms), 0)::text AS analyzed_ms FROM stream_sessions WHERE id = $1`,
+      [sessionId],
+    );
+    expect(kept.rows[0]?.n).toBe(1);
+    expect(kept.rows[0]?.analyzed_ms).toBe("0");
 
     // The channel, its settings and its stream key stay.
     expect((await getSettings(h.ctx.db, broadcasterId)).publicAnalysis).toBe(true);

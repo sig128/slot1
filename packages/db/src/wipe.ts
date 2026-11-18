@@ -2,10 +2,11 @@ import { withTx, type DbPool, type Queryable } from "./client";
 import { learningWatched } from "./learning";
 
 /**
- * Admin → Wipe data: every stream SLOT1 has and everything its AI found, kept, heard and learned
- * from them — findings, frames, speech, missions, clips, recordings, the media library, training
- * frames, labels, datasets and models. Accounts, channels and their settings, stream keys,
- * featured channels, admin settings, visitor stats, messages and the AI cost log stay.
+ * Admin → Wipe data: what SLOT1's AI found, kept, heard and learned — findings, the frames it
+ * stored, speech, missions, training frames, labels, datasets and models — and the hours-watched
+ * counter. The streams themselves stay, with their recordings, clips, media library, accounts,
+ * channels and settings, stream keys, featured channels, admin settings, visitor stats, messages
+ * and the AI cost log.
  */
 
 export interface WipeCountsRow {
@@ -81,10 +82,9 @@ export interface WipeResult {
 }
 
 /**
- * Delete the rows in one transaction, so nothing half-wiped ever shows. Deleting the sessions
- * cascades to their findings, frames, speech, moments, clips, recordings, missions and training
- * frames (with their labels). Only the files the deleted rows pointed to are listed for removal,
- * so a stream that starts after the wipe keeps its files.
+ * Delete the learning rows in one transaction, so nothing half-wiped ever shows. Stream sessions,
+ * their recordings, clips, the media library and every media source stay. Only files the removed
+ * AI rows pointed to are listed, so a recording under the same session folder is left on disk.
  */
 export async function wipeStreamAndLearningData(pool: DbPool): Promise<WipeResult> {
   return withTx(pool, async (c) => {
@@ -92,33 +92,41 @@ export async function wipeStreamAndLearningData(pool: DbPool): Promise<WipeResul
     const prefixes: string[] = [];
     const keys: string[] = [];
 
-    const sessions = await c.query<{ id: string; broadcaster_id: string }>(`SELECT id, broadcaster_id FROM stream_sessions`);
-    for (const s of sessions.rows) prefixes.push(`b/${s.broadcaster_id}/s/${s.id}/`);
-    // Library items, editor media and editor projects (their generated captions) each own a folder.
-    const owned = await c.query<{ id: string; broadcaster_id: string }>(
-      `SELECT id, broadcaster_id FROM library_items
-       UNION ALL SELECT id, broadcaster_id FROM project_media
-       UNION ALL SELECT id, broadcaster_id FROM edit_projects`,
-    );
-    for (const o of owned.rows) prefixes.push(`b/${o.broadcaster_id}/library/${o.id}/`);
-    // Files not under a session folder (renders, uploads not yet tied to a session) and model files.
+    // Frames, thumbnails and audio the AI stored, plus training pictures and model files.
+    // A file a creator's library or a recording still points at stays.
     const loose = await c.query<{ key: string }>(
-      `SELECT storage_key AS key FROM evidence_assets WHERE session_id IS NULL AND deleted_at IS NULL AND storage_key IS NOT NULL
+      `SELECT storage_key AS key FROM evidence_assets e
+        WHERE e.deleted_at IS NULL AND e.storage_key IS NOT NULL AND e.kind IN ('frame', 'thumbnail', 'audio_chunk')
+          AND NOT EXISTS (SELECT 1 FROM library_items li WHERE li.asset_id = e.id OR li.poster_asset_id = e.id)
+          AND NOT EXISTS (SELECT 1 FROM media_sources ms WHERE ms.original_asset_id = e.id OR ms.playback_asset_id = e.id)
+       UNION SELECT storage_key AS key FROM training_frames WHERE storage_key IS NOT NULL
        UNION SELECT onnx_storage_key AS key FROM models WHERE onnx_storage_key IS NOT NULL`,
     );
     for (const l of loose.rows) keys.push(l.key);
 
-    await c.query(`DELETE FROM library_items`);
-    await c.query(`DELETE FROM project_media`);
-    await c.query(`DELETE FROM edit_projects`);
-    await c.query(`DELETE FROM dataset_versions`);
+    await c.query(`DELETE FROM story_events`);
+    await c.query(`DELETE FROM mission_attempts`);
+    await c.query(`DELETE FROM clip_ai_audio`);
+    await c.query(`DELETE FROM saved_moments`);
+    await c.query(`DELETE FROM session_events WHERE kind LIKE 'observation.%'`);
+    await c.query(`DELETE FROM observations`);
+    await c.query(`DELETE FROM transcripts`);
     await c.query(`DELETE FROM models`);
-    await c.query(`DELETE FROM stream_sessions`);
-    // Upload, clip, recording and featured-picture sources belong to the deleted streams. A
-    // creator's stream key (live_ingest) stays, so their setup keeps working.
-    await c.query(`DELETE FROM media_sources WHERE kind <> 'live_ingest'`);
-    await c.query(`DELETE FROM evidence_assets`);
+    await c.query(`DELETE FROM dataset_versions`);
     await c.query(`DELETE FROM training_frames`);
+    await c.query(
+      `DELETE FROM evidence_assets e
+        WHERE e.kind IN ('frame', 'thumbnail', 'audio_chunk')
+          AND NOT EXISTS (SELECT 1 FROM library_items li WHERE li.asset_id = e.id OR li.poster_asset_id = e.id)
+          AND NOT EXISTS (SELECT 1 FROM media_sources ms WHERE ms.original_asset_id = e.id OR ms.playback_asset_id = e.id)`,
+    );
+    // Hours watched is the sum of analyzed time. Zero it on the streams that stay, so Ask SLOT1
+    // starts toward 1,000 hours again. The sessions themselves are not deleted.
+    await c.query(
+      `UPDATE stream_sessions SET analyzed_ms = 0, frames_analyzed = 0,
+              last_analyzed_frame_at = NULL, last_result_at = NULL, stories_refreshed_at = NULL`,
+    );
+    await c.query(`UPDATE source_health SET frames_analyzed = 0, last_analyzed_at = NULL, last_frame_asset_id = NULL`);
     return { deleted, prefixes, keys };
   });
 }

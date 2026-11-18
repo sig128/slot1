@@ -254,7 +254,7 @@ export type AdminOverview = z.infer<typeof AdminOverview>;
 
 /* Admin → Wipe data -------------------------------------------------------------------------- */
 
-/** What a wipe deletes: every stream and everything SLOT1's AI found, kept and learned from them. */
+/** What a wipe clears. Streams are counted here and kept; the AI's findings and learning are deleted. */
 export const WipeCounts = z.object({
   streams: Count,
   findings: Count,

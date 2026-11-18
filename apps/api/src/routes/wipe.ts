@@ -7,8 +7,8 @@ import { requireAdmin } from "../lib/admin-access";
 import { ApiProblem } from "../lib/errors";
 
 /**
- * Admin → Wipe data (services/wipe.ts): what is stored now, and a confirmed request to delete every
- * stream and all learning data. Everyone else gets a plain 404 from requireAdmin.
+ * Admin → Wipe data (services/wipe.ts): what is stored now, and a confirmed request to delete what
+ * the AI found and learned. Streams stay. Everyone else gets a plain 404 from requireAdmin.
  */
 export const wipeRoutes =
   (ctx: ServerContext): FastifyPluginAsync =>

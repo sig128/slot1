@@ -46,7 +46,7 @@ export interface MaintenanceJobs {
   "retention-sweep": Record<string, never>;
   "delete-session": { sessionId: string; broadcasterId: string };
   "purge-broadcaster-media": { broadcasterId: string };
-  /** Admin → Wipe data: every stream and all learning data (services/wipe.ts). */
+  /** Admin → Wipe data: learning and AI data; streams stay (services/wipe.ts). */
   "wipe-data": { requestedAt: string };
 }
 
