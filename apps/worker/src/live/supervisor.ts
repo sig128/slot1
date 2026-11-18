@@ -58,6 +58,7 @@ import {
 } from "@slot1/services";
 import { loadActiveGtaModel } from "../gta/onnx-model";
 import { publishAiView } from "./ai-view";
+import { objectFinder } from "./objects";
 import { announce } from "./announce";
 import { LiveRecorder } from "./recorder";
 import { LiveSpeech } from "./speech";
@@ -281,6 +282,8 @@ class LiveRunner {
               // The demo never reaches a paid provider unless the operator opted in (rate-capped).
               vision: this.demo && !ctx.config.env.SLOT1_DEMO_VISION ? null : createVisionProvider(ctx.config.env),
               gtaModel: await loadActiveGtaModel(ctx, { live: true, streamId: `live:${this.source.id}` }),
+              // People and vehicles on every analyzed frame: training proposals and the AI view.
+              objects: await objectFinder(ctx.log),
               profile: getProfile(settings.gameProfile),
               sourceLabel: this.source.label,
               visionBatchSize: Math.max(1, Math.min(3, ctx.config.env.VISION_FRAMES_PER_CALL)),

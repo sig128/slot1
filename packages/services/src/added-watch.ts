@@ -10,6 +10,7 @@ import {
   ObservationPipeline,
   type FrameInsight,
   type FrameModel,
+  type ObjectFinder,
 } from "@slot1/analysis";
 import {
   endTwitchBroadcastSessions,
@@ -51,6 +52,8 @@ const PREVIEW_OCR_KEEP_OUT: ReadonlySet<string> = new Set(["visible_text"]);
 
 export interface AddedWatchOptions {
   gtaModel: FrameModel | null;
+  /** The object finder, run on every picture SLOT1 looks at. */
+  objects?: ObjectFinder | null;
   toJpeg?: (buf: Buffer, contentType: string) => Promise<Buffer | null>;
   /** "What the AI sees" and the AI overlay: called once per analyzed picture (the worker stores it while someone watches). */
   insight?: (c: AiViewContext, i: FrameInsight) => Promise<void>;
@@ -184,6 +187,7 @@ async function runWatch(
               vision,
               ocr,
               gtaModel: opts.gtaModel,
+              objects: opts.objects ?? null,
               insight: opts.insight,
               reason,
             });
@@ -226,6 +230,7 @@ async function runWatch(
             vision,
             ocr,
             gtaModel: opts.gtaModel,
+            objects: opts.objects ?? null,
             insight: opts.insight,
             reason,
           });
@@ -315,6 +320,7 @@ async function learnFrame(
     vision: ReturnType<typeof createVisionProvider>;
     ocr: ReturnType<typeof createOcrEngine>;
     gtaModel: FrameModel | null;
+    objects: ObjectFinder | null;
     insight?: AddedWatchOptions["insight"];
     reason: string;
   },
@@ -350,6 +356,7 @@ async function learnFrame(
     ocrKeepOut: PREVIEW_OCR_KEEP_OUT,
     vision: input.vision,
     gtaModel: input.gtaModel,
+    objects: input.objects,
     profile: getProfile(settings.gameProfile),
     sourceLabel: "clip",
     visionBatchSize: 1,

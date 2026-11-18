@@ -7,6 +7,7 @@ import {
   type ModelView,
   type TrainingFrameView,
   type TrainingLabelView,
+  type DetectedObject,
 } from "@slot1/contracts";
 import {
   countSessionTrainingFrames,
@@ -33,6 +34,40 @@ export const TRAINING_MAX_FRAMES_PER_SESSION = 2_000;
 export const TRAINING_SPLIT_SEED = "slot1-gta-v1";
 /** Model proposals below this are not worth showing a labeler. */
 const PROPOSAL_MIN_SCORE = 0.3;
+
+const VEHICLE_OBJECTS = new Set(["car", "truck", "bus", "motorbike", "bicycle", "boat", "plane", "train"]);
+/** The GTA box class for an object finder label: people and vehicles are labeled; animals aren't (yet). */
+function objectClass(label: string): "person" | "vehicle" | null {
+  if (label === "person") return "person";
+  return VEHICLE_OBJECTS.has(label) ? "vehicle" : null;
+}
+type Box = { x: number; y: number; w: number; h: number };
+function iou(a: Box, b: Box): number {
+  const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+  const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  if (w <= 0 || h <= 0) return 0;
+  const inter = w * h;
+  return inter / (a.w * a.h + b.w * b.h - inter);
+}
+
+/**
+ * The object finder's people and vehicles in one frame, as box proposals a person confirms before
+ * they count. Animals and unsure finds are left out, and a box already proposed for the same
+ * thing (by SLOT1's own GTA model) isn't proposed twice.
+ */
+export function objectProposals(objects: { name: string; items: DetectedObject[] }, existing: readonly NewTrainingLabel[] = []): NewTrainingLabel[] {
+  const out: NewTrainingLabel[] = [];
+  for (const o of objects.items) {
+    const cls = objectClass(o.label);
+    if (!cls || o.score < PROPOSAL_MIN_SCORE) continue;
+    const [x, y, w, h] = o.box;
+    const box = { x: Math.max(0, x), y: Math.max(0, y), w: Math.min(w, 1 - Math.max(0, x)), h: Math.min(h, 1 - Math.max(0, y)) };
+    if (box.w <= 0 || box.h <= 0) continue;
+    if ([...existing, ...out].some((l) => l.kind === "box" && l.class === cls && l.box && iou(l.box, box) > 0.5)) continue;
+    out.push({ kind: "box", class: cls, box, source: "model", confidence: o.score, evidenceText: `${objects.name}: ${o.label}` });
+  }
+  return out;
+}
 
 /** Read width/height from a baseline or progressive JPEG header (SOFn marker). */
 export function jpegSize(buf: Buffer): { width: number; height: number } | null {
@@ -69,7 +104,7 @@ export function createTrainingCollector(ctx: ServerContext, session: StreamSessi
   let lastPts = -Infinity;
   let lastInteresting = -Infinity;
 
-  return async (input: { frame: SampledFrame; weakLabels: WeakLabel[]; prediction: FramePrediction | null }): Promise<void> => {
+  return async (input: { frame: SampledFrame; weakLabels: WeakLabel[]; prediction: FramePrediction | null; objects?: { name: string; items: DetectedObject[] } | null }): Promise<void> => {
     if (source.label === "test") return;
     const now = Date.now();
     if (!consent || now - consent.at > 10_000) consent = { value: (await getSettings(ctx.db, session.broadcaster_id)).trainingConsent, at: now };
@@ -113,6 +148,7 @@ export function createTrainingCollector(ctx: ServerContext, session: StreamSessi
     for (const b of prediction?.boxes ?? []) {
       if (b.score >= PROPOSAL_MIN_SCORE) labels.push({ kind: "box", class: b.class, box: b.box, source: "model", confidence: b.score, modelId: b.modelId });
     }
+    if (input.objects) labels.push(...objectProposals(input.objects, labels));
     await insertTrainingLabels(ctx.db, row.id, labels);
     count += 1;
     lastPts = frame.ptsMs;

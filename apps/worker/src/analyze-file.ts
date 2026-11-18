@@ -34,6 +34,7 @@ import {
 import { storageKeys } from "@slot1/platform";
 import { createPipelineSink, emitObservation, type ServerContext } from "@slot1/services";
 import { loadActiveGtaModel } from "./gta/onnx-model";
+import { objectFinder } from "./live/objects";
 
 export interface AnalyzeFileInput {
   session: StreamSessionRow;
@@ -102,6 +103,7 @@ export async function analyzeMediaFile(ctx: ServerContext, input: AnalyzeFileInp
       ocrVersion: "5",
       vision,
       gtaModel: await loadActiveGtaModel(ctx, { live: false, streamId: `file:${source.id}` }),
+      objects: await objectFinder(ctx.log),
       profile: getProfile(settings.gameProfile),
       sourceLabel: source.label,
       visionBatchSize: Math.max(1, Math.min(env.VISION_FRAMES_PER_CALL, 8)),

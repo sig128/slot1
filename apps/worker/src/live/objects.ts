@@ -1,14 +1,16 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { ObjectFinder } from "@slot1/analysis";
 import { AI_VIEW_OBJECTS_OFF, type AiViewObjects } from "@slot1/contracts";
 import { ObjectDetector } from "@slot1/gta-runtime";
 import { sanitizeErrorMessage } from "@slot1/platform";
 import type { ServerContext } from "@slot1/services";
 
 /**
- * The AI overlay's object finder: YOLOX-Nano (Apache-2.0, trained on COCO), shipped with the worker
- * in apps/worker/models. Loaded once per process, the first time someone watches the overlay. A
+ * SLOT1's object finder: YOLOX-Nano (Apache-2.0, trained on COCO), shipped with the worker in
+ * apps/worker/models. It runs on every frame the analysis looks at, live streams and featured
+ * channels alike, whether or not anyone is watching. Loaded once per process. A
  * missing or broken model file turns the boxes off and says why; nothing is ever drawn without it.
  */
 const FILE = "yolox-nano.onnx";
@@ -55,4 +57,10 @@ export async function findObjects(log: ServerContext["log"], jpeg: Buffer): Prom
   } catch (err) {
     return { status: "error", model: det.name, items: [], durationMs: null, note: `The object finder failed on this frame: ${sanitizeErrorMessage((err as Error).message).slice(0, 160)}` };
   }
+}
+
+/** The object finder as part of the analysis pipeline (null when the model isn't available here). */
+export async function objectFinder(log: ServerContext["log"]): Promise<ObjectFinder | null> {
+  const det = await objectDetector(log);
+  return det ? { name: det.name, find: (jpeg) => det.detect(jpeg) } : null;
 }

@@ -1,6 +1,6 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { SourceLabel } from "@slot1/contracts";
+import type { DetectedObject, SourceLabel } from "@slot1/contracts";
 import { ocrCandidates, visionCandidates, type FrameRef } from "./candidates";
 import { FusionWindow, HighlightScorer, type Candidate, type FusionAction } from "./fusion";
 import { GtaPredictionGate, type FrameModel, type FramePrediction } from "./gta/model";
@@ -25,11 +25,21 @@ export interface PipelineSink {
    * Offer an analyzed frame to the GTA training pool. The sink decides (creator consent,
    * sampling caps) whether to keep it. Optional: sinks without a training pool ignore it.
    */
-  trainingFrame?(input: { frame: SampledFrame; ref: FrameRef; weakLabels: WeakLabel[]; prediction: FramePrediction | null }): Promise<void>;
+  trainingFrame?(input: { frame: SampledFrame; ref: FrameRef; weakLabels: WeakLabel[]; prediction: FramePrediction | null; objects?: { name: string; items: DetectedObject[] } | null }): Promise<void>;
   /** The GTA model skipped this frame (e.g. the shared inference service was busy). Optional. */
   modelFrameSkipped?(frame: FrameRef, reason: string): Promise<void>;
   /** Keep what was said in one live audio chunk (text only) as transcript evidence. Optional. */
   storeTranscript?(t: StoredTranscript): Promise<{ assetId: string }>;
+}
+
+/**
+ * SLOT1's object finder: boxes around people, vehicles and animals in a frame (a general detector,
+ * not trained on GTA). Part of the analysis on every frame; its boxes go to "What the AI sees", the
+ * stream overlay and the training pool as proposals, never to the log.
+ */
+export interface ObjectFinder {
+  readonly name: string;
+  find(jpeg: Buffer): Promise<{ objects: DetectedObject[]; durationMs: number }>;
 }
 
 export interface StoredTranscript {
@@ -57,6 +67,8 @@ export interface PipelineOptions {
   vision: VisionProvider | null;
   /** SLOT1's own trained GTA model (active registry version), when one is deployed. */
   gtaModel?: FrameModel | null;
+  /** The object finder (people, vehicles, animals), run on every analyzed frame. */
+  objects?: ObjectFinder | null;
   profile: GameProfile;
   sourceLabel: SourceLabel;
   visionBatchSize: number;
@@ -87,6 +99,8 @@ export interface FrameInsight {
   profile: GameProfile;
   ocr: { enabled: boolean; engine: string | null; lines: OcrLine[]; durationMs: number | null; error: string | null };
   model: { enabled: boolean; label: string | null; prediction: FramePrediction | null; skipped: string | null; error: string | null };
+  /** What the object finder boxed in this frame. */
+  objects?: { enabled: boolean; name: string | null; items: DetectedObject[]; durationMs: number | null; error: string | null };
   vision: {
     enabled: boolean;
     provider: string | null;
@@ -234,6 +248,19 @@ export class ObservationPipeline {
       }
     }
 
+    // People, vehicles and animals: for the overlay, "What the AI sees" and training proposals.
+    const objectsInfo: NonNullable<FrameInsight["objects"]> = { enabled: Boolean(this.o.objects), name: this.o.objects?.name ?? null, items: [], durationMs: null, error: null };
+    if (this.o.objects) {
+      try {
+        const found = await this.o.objects.find(frame.jpeg);
+        objectsInfo.items = found.objects;
+        objectsInfo.durationMs = found.durationMs;
+      } catch (err) {
+        objectsInfo.error = (err as Error).message;
+        await this.o.sink.problem("objects", `The object finder failed on a frame: ${(err as Error).message}`);
+      }
+    }
+
     // How much the picture changed: sudden action is logged, and it decides whether vision looks.
     let change: FrameChange | null = null;
     if (this.o.motion) {
@@ -277,7 +304,13 @@ export class ObservationPipeline {
 
     if (this.o.sink.trainingFrame) {
       try {
-        await this.o.sink.trainingFrame({ frame, ref, weakLabels: weakLabelsFromOcr(ocrLines), prediction });
+        await this.o.sink.trainingFrame({
+          frame,
+          ref,
+          weakLabels: weakLabelsFromOcr(ocrLines),
+          prediction,
+          objects: this.o.objects && !objectsInfo.error ? { name: this.o.objects.name, items: objectsInfo.items } : null,
+        });
       } catch (err) {
         await this.o.sink.problem("training", `Couldn't add a frame to the training pool: ${(err as Error).message}`);
       }
@@ -304,6 +337,7 @@ export class ObservationPipeline {
           profile: this.o.profile,
           ocr: ocrInfo,
           model: modelInfo,
+          objects: objectsInfo,
           vision: {
             enabled: Boolean(v),
             provider: v?.provider ?? null,

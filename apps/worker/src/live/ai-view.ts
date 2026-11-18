@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import type { FrameInsight } from "@slot1/analysis";
+import type { AiViewObjects } from "@slot1/contracts";
 import { AI_VIEW_FRAME_WIDTH, aiViewWatched, buildAiViewSnapshot, storeAiView, type AiViewContext, type ServerContext } from "@slot1/services";
 import { findObjects } from "./objects";
 
@@ -17,8 +18,10 @@ export async function publishAiView(ctx: Pick<ServerContext, "redis" | "log">, c
   const meta = await img.metadata();
   const [small, objects] = await Promise.all([
     img.resize({ width: AI_VIEW_FRAME_WIDTH, withoutEnlargement: true }).jpeg({ quality: 72, mozjpeg: false }).toBuffer({ resolveWithObject: true }),
-    // On the full analyzed frame (with the creator's hidden areas already blacked out).
-    findObjects(ctx.log, i.frame.jpeg),
+    // The pipeline already ran the object finder on this frame; older callers get it run here.
+    i.objects?.enabled
+      ? Promise.resolve<AiViewObjects>({ status: i.objects.error ? "error" : "found", model: i.objects.name, items: i.objects.items, durationMs: i.objects.durationMs, note: i.objects.error })
+      : findObjects(ctx.log, i.frame.jpeg),
   ]);
   const snapshot = buildAiViewSnapshot(
     randomUUID(),
