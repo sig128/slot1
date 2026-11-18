@@ -353,23 +353,6 @@ export function AiViewPanel({ sessionId, onSelect }: { sessionId: string; onSele
  * For channels without Twitch when SLOT1's WebRTC video isn't available here: the frames the
  * AI analyzed, refreshed as they come in. Honest about being a frame feed, not video.
  */
-/** The latest analyzed frame, with people and cars boxed, sitting on the live player. */
-export function StreamBoxes({ sessionId }: { sessionId: string }) {
-  const { shown } = useAiView(sessionId);
-  return (
-    <div className="overflow-hidden border border-ivory/40 bg-black shadow-lg" data-testid="stream-boxes">
-      {shown ? (
-        <AnalyzedFrame snapshot={shown} annotate={false} />
-      ) : (
-        <div className="grid aspect-video w-full place-items-center p-2 text-center text-[0.7rem] text-ivory-2">Looking for people and cars</div>
-      )}
-      <p className="px-1.5 py-1 text-[0.65rem] leading-tight text-ivory-2">
-        {(shown?.objects?.items ?? []).length > 0 ? "People and cars boxed on this frame" : "The frame SLOT1 is looking at"}
-      </p>
-    </div>
-  );
-}
-
 export function AiFramePlayer({ sessionId, reason }: { sessionId: string; reason?: string }) {
   const { response, shown } = useAiView(sessionId);
   return (
