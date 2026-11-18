@@ -24,8 +24,7 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          // display-capture: SLOT1 VISION shares this tab (with the viewer's say-so) to box Twitch's player.
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), display-capture=(self)" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
         ],
       },
       {
