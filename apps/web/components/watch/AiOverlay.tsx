@@ -242,7 +242,13 @@ export function AiOverlay({ over }: { /** "video": SLOT1's own video. "embed": T
     } catch (err) {
       const e = err as Error;
       // Closing the browser's prompt is a choice, not an error.
-      setProblem(e.name === "NotAllowedError" || e.name === "AbortError" ? null : e.message);
+      setProblem(
+        e.name === "NotAllowedError" || e.name === "AbortError"
+          ? "Sharing was cancelled or blocked. Press again and choose Share."
+          : e.name === "NotSupportedError"
+            ? "This browser can't share a tab. Use Chrome or Edge on a computer."
+            : e.message,
+      );
     } finally {
       setAsking(false);
     }
@@ -254,14 +260,23 @@ export function AiOverlay({ over }: { /** "video": SLOT1's own video. "embed": T
   const live = on && vision.state === "running";
   const frame = vision.frame;
   const picture = over === "video" && frame ? contain(surface.rect, frame.width / frame.height) : { left: 0, top: 0, width: surface.rect.width, height: surface.rect.height };
-  const label = asking ? "SLOT1 VISION · starting" : live ? `SLOT1 VISION · LIVE${vision.fps ? ` ${vision.fps} fps` : ""}` : on ? "SLOT1 VISION · loading" : "SLOT1 VISION";
+  const label = asking
+    ? "SLOT1 VISION · starting"
+    : live
+      ? `SLOT1 VISION · LIVE${vision.fps ? ` ${vision.fps} fps` : ""}`
+      : on
+        ? "SLOT1 VISION · loading"
+        : over === "embed"
+          ? "▶ SLOT1 VISION · start live tracking"
+          : "SLOT1 VISION · off";
+  const invite = over === "embed" && !on && !asking;
 
   return (
     <div ref={root} className="aio-root">
       <div className={`aio-layer ${surface.rect.width < 640 ? "aio-compact" : ""}`} style={{ left: surface.rect.left, top: surface.rect.top, width: surface.rect.width, height: surface.rect.height }}>
         <button
           type="button"
-          className="aio-toggle"
+          className={`aio-toggle ${invite ? "is-invite" : ""}`}
           aria-pressed={on}
           disabled={asking}
           onClick={() => {
@@ -282,7 +297,11 @@ export function AiOverlay({ over }: { /** "video": SLOT1's own video. "embed": T
           <span className={`aio-dot ${live ? "is-on" : ""}`} aria-hidden />
           {label}
         </button>
-        {(problem || (on && vision.error)) && <p className="aio-note">{problem ?? vision.error}</p>}
+        {problem || (on && vision.error) ? (
+          <p className="aio-note">{problem ?? vision.error}</p>
+        ) : invite ? (
+          <p className="aio-hint">Boxes on people and cars, live. Your browser asks to share this tab; the picture stays on your computer.</p>
+        ) : null}
 
         {live && (
           <div className="aio-picture" style={{ left: picture.left, top: picture.top, width: picture.width, height: picture.height }} aria-hidden>

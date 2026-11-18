@@ -46,6 +46,8 @@ const LOCK_KEY = "slot1:lock:added-watch";
  */
 const SAMPLE_MS = 5_000;
 const STATUS_TTL_SEC = 180;
+/** OCR readings left out of featured channels' logs: whole-frame text that isn't a subtitle, objective, title or place. */
+const PREVIEW_OCR_KEEP_OUT: ReadonlySet<string> = new Set(["visible_text"]);
 
 export interface AddedWatchOptions {
   gtaModel: FrameModel | null;
@@ -344,6 +346,8 @@ async function learnFrame(
   const pipeline = new ObservationPipeline({
     ocr: input.ocr,
     ocrVersion: "5",
+    // Loose words from menus, overlays and chat boxes: the vision model describes these better.
+    ocrKeepOut: PREVIEW_OCR_KEEP_OUT,
     vision: input.vision,
     gtaModel: input.gtaModel,
     profile: getProfile(settings.gameProfile),

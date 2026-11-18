@@ -48,6 +48,12 @@ export interface StoredTranscript {
 export interface PipelineOptions {
   ocr: OcrEngine | null;
   ocrVersion: string;
+  /**
+   * OCR reading kinds that stay out of the log (they still reach "What the AI sees" and the
+   * training labels). Featured channels' preview pictures leave out loose "visible_text": menu
+   * items, stream overlays and chat boxes read word by word, which the vision model describes better.
+   */
+  ocrKeepOut?: ReadonlySet<string>;
   vision: VisionProvider | null;
   /** SLOT1's own trained GTA model (active registry version), when one is deployed. */
   gtaModel?: FrameModel | null;
@@ -196,7 +202,8 @@ export class ObservationPipeline {
         ocrInfo.lines = lines;
         ocrInfo.durationMs = Date.now() - t0;
         this.stats.ocrLines += lines.length;
-        for (const c of ocrCandidates(lines, ref, this.o.ocrVersion, nowIso())) hadResult = (await this.fuse(c)) || hadResult;
+        const logged = this.o.ocrKeepOut ? lines.filter((l) => !this.o.ocrKeepOut!.has(l.type)) : lines;
+        for (const c of ocrCandidates(logged, ref, this.o.ocrVersion, nowIso())) hadResult = (await this.fuse(c)) || hadResult;
       } catch (err) {
         ocrInfo.error = (err as Error).message;
         await this.o.sink.problem("ocr", `OCR failed on a frame: ${(err as Error).message}`);
