@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import { useAiView, type TrackedObject } from "./AiView";
+import type { TrackedObject } from "./AiView";
 import { useLiveVision } from "./vision/useLiveVision";
 import "./ai-overlay.css";
 
 /**
  * SLOT1 VISION: boxes around the people and vehicles on the stream.
  * On SLOT1's own video the page reads the video, so the boxes follow every frame.
- * On a Twitch or Kick player the viewer presses the button and Chrome shares this tab. That
- * recording is what the boxes follow, frame by frame. The picture stays on this computer.
+ * On a Twitch or Kick player the boxes appear only after the viewer presses the button and Chrome
+ * shares this tab. The still frames under the player keep their own boxes. The picture stays on this computer.
  */
 
 /* --- on/off for SLOT1's own video, remembered per viewer ------------------------------------ */
@@ -195,7 +195,7 @@ function Boxes({ objects }: { objects: TrackedObject[] }) {
 
 /* --- the overlay ----------------------------------------------------------------------------- */
 
-export function AiOverlay({ over, sessionId = null }: { /** "video": SLOT1's own video. "embed": Twitch's or Kick's player. */ over: "video" | "embed"; sessionId?: string | null }) {
+export function AiOverlay({ over }: { /** "video": SLOT1's own video. "embed": Twitch's or Kick's player. */ over: "video" | "embed" }) {
   const root = useRef<HTMLDivElement>(null);
   const surface = useSurface(root);
   const pref = useOverlayOn();
@@ -208,7 +208,6 @@ export function AiOverlay({ over, sessionId = null }: { /** "video": SLOT1's own
   const source = over === "video" ? ownVideo : (capture?.video ?? null);
   const enabled = over === "video" ? pref : Boolean(capture);
   const vision = useLiveVision(source, enabled);
-  const tracked = useAiView(over === "embed" && !capture ? sessionId : null);
 
   useEffect(() => {
     if (!capture) return;
@@ -272,13 +271,9 @@ export function AiOverlay({ over, sessionId = null }: { /** "video": SLOT1's own
             </button>
           )}
           {problem || (capture && vision.error) ? <p className="aio-note">{problem ?? vision.error}</p> : invite ? <p className="aio-hint">Boxes follow the stream, frame by frame. Your browser asks to share this tab; the picture stays on your computer.</p> : null}
-          {live ? (
+          {live && (
             <div className="aio-picture" style={{ left: 0, top: 0, width: "100%", height: "100%" }} aria-hidden>
               <Boxes objects={vision.objects} />
-            </div>
-          ) : (
-            <div className="aio-picture" style={{ left: 0, top: 0, width: "100%", height: "100%" }} aria-hidden>
-              <Boxes objects={tracked.objects} />
             </div>
           )}
         </div>
