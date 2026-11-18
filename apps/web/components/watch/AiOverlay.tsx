@@ -1,9 +1,8 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import { formatAge, type AiViewReading } from "@slot1/contracts";
+import type { AiViewReading } from "@slot1/contracts";
 import { useAiView, type TrackedObject } from "./AiView";
-import { useNow } from "./useSessionStream";
 import "./ai-overlay.css";
 
 /**
@@ -11,9 +10,8 @@ import "./ai-overlay.css";
  * stream. Every box comes from SLOT1's own analysis of this stream (the object finder and OCR);
  * nothing is made up. The live log stays beside the player, not on it.
  *
- * Over SLOT1's own video the boxes sit on the picture. Twitch's and Kick's players can't be read
- * by a website, so there SLOT1 looks at the stream's preview picture, and the boxes are drawn on
- * that picture in a small corner window with its age, never on the live video.
+ * Only over SLOT1's own video: the boxes sit on the picture. Twitch's and Kick's players can't be
+ * read by a website and SLOT1 only gets their preview picture, so nothing is drawn over them.
  */
 
 /* --- on/off, remembered per viewer --------------------------------------------------------- */
@@ -115,10 +113,6 @@ function contain(r: Rect, aspect: number): Rect {
 
 const pct = (b: readonly number[]) => ({ left: `${b[0]! * 100}%`, top: `${b[1]! * 100}%`, width: `${b[2]! * 100}%`, height: `${b[3]! * 100}%` });
 
-function seconds(ms: number): string {
-  return ms < 60_000 ? `${Math.max(0, ms / 1000).toFixed(0)}s` : formatAge(ms);
-}
-
 /* --- the boxes ------------------------------------------------------------------------------- */
 
 function Boxes({ objects, readings }: { objects: TrackedObject[]; readings: AiViewReading[] }) {
@@ -159,12 +153,14 @@ export function AiOverlay({
   const on = useOverlayOn();
   const root = useRef<HTMLDivElement>(null);
   const surface = useSurface(root);
-  const { shown, objects } = useAiView(sessionId, on);
-  const now = useNow(1000);
+  // Only poll (and so only make the worker look for objects) where there's a picture to box.
+  const { shown, objects } = useAiView(sessionId, on && over === "video");
 
   const readings = shown ? shown.ocr.regions.flatMap((r) => r.readings) : [];
-  const looked = shown && now > 0 ? now - new Date(shown.frame.receivedAt).getTime() : null;
   const picture = shown && surface ? contain({ left: 0, top: 0, width: surface.width, height: surface.height }, shown.frame.analyzedWidth / shown.frame.analyzedHeight) : null;
+
+  // Twitch's and Kick's players: SLOT1 doesn't get their live video, so there's nothing live to box.
+  if (over === "preview") return null;
 
   return (
     <div ref={root} className="aio-root">
@@ -177,23 +173,10 @@ export function AiOverlay({
 
           {on && shown && (
             <div aria-hidden>
-              {over === "video" && picture && (
+              {picture && (
                 <div className="aio-picture" style={{ left: picture.left, top: picture.top, width: picture.width, height: picture.height }}>
                   <Boxes objects={objects} readings={readings} />
                 </div>
-              )}
-              {over === "preview" && (
-                <figure className="aio-eyes">
-                  <figcaption>
-                    <span>SLOT1&apos;S EYES</span>
-                    <span className="aio-dim">{looked !== null ? `${seconds(looked)} ago` : ""}</span>
-                  </figcaption>
-                  <div className="aio-eyes-frame" style={{ aspectRatio: `${shown.frame.width} / ${shown.frame.height}` }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={shown.frame.url} alt="" />
-                    <Boxes objects={objects} readings={readings} />
-                  </div>
-                </figure>
               )}
             </div>
           )}

@@ -160,57 +160,6 @@
   color: var(--color-gold);
 }
 
-/* SLOT1's eyes: the preview picture it looked at, for Twitch and Kick players ------------------ */
-
-.aio-eyes {
-  position: absolute;
-  left: 8px;
-  bottom: 54px;
-  width: min(30%, 300px);
-  margin: 0;
-  background: var(--aio-bg);
-  border: 1px solid var(--aio-line);
-  border-radius: 4px;
-}
-.aio-eyes figcaption {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 3px 8px;
-  white-space: nowrap;
-  overflow: hidden;
-  color: var(--color-signal);
-  font-weight: 700;
-  letter-spacing: 0.05em;
-}
-.aio-eyes-frame {
-  position: relative;
-  overflow: hidden;
-  border-top: 1px solid var(--aio-line);
-}
-.aio-eyes-frame img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.aio-eyes .aio-tag {
-  font-size: 9px;
-  padding: 0 3px;
-}
-.aio-eyes .aio-c {
-  width: 7px;
-  height: 7px;
-}
-
-/* phones and narrow players --------------------------------------------------------------------- */
-
-.aio-compact .aio-eyes {
-  width: min(44%, 210px);
-  bottom: 46px;
-  font-size: 10px;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .aio-box,
   .aio-text {
