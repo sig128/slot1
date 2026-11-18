@@ -25,3 +25,4 @@ export * from "./learning";
 export * from "./game-knowledge";
 export * from "./mission-stories";
 export * from "./gta-names";
+export * from "./yolox";

@@ -56,7 +56,25 @@
   opacity: 1;
 }
 .aio-toggle[aria-pressed="false"] {
-  color: rgb(227 235 242 / 0.6);
+  color: rgb(227 235 242 / 0.75);
+}
+.aio-toggle:disabled {
+  cursor: progress;
+}
+
+/* why the boxes couldn't start, under the switch */
+.aio-note {
+  position: absolute;
+  top: 36px;
+  right: 8px;
+  max-width: min(60%, 320px);
+  margin: 0;
+  padding: 3px 8px;
+  color: var(--aio-ink);
+  font-size: 10px;
+  background: var(--aio-bg);
+  border: 1px solid rgb(255 79 135 / 0.5);
+  border-radius: 3px;
 }
 
 .aio-dot {
@@ -158,6 +176,13 @@
 .aio-tag-text {
   border-color: rgb(255 201 77 / 0.75);
   color: var(--color-gold);
+}
+
+/* Live boxes update many times a second: short, linear moves read as following the action. */
+.aio-live .aio-box {
+  transition-duration: 110ms;
+  transition-timing-function: linear;
+  animation-duration: 160ms;
 }
 
 @media (prefers-reduced-motion: reduce) {

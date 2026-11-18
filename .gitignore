@@ -40,6 +40,9 @@ __pycache__/
 *.onnx
 # The AI overlay's object finder ships with the worker (see apps/worker/models/README.md).
 !apps/worker/models/*.onnx
+!apps/web/public/models/*.onnx
+# ONNX Runtime Web's WebAssembly, copied from node_modules at build time (apps/web/scripts/copy-ort.mjs).
+apps/web/public/ort/
 
 # Licensed font files are never committed (see docs/ASSET_MANIFEST.md)
 *.ttf

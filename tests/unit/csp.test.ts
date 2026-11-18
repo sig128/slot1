@@ -30,6 +30,12 @@ describe("content security policy", () => {
     expect(directive("connect-src")).toBe("connect-src 'self'");
   });
 
+  it("lets SLOT1 VISION compile WebAssembly in its own worker, without allowing JS eval", () => {
+    expect(directive("script-src")).toContain("'wasm-unsafe-eval'");
+    expect(directive("script-src")).not.toContain("'unsafe-eval'");
+    expect(directive("worker-src")).toBe("worker-src 'self' blob:");
+  });
+
   it("keeps frames limited to Twitch's and Kick's official embeds", () => {
     expect(directive("frame-src")).toBe("frame-src https://player.twitch.tv https://clips.twitch.tv https://www.twitch.tv https://player.kick.com https://kick.com");
   });

@@ -24,8 +24,14 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
+          // display-capture: SLOT1 VISION shares this tab (with the viewer's say-so) to box Twitch's player.
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), display-capture=(self)" },
         ],
+      },
+      {
+        // SLOT1 VISION's model and ONNX Runtime's WebAssembly: versioned paths, never changed in place.
+        source: "/:dir(ort|models)/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       },
     ];
   },

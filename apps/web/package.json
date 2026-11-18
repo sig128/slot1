@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --port 3000",
-    "build": "next build",
+    "dev": "node scripts/copy-ort.mjs && next dev --port 3000",
+    "build": "node scripts/copy-ort.mjs && next build",
     "start": "next start --port 3000",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json"
@@ -16,6 +16,7 @@
     "@slot1/contracts": "workspace:*",
     "@slot1/twitch": "workspace:*",
     "next": "16.4.3",
+    "onnxruntime-web": "1.31.1",
     "radix-ui": "^1.8.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

@@ -26,7 +26,10 @@ export function proxy(request: NextRequest) {
   const obsLocal = request.nextUrl.pathname.startsWith("/studio") ? "ws://localhost:*" : "";
   const csp = [
     `default-src 'self'`,
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
+    // 'wasm-unsafe-eval' lets WebAssembly compile (SLOT1 VISION's object finder); it allows no JS eval.
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'${isDev ? " 'unsafe-eval'" : ""}`,
+    // SLOT1 VISION runs its object finder in a worker from this site.
+    `worker-src 'self' blob:`,
     // React style attributes (timeline positions) need inline styles; scripts stay nonce-only.
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' blob: data: https://static-cdn.jtvnw.net https://clips-media-assets2.twitch.tv https://*.kick.com ${mediaOrigins}`.trim(),
