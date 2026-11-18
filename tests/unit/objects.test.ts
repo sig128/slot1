@@ -3,7 +3,7 @@ import { decodeYolox, DEFAULT_DECODE, yoloxRows } from "@slot1/gta-runtime";
 
 /**
  * The AI overlay's object finder: YOLOX's raw grid output becomes normalized boxes in the original
- * frame, only for the classes the overlay shows, with overlapping duplicates removed.
+ * frame, for every COCO class, with overlapping duplicates removed.
  */
 
 const INPUT = 416;
@@ -56,20 +56,20 @@ describe("YOLOX object decoding", () => {
     expect(h).toBeCloseTo(80 / SCALE / FRAME.h, 3);
   });
 
-  it("names vehicles and animals in plain words, and leaves out what the overlay doesn't show", () => {
+  it("names vehicles, animals and everyday things in plain words", () => {
     const objects = decodeYolox(
       rawOutput([
         { gx: 5, gy: 5, w: 6, h: 4, objectness: 0.9, cls: 2, score: 0.9 }, // car
         { gx: 30, gy: 5, w: 4, h: 4, objectness: 0.9, cls: 3, score: 0.9 }, // motorcycle
         { gx: 40, gy: 30, w: 4, h: 4, objectness: 0.9, cls: 16, score: 0.9 }, // dog
-        { gx: 20, gy: 40, w: 6, h: 4, objectness: 0.9, cls: 62, score: 0.95 }, // tv: not shown
+        { gx: 20, gy: 10, w: 6, h: 4, objectness: 0.9, cls: 62, score: 0.95 }, // tv
       ]),
       INPUT,
       SCALE,
       FRAME.w,
       FRAME.h,
     );
-    expect(objects.map((o) => o.label).sort()).toEqual(["car", "dog", "motorbike"]);
+    expect(objects.map((o) => o.label).sort()).toEqual(["car", "dog", "motorbike", "tv"]);
   });
 
   it("keeps one box per object: the same class overlapping, or another class almost on top of it", () => {

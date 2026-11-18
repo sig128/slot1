@@ -1,11 +1,11 @@
 /**
  * YOLOX output decoding, shared by the worker (ONNX Runtime for Node) and viewers' browsers
  * (ONNX Runtime Web): the AI overlay's object finder, a small general-purpose detector (YOLOX,
- * Apache-2.0, trained on the COCO photo set). It isn't trained on GTA: it finds what looks like a
- * person, a vehicle or an animal, with a score, and nothing else. Pure, no dependencies.
+ * Apache-2.0, trained on the COCO photo set). It isn't trained on GTA: it names whatever in the
+ * picture looks like one of COCO's 80 things, with a score. Pure, no dependencies.
  */
 
-/** The COCO classes the overlay shows (YOLOX's 0-based COCO order), in plain words. */
+/** Every COCO class the overlay shows (YOLOX's 0-based COCO order), in plain words. */
 export const OBJECT_LABELS: Readonly<Record<number, string>> = {
   0: "person",
   1: "bicycle",
@@ -16,12 +16,77 @@ export const OBJECT_LABELS: Readonly<Record<number, string>> = {
   6: "train",
   7: "truck",
   8: "boat",
+  9: "traffic light",
+  10: "fire hydrant",
+  11: "stop sign",
+  12: "parking meter",
+  13: "bench",
   14: "bird",
   15: "cat",
   16: "dog",
   17: "horse",
   18: "sheep",
   19: "cow",
+  20: "elephant",
+  21: "bear",
+  22: "zebra",
+  23: "giraffe",
+  24: "backpack",
+  25: "umbrella",
+  26: "handbag",
+  27: "tie",
+  28: "suitcase",
+  29: "frisbee",
+  30: "skis",
+  31: "snowboard",
+  32: "ball",
+  33: "kite",
+  34: "baseball bat",
+  35: "baseball glove",
+  36: "skateboard",
+  37: "surfboard",
+  38: "tennis racket",
+  39: "bottle",
+  40: "wine glass",
+  41: "cup",
+  42: "fork",
+  43: "knife",
+  44: "spoon",
+  45: "bowl",
+  46: "banana",
+  47: "apple",
+  48: "sandwich",
+  49: "orange",
+  50: "broccoli",
+  51: "carrot",
+  52: "hot dog",
+  53: "pizza",
+  54: "donut",
+  55: "cake",
+  56: "chair",
+  57: "couch",
+  58: "plant",
+  59: "bed",
+  60: "table",
+  61: "toilet",
+  62: "tv",
+  63: "laptop",
+  64: "mouse",
+  65: "remote",
+  66: "keyboard",
+  67: "phone",
+  68: "microwave",
+  69: "oven",
+  70: "toaster",
+  71: "sink",
+  72: "fridge",
+  73: "book",
+  74: "clock",
+  75: "vase",
+  76: "scissors",
+  77: "teddy bear",
+  78: "hair dryer",
+  79: "toothbrush",
 };
 const CLASS_IDS = Object.keys(OBJECT_LABELS).map(Number);
 const ANIMALS = new Set([14, 15, 16, 17, 18, 19]);
@@ -51,7 +116,7 @@ export interface DecodeOptions {
   max: number;
 }
 
-export const DEFAULT_DECODE: DecodeOptions = { minScore: 0.3, animalMinScore: 0.55, iou: 0.45, anyIou: 0.7, max: 24 };
+export const DEFAULT_DECODE: DecodeOptions = { minScore: 0.3, animalMinScore: 0.55, iou: 0.45, anyIou: 0.7, max: 80 };
 
 interface Candidate {
   cls: number;

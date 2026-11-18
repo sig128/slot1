@@ -124,7 +124,7 @@ export function buildAiViewSnapshot(
     produced: i.produced.slice(0, 12),
     source: { label: c.label, demo: c.demo },
     hidden: (c.hidden ?? []).map((h) => box([h.x, h.y, h.w, h.h])!),
-    objects: { ...objects, items: objects.items.slice(0, 24).map((o) => ({ label: o.label, score: round(o.score, 3), box: box(o.box)! })) },
+    objects: { ...objects, items: objects.items.slice(0, 80).map((o) => ({ label: o.label, score: round(o.score, 3), box: box(o.box)! })) },
   });
 }
 
@@ -178,7 +178,7 @@ export async function patchAiViewObjects(ctx: Pick<ServerContext, "redis">, sess
       durationMs: objects.durationMs,
       note: objects.note,
       items: objects.items
-        .slice(0, 24)
+        .slice(0, 80)
         .map((o) => ({ label: o.label, score: round(o.score, 3), box: box(o.box) }))
         .filter((o): o is { label: string; score: number; box: [number, number, number, number] } => o.box !== null),
     },

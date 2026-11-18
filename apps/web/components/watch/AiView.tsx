@@ -289,9 +289,9 @@ export function AiViewPanel({ sessionId, onSelect }: { sessionId: string; onSele
               {s.ocr.profile.validation === "unvalidated_draft" ? ": region layout not yet validated on real footage" : ""}.
             </p>
           </Section>
-          <Section title="People and cars">
+          <Section title="Things in the frame">
             {(s.objects?.items ?? []).length === 0 ? (
-              <p>{s.objects?.note ?? "No person or car was boxed on this frame."}</p>
+              <p>{s.objects?.note ?? "Nothing was boxed on this frame."}</p>
             ) : (
               <ul>
                 {s.objects.items.map((o, i) => (
