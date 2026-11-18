@@ -1,16 +1,14 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { TrackedObject } from "./AiView";
+import { useAiView, type TrackedObject } from "./AiView";
 import { useLiveVision } from "./vision/useLiveVision";
 import "./ai-overlay.css";
 
 /**
- * SLOT1 VISION: live boxes around the people and vehicles in SLOT1's own video (streams sent to
- * SLOT1 from OBS), worked out in the viewer's browser on every frame it can (YOLOX-Nano, a general
- * detector, not trained on GTA). On by default for every viewer; nothing about the picture leaves the
- * viewer's computer. Twitch's and Kick's players can't be read by a website, so nothing is drawn
- * over them.
+ * SLOT1 VISION: boxes around the people and vehicles on the stream, on by default.
+ * On SLOT1's own video the viewer's browser follows every frame it can read. On a Twitch or Kick
+ * player the same boxes are drawn over the live picture and move each time SLOT1 looks again.
  */
 
 /* --- on/off for SLOT1's own video, remembered per viewer ------------------------------------ */
@@ -137,12 +135,26 @@ function Boxes({ objects }: { objects: TrackedObject[] }) {
 
 /* --- the overlay ----------------------------------------------------------------------------- */
 
-export function AiOverlay({ over }: { /** "video": SLOT1's own video. "embed": Twitch's or Kick's player (nothing drawn). */ over: "video" | "embed" }) {
+export function AiOverlay({ over, sessionId = null }: { /** "video": SLOT1's own video. "embed": Twitch's or Kick's player. */ over: "video" | "embed"; sessionId?: string | null }) {
   const root = useRef<HTMLDivElement>(null);
   const surface = useSurface(root);
   const on = useOverlayOn();
   const video = over === "video" && surface?.el instanceof HTMLVideoElement ? surface.el : null;
-  const vision = useLiveVision(video, on);
+  const vision = useLiveVision(video, on && over === "video");
+  const tracked = useAiView(over === "embed" ? sessionId : null);
+
+  if (over === "embed") {
+    if (!surface) return <div ref={root} className="aio-root" />;
+    return (
+      <div ref={root} className="aio-root" data-testid="ai-live-boxes">
+        <div className="aio-layer" style={{ left: surface.rect.left, top: surface.rect.top, width: surface.rect.width, height: surface.rect.height }}>
+          <div className="aio-picture" style={{ left: 0, top: 0, width: "100%", height: "100%" }} aria-hidden>
+            <Boxes objects={tracked.objects} />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!surface || !video) return <div ref={root} className="aio-root" />;
 

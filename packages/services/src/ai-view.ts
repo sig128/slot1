@@ -10,7 +10,7 @@ import type { ServerContext } from "./context";
 export const AI_VIEW_TTL_SEC = 60;
 /** Frame images outlive their snapshot a little, so a client that just read it can still fetch it. */
 export const AI_VIEW_FRAME_TTL_SEC = 90;
-export const AI_VIEW_REFRESH_MS = 2000;
+export const AI_VIEW_REFRESH_MS = 1000;
 /** Width of the stored copy of the analyzed frame (the analysis itself used the full frame). */
 export const AI_VIEW_FRAME_WIDTH = 640;
 
@@ -152,6 +152,41 @@ export async function readAiView(ctx: Pick<ServerContext, "redis">, sessionId: s
 
 export async function readAiViewFrame(ctx: Pick<ServerContext, "redis">, sessionId: string, snapshotId: string): Promise<Buffer | null> {
   return ctx.redis.getBuffer(aiViewKeys.frame(sessionId, snapshotId));
+}
+
+/**
+ * Move the boxes on the latest snapshot without replacing the frame. The overlay on the live
+ * player reads these between full analyses, so a person or car can keep being followed.
+ */
+export async function patchAiViewObjects(ctx: Pick<ServerContext, "redis">, sessionId: string, objects: AiViewObjects): Promise<boolean> {
+  const key = aiViewKeys.meta(sessionId);
+  const raw = await ctx.redis.get(key);
+  if (!raw) return false;
+  let current: AiViewSnapshot;
+  try {
+    const parsed = AiViewSnapshot.safeParse(JSON.parse(raw));
+    if (!parsed.success) return false;
+    current = parsed.data;
+  } catch {
+    return false;
+  }
+  const next = AiViewSnapshot.parse({
+    ...current,
+    objects: {
+      status: objects.status,
+      model: objects.model,
+      durationMs: objects.durationMs,
+      note: objects.note,
+      items: objects.items
+        .slice(0, 24)
+        .map((o) => ({ label: o.label, score: round(o.score, 3), box: box(o.box) }))
+        .filter((o): o is { label: string; score: number; box: [number, number, number, number] } => o.box !== null),
+    },
+  });
+  const ttl = await ctx.redis.ttl(key);
+  if (ttl === -2) return false;
+  await ctx.redis.set(key, JSON.stringify(next), "EX", ttl > 0 ? ttl : AI_VIEW_TTL_SEC);
+  return true;
 }
 
 /** Store a snapshot and its frame image (both expire on their own). */

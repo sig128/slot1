@@ -6,7 +6,7 @@ import { buildServerContext, reconcileEventSub, runWipe, type Enqueue } from "@s
 import { createLiveClip, createVodClip, downloadAndAnalyzeClip, renderOwnedClip } from "./jobs/clips";
 import { handleChatCommand, postReply } from "./jobs/chat";
 import { processEventSub } from "./jobs/eventsub";
-import { watchAdded } from "./jobs/added-watch";
+import { trackAdded, watchAdded } from "./jobs/added-watch";
 import { deleteSession, refreshDirectory, retentionSweep, validateGrants } from "./jobs/maintenance";
 import { analyzeUpload } from "./jobs/upload";
 import { buildSprites, buildWaveform, finalizeRecording, generateProjectCaptions, renderProject, renderThumbnail, takeScreenshot } from "./jobs/library";
@@ -45,6 +45,7 @@ const handlers: Record<string, Record<string, Handler>> = {
     "validate-grants": () => validateGrants(ctx),
     "refresh-directory": () => refreshDirectory(ctx),
     "watch-added-streams": () => watchAdded(ctx),
+    "track-added-streams": () => trackAdded(ctx),
   },
   [QUEUES.chat]: {
     "handle-command": (j) => handleChatCommand(ctx, j.data),
@@ -122,6 +123,7 @@ async function main() {
   await twitchQ.upsertJobScheduler("validate-grants", { every: 3_600_000 }, { name: "validate-grants", data: {} });
   await twitchQ.upsertJobScheduler("refresh-directory", { every: 60_000 }, { name: "refresh-directory", data: {} });
   await twitchQ.upsertJobScheduler("watch-added-streams", { every: 5_000 }, { name: "watch-added-streams", data: {} });
+  await twitchQ.upsertJobScheduler("track-added-streams", { every: 2_000 }, { name: "track-added-streams", data: {} });
   await maintQ.upsertJobScheduler("retention-sweep", { every: 3_600_000 }, { name: "retention-sweep", data: {} });
 
   // Reconcile EventSub subscriptions for every connected channel on start.

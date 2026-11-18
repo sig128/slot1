@@ -33,7 +33,7 @@ import {
 } from "@slot1/db";
 import { sanitizeErrorMessage } from "@slot1/platform";
 import { sizeThumbnail } from "@slot1/twitch";
-import type { AiViewContext } from "./ai-view";
+import { patchAiViewObjects, type AiViewContext } from "./ai-view";
 import type { ServerContext } from "./context";
 import { kickChannels, kickConfigured, type KickChannel } from "./kick";
 import { LEARNING_PAUSED_KEY, readLearningSwitch } from "./learning-switch";
@@ -42,6 +42,8 @@ import { createPipelineSink } from "./pipeline-sink";
 import { withAppToken } from "./twitch";
 
 const LOCK_KEY = "slot1:lock:added-watch";
+/** Separate from the learning lock, so boxes can move while a description is still running. */
+const TRACK_LOCK_KEY = "slot1:lock:live-boxes";
 /**
  * How often each added live stream's preview picture is fetched and shown to Claude. Every check
  * goes to the AI, even when Twitch (every 5 minutes) or Kick (about every 90 s) hasn't published a
@@ -470,6 +472,84 @@ async function publishStatus(ctx: ServerContext, entry: string, session: StreamS
   AnalysisStatus.parse(status);
   await ctx.redis.set(ADDED_WATCH_STATUS_KEY(entry), JSON.stringify(status), "EX", STATUS_TTL_SEC);
   await ctx.redis.set(ADDED_WATCH_STATUS_KEY(featuredLogin(entry)), JSON.stringify(status), "EX", STATUS_TTL_SEC);
+}
+
+/**
+ * Follow people and cars on featured streams between full analyses. Fetches each live preview,
+ * runs the object finder, and moves the boxes on the snapshot the watch page already has.
+ * Does not learn, does not open sessions, and does not wait on the describing model.
+ */
+export async function trackLiveBoxes(
+  ctx: ServerContext,
+  opts: { objects: ObjectFinder | null; toJpeg?: AddedWatchOptions["toJpeg"] },
+): Promise<void> {
+  if (!opts.objects) return;
+  const locked = await ctx.redis.set(TRACK_LOCK_KEY, "1", "EX", 8, "NX");
+  if (locked !== "OK") return;
+  try {
+    if (!(await readLearningSwitch(ctx.redis)).on) return;
+    const entries = await getPreviewLogins(ctx);
+    const twitchLogins = entries.filter((e) => !e.startsWith("kick:"));
+    const kickSlugs = entries.filter((e) => e.startsWith("kick:")).map((e) => e.slice(5));
+    const finder = opts.objects;
+
+    const follow = async (login: string, url: string) => {
+      const sessionId = await openSessionId(ctx, login);
+      if (!sessionId) return;
+      const jpeg = await fetchJpeg(bust(url), opts.toJpeg);
+      if (!jpeg) return;
+      const found = await finder.find(jpeg);
+      await patchAiViewObjects(ctx, sessionId, {
+        status: "found",
+        model: finder.name,
+        items: found.objects,
+        durationMs: found.durationMs,
+        note: null,
+      });
+    };
+
+    if (twitchLogins.length > 0 && ctx.helix) {
+      try {
+        const streams = await withAppToken(ctx, (token) => ctx.helix!.getStreams(token, { userLogins: twitchLogins }));
+        await Promise.all(
+          streams
+            .filter((s) => s.type === "live" && s.thumbnail_url)
+            .map((s) => follow(s.user_login, sizeThumbnail(s.thumbnail_url, 1280, 720)).catch(() => undefined)),
+        );
+      } catch (err) {
+        ctx.log.warn({ err: sanitizeErrorMessage((err as Error).message) }, "live boxes could not list Twitch streams");
+      }
+    }
+
+    if (kickSlugs.length > 0 && kickConfigured(ctx)) {
+      const data = await kickChannels(ctx, kickSlugs);
+      await Promise.all(
+        kickSlugs.map((slug) => {
+          const channel = data.get(slug);
+          if (!channel?.live || !channel.thumbnailUrl) return undefined;
+          return follow(kickLogin(slug), channel.thumbnailUrl).catch(() => undefined);
+        }),
+      );
+    }
+  } finally {
+    await ctx.redis.del(TRACK_LOCK_KEY).catch(() => undefined);
+  }
+}
+
+async function openSessionId(ctx: ServerContext, login: string): Promise<string | null> {
+  const { rows } = await ctx.db.query<{ id: string }>(
+    `SELECT s.id FROM stream_sessions s
+     JOIN broadcasters b ON b.id = s.broadcaster_id
+     WHERE lower(b.login) = lower($1) AND s.kind = 'twitch_broadcast' AND s.ended_at IS NULL AND s.delete_requested_at IS NULL
+     ORDER BY s.started_at DESC LIMIT 1`,
+    [login],
+  );
+  return rows[0]?.id ?? null;
+}
+
+/** Ask the CDN for the current picture rather than a copy it already handed out. */
+function bust(url: string): string {
+  return `${url}${url.includes("?") ? "&" : "?"}slot1=${Math.floor(Date.now() / 1000)}`;
 }
 
 async function fetchJpeg(url: string, toJpeg?: (buf: Buffer, contentType: string) => Promise<Buffer | null>): Promise<Buffer | null> {

@@ -62,6 +62,8 @@ class Feed {
   private listeners = new Set<() => void>();
   private timer: ReturnType<typeof setTimeout> | null = null;
   private alive = false;
+  /** Last object list drawn, so a new look moves the boxes even when the still hasn't changed. */
+  private boxKey = "";
 
   constructor(private readonly sessionId: string) {}
 
@@ -99,17 +101,27 @@ class Feed {
         wait = r.refreshMs;
         this.set({ response: r, error: null });
         const snap = r.snapshot;
+        const items = snap?.objects?.items ?? [];
+        const boxKey = JSON.stringify(items);
+        if (snap && boxKey !== this.boxKey) {
+          // Boxes move as soon as a new look arrives. The still below waits for its image.
+          this.boxKey = boxKey;
+          this.set({ objects: trackObjects(this.state.objects, items) });
+        }
         if (snap && snap.id !== this.state.shown?.id) {
-          // Swap only once the new frame has loaded, so boxes and image always match.
+          // Swap the still only once the new frame has loaded, so that picture matches its own boxes.
           await new Promise<void>((resolve) => {
             const img = new Image();
             img.onload = () => resolve();
             img.onerror = () => resolve();
             img.src = snap.frame.url;
           });
-          if (this.alive) this.set({ shown: snap, objects: trackObjects(this.state.objects, snap.objects?.items ?? []) });
+          if (this.alive) this.set({ shown: snap });
         }
-        if (!snap) this.set({ shown: null, objects: [] });
+        if (!snap) {
+          this.boxKey = "";
+          this.set({ shown: null, objects: [] });
+        }
       } catch {
         wait = 5000;
         this.set({ error: "Couldn't reach SLOT1. Retrying." });
