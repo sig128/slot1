@@ -8,8 +8,8 @@ import { clearLearningCache } from "../../apps/api/src/routes/learning";
 import { Browser, ORIGIN, startHarness, type Harness } from "./harness";
 
 /**
- * Admin → Learning against the real API, SQL and Redis: only an admin sees or flips it, it is off
- * until an admin turns it on, the Learning page says so, and while it's off the featured-channel
+ * Admin → Learning against the real API, SQL and Redis: only an admin sees or flips it, it is on
+ * until an admin turns it off, the Learning page says so, and while it's off the featured-channel
  * watcher looks at nothing and ends the sessions it had open, once.
  */
 
@@ -49,13 +49,13 @@ describe("Admin → Learning", () => {
   it("is admin-only: everyone else gets a plain 404 and can't flip it", async () => {
     expect((await anon.get("/api/admin/learning")).status).toBe(404);
     expect((await anon.request("PUT", "/api/admin/learning", { json: { on: true } })).status).toBe(404);
-    expect(AdminLearning.parse((await admin.get("/api/admin/learning")).json()).on).toBe(false);
+    expect(AdminLearning.parse((await admin.get("/api/admin/learning")).json()).on).toBe(true);
   });
 
-  it("is off until an admin turns it on, and the Learning page says which", async () => {
-    expect(AdminLearning.parse((await admin.get("/api/admin/learning")).json())).toEqual({ on: false, changedAt: null });
+  it("is on until an admin turns it off, and the Learning page says which", async () => {
+    expect(AdminLearning.parse((await admin.get("/api/admin/learning")).json())).toEqual({ on: true, changedAt: null });
     clearLearningCache();
-    expect(LearningResponse.parse((await anon.get("/api/learning")).json()).learningOn).toBe(false);
+    expect(LearningResponse.parse((await anon.get("/api/learning")).json()).learningOn).toBe(true);
 
     expect((await admin.request("PUT", "/api/admin/learning", { json: { on: "yes" } })).status).toBe(400);
     const on = await admin.request("PUT", "/api/admin/learning", { json: { on: true } });

@@ -15,8 +15,8 @@ export async function watchAdded(ctx: ServerContext): Promise<void> {
     gtaModel,
     // People and vehicles in every picture, whether or not anyone is watching.
     objects: await objectFinder(ctx.log),
-    // "What the AI sees" and the AI overlay, for whoever is watching a featured stream.
-    insight: (c, i) => publishAiView(ctx, c, i),
+    // The boxes stay on the watch page, including before anyone opens it.
+    insight: (c, i) => publishAiView(ctx, c, i, { always: true }),
     toJpeg: async (buf, contentType) => {
       if (contentType.includes("jpeg")) return buf;
       try {

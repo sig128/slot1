@@ -20,7 +20,7 @@ import { AnalysisChip, BroadcastChip, SourceLabelChip, StatusPair } from "@/comp
 import { AiOverlay } from "./AiOverlay";
 import { api, ApiError, newIdempotencyKey } from "@/lib/api";
 import { pct } from "@/lib/format";
-import { AiViewPanel } from "./AiView";
+import { AiViewPanel, StreamBoxes } from "./AiView";
 import { AskPanel } from "./AskPanel";
 import { ChatPanel, type PlatformChat } from "./ChatPanel";
 import { EventRail, railItems } from "./EventRail";
@@ -142,8 +142,8 @@ export function SessionWorkspace(p: Props) {
   // Twitch chat shows by default next to the live player; it can be hidden.
   const [position, setPosition] = useState<number | null>(null);
   const [panel, setPanel] = useState<null | "moment" | "clip">(null);
-  const aiViewAvailable = p.mode === "live" && Boolean(p.session) && !p.watchOnly && !p.fixture;
-  const [aiView, setAiView] = useState(Boolean(p.aiViewOpen));
+  const aiViewAvailable = p.mode === "live" && Boolean(p.session) && !p.fixture;
+  const [aiView, setAiView] = useState(Boolean(p.aiViewOpen) || Boolean(p.watchOnly && p.session));
   const video = useRef<HTMLVideoElement>(null);
   const evidenceRef = useRef<HTMLDivElement>(null);
 
@@ -336,6 +336,11 @@ export function SessionWorkspace(p: Props) {
           {p.mode === "live" && !p.fixture && <AiOverlay over={playerKind === "slot1" ? "video" : "embed"} />}
           {/* Only over SLOT1's own live video; with Twitch's player it docks in the rail instead. */}
           {replayState.kind !== "idle" && overlayReplay && <InstantReplayPlayer state={replayState} variant="overlay" onClose={closeReplay} />}
+          {p.mode === "live" && p.watchOnly && p.session && (
+            <div className="absolute bottom-3 left-3 z-20 w-[min(46%,320px)]">
+              <StreamBoxes sessionId={p.session.id} />
+            </div>
+          )}
         </div>
 
         <div className={`relative min-w-0 space-y-4 lg:col-start-1 lg:row-start-2 ${p.session ? "" : "hidden"}`}>

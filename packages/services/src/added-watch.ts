@@ -387,7 +387,7 @@ async function learnFrame(
     coverageMsPerFrame: SAMPLE_MS,
     workDir: path.join(input.work, input.broadcaster.id),
     sink,
-    // The picture SLOT1 just looked at, for "What the AI sees" and the AI overlay.
+    // The picture SLOT1 just looked at, for "What the AI sees" and the boxes on the stream.
     insight: input.insight
       ? (i) => input.insight!({ sessionId: session.id, label: "live", demo: false, intervalMs: SAMPLE_MS, measuredCadenceMs: null }, i)
       : undefined,

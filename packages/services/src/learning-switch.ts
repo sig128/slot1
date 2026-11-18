@@ -3,22 +3,22 @@ import { AdminLearning, type AdminLearning as AdminLearningT } from "@slot1/cont
 
 /**
  * Admin → Learning: whether SLOT1 watches and learns from the featured channels' live streams.
- * Off until an admin turns it on. The API reads and sets it; the watcher (added-watch.ts) obeys it.
+ * On unless an admin turns it off. The API reads and sets it; the watcher (added-watch.ts) obeys it.
  */
 export const LEARNING_SWITCH_KEY = "slot1:admin:learning";
 /** Set once the watcher has closed what it had open after learning went off; cleared on every change. */
 export const LEARNING_PAUSED_KEY = "slot1:added-watch:paused";
 
-const OFF: AdminLearningT = { on: false, changedAt: null };
+const ON: AdminLearningT = { on: true, changedAt: null };
 
 export async function readLearningSwitch(redis: Redis): Promise<AdminLearningT> {
   const raw = await redis.get(LEARNING_SWITCH_KEY);
-  if (!raw) return OFF;
+  if (!raw) return ON;
   try {
     const parsed = AdminLearning.safeParse(JSON.parse(raw));
-    return parsed.success ? parsed.data : OFF;
+    return parsed.success ? parsed.data : ON;
   } catch {
-    return OFF;
+    return ON;
   }
 }
 

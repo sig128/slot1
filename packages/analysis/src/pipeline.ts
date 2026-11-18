@@ -109,6 +109,8 @@ export interface FrameInsight {
     state: "analyzed" | "batching" | "skipped" | "error" | "off";
     result: VisionResult | null;
     note: string | null;
+    /** Which frame in the vision batch this picture was. Null when vision didn't run on it. */
+    frameIndex?: number | null;
     batch: { have: number; need: number };
   };
   produced: { id: string; type: string; description: string; action: "new" | "extended" }[];
@@ -147,7 +149,7 @@ export class ObservationPipeline {
   private gtaGate: GtaPredictionGate | null = null;
   /** Observations created or extended while the current frame is being handled. */
   private produced: FrameInsight["produced"] | null = null;
-  private lastVision: { state: "analyzed" | "skipped" | "error"; result: VisionResult | null; note: string | null } | null = null;
+  private lastVision: { state: "analyzed" | "skipped" | "error"; result: VisionResult | null; note: string | null; frameIndex: number | null } | null = null;
   readonly stats = { frames: 0, analyzedFrames: 0, visionFrames: 0, visionCalls: 0, observations: 0, visionErrors: 0, ocrLines: 0, modelFrames: 0, modelSkipped: 0, visionSkipped: 0, motionSpikes: 0 };
   private lastVisionPushAt = -Infinity;
   private lastScene: string | null = null;
@@ -345,6 +347,7 @@ export class ObservationPipeline {
             state: !v ? "off" : gatedOut ? "skipped" : last ? last.state : "batching",
             result: gatedOut ? null : (last?.result ?? null),
             note: gatedOut ? "Nothing changed on screen, so the vision model wasn't asked about this frame." : (last?.note ?? null),
+            frameIndex: gatedOut ? null : (last?.frameIndex ?? null),
             batch: { have: v ? this.batch.length : 0, need: v ? this.o.visionBatchSize : 0 },
           },
           produced,
@@ -373,7 +376,7 @@ export class ObservationPipeline {
     if (!this.o.vision || frames.length === 0) return false;
     const gate = await this.o.sink.allowVisionCall();
     if (!gate.allowed) {
-      this.lastVision = { state: "skipped", result: null, note: `Vision skipped: ${gate.reason ?? "budget reached"}` };
+      this.lastVision = { state: "skipped", result: null, note: `Vision skipped: ${gate.reason ?? "budget reached"}`, frameIndex: null };
       if (this.visionBlockedReason !== gate.reason) {
         this.visionBlockedReason = gate.reason;
         await this.o.sink.problem("vision", `Vision skipped: ${gate.reason ?? "budget reached"}`);
@@ -388,7 +391,7 @@ export class ObservationPipeline {
       );
       this.stats.visionCalls += 1;
       this.stats.visionFrames += frames.length;
-      this.lastVision = { state: "analyzed", result, note: null };
+      this.lastVision = { state: "analyzed", result, note: null, frameIndex: frames.length - 1 };
       await this.o.sink.visionUsage(result, frames.length);
       this.lastSummary = result.analysis.scene.summary || null;
       let any = false;
@@ -397,7 +400,7 @@ export class ObservationPipeline {
     } catch (err) {
       this.stats.visionErrors += 1;
       const msg = err instanceof ProviderError ? err.message : `Vision analysis failed: ${(err as Error).message}`;
-      this.lastVision = { state: "error", result: null, note: msg };
+      this.lastVision = { state: "error", result: null, note: msg, frameIndex: null };
       await this.o.sink.problem("vision", msg);
       return false;
     }

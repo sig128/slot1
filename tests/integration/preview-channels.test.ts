@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DirectoryResponse, PREVIEW_CHANNELS_MAX, PreviewChannels, WatchChannelResponse } from "@slot1/contracts";
-import { LEARNING_SWITCH_KEY } from "@slot1/services";
+import { writeLearningSwitch } from "@slot1/services";
 import { clearPreviewCache, DEFAULT_PREVIEW_LOGINS } from "../../apps/api/src/lib/preview-channels";
 import { Browser, MockTwitch, startHarness, type Harness } from "./harness";
 
@@ -74,8 +74,8 @@ describe("Preview channels and follower counts", () => {
   });
 
   it("lists featured channels in everyone's On air, with Twitch's live data and followers", async () => {
-    // Admin → Learning starts off: the cards say SLOT1 isn't watching.
-    await h.ctx.redis.del(LEARNING_SWITCH_KEY);
+    // Admin → Learning switched off: the cards say SLOT1 isn't watching.
+    await writeLearningSwitch(h.ctx.redis, false);
     clearPreviewCache();
     for (const who of [visitor, owner]) {
       const res = await who.get("/api/channels");
@@ -92,13 +92,13 @@ describe("Preview channels and follower counts", () => {
         expect(card!.analysis).toMatchObject({ state: "ready", reason: "Learning is on for this stream." });
       }
     } finally {
-      await h.ctx.redis.del(LEARNING_SWITCH_KEY);
+      await writeLearningSwitch(h.ctx.redis, true);
       clearPreviewCache();
     }
   });
 
   it("says learning is paused on a featured channel's watch page while Admin → Learning is off", async () => {
-    await h.ctx.redis.del(LEARNING_SWITCH_KEY);
+    await writeLearningSwitch(h.ctx.redis, false);
     // Vader is live: the watch page opens a session for the broadcast, which nobody is analyzing.
     const w = WatchChannelResponse.parse((await visitor.get("/api/channels/vader/watch")).json());
     expect(w.channel.analysis).toMatchObject({ state: "stopped", reason: "Learning is paused right now. SLOT1 isn't watching this stream." });

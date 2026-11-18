@@ -11,9 +11,10 @@ import { findObjects } from "./objects";
  * Stored in Redis with a short TTL for the API to serve, and only while someone is watching;
  * never written to the database or object storage.
  */
-export async function publishAiView(ctx: Pick<ServerContext, "redis" | "log">, c: AiViewContext, i: FrameInsight): Promise<void> {
-  // Only while somebody has the AI view or the overlay open: no Redis memory or CPU spent on unwatched streams.
-  if (!(await aiViewWatched(ctx, c.sessionId))) return;
+export async function publishAiView(ctx: Pick<ServerContext, "redis" | "log">, c: AiViewContext, i: FrameInsight, opts?: { always?: boolean }): Promise<void> {
+  // Live ingest stores a snapshot only while somebody is watching. Added streams always store
+  // one, so the people and vehicle boxes are already on the page when it opens.
+  if (!opts?.always && !(await aiViewWatched(ctx, c.sessionId))) return;
   const img = sharp(i.frame.jpeg);
   const meta = await img.metadata();
   const [small, objects] = await Promise.all([

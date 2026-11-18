@@ -165,6 +165,7 @@ describe("AI view snapshot", () => {
     expect(s.frame.url).toBe("/api/sessions/3c0a7d4e-58a1-4b8e-9a35-8a6f6d0b2c11/ai-view/frame/6f6b9d1c-1f7b-4ad9-9f55-2d7f3c1a0b11");
     expect(s.latencyMs).toBe(900);
     expect(s.produced).toHaveLength(1);
+    expect(s.objects).toEqual({ status: "off", model: null, items: [], durationMs: null, note: null });
   });
 
   it("says plainly what isn't running instead of showing a guess", () => {
