@@ -775,21 +775,7 @@ export function JobsSection({ ctx }: { ctx: StudioCtx }) {
           ))}
         </dl>
         <p className="mt-3 max-w-[70ch] text-[0.8rem] text-ivory-3">{usage.costBasis}</p>
-        <div className="mt-5 max-w-xs">
-          <label className="label" htmlFor="budget">
-            Vision budget (requests per hour)
-          </label>
-          <input
-            id="budget"
-            type="number"
-            min={0}
-            max={3600}
-            className="field tnum"
-            defaultValue={usage.maxVisionCallsPerHour}
-            onBlur={(e) => void ctx.save({ maxVisionCallsPerHour: Number(e.target.value) })}
-          />
-          <p className="tnum mt-1 text-[0.78rem] text-ivory-3">{usage.visionCallsLastHour} used in the last hour. Frames beyond the budget get OCR only.</p>
-        </div>
+        <p className="mt-5 max-w-[70ch] text-[0.8rem] text-ivory-3">No hourly vision budget. Every frame can go to the vision model.</p>
       </Group>
     </div>
   );

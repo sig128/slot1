@@ -9,7 +9,6 @@ import {
   recordOpsError,
   recordUsage,
   upsertSourceHealth,
-  visionCallsInLastHour,
   type MediaSourceRow,
   type StreamSessionRow,
 } from "@slot1/db";
@@ -159,10 +158,7 @@ export function createPipelineSink(ctx: ServerContext, o: SinkOptions): Pipeline
     },
 
     async allowVisionCall() {
-      const limit = o.settings.maxVisionCallsPerHour;
-      if (limit <= 0) return { allowed: false, reason: "vision budget is set to 0 calls per hour" };
-      const used = await visionCallsInLastHour(ctx.db, b);
-      if (used >= limit) return { allowed: false, reason: `hourly vision budget reached (${used}/${limit})` };
+      // No hourly budget. A configured vision model runs on every frame.
       return { allowed: true, reason: null };
     },
 
