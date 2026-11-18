@@ -143,7 +143,9 @@ function useSurface(root: React.RefObject<HTMLDivElement | null>): { el: HTMLEle
     };
     const schedule = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(measure);
+      // Background tabs don't run animation frames: measure straight away there.
+      if (document.hidden) measure();
+      else frame = requestAnimationFrame(measure);
     };
     const resize = new ResizeObserver(schedule);
     resize.observe(host);
@@ -156,7 +158,7 @@ function useSurface(root: React.RefObject<HTMLDivElement | null>): { el: HTMLEle
     for (const el of host.querySelectorAll(SURFACE)) resize.observe(el);
     // Players change their own size (fallbacks, theater mode); a slow check catches the rest.
     const slow = setInterval(schedule, 2000);
-    schedule();
+    measure();
     return () => {
       resize.disconnect();
       mutations.disconnect();
