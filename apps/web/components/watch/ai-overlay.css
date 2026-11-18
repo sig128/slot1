@@ -62,6 +62,45 @@
 .aio-toggle:disabled {
   cursor: progress;
 }
+/* Twitch and Kick: the button that asks Chrome to share this tab. */
+.aio-toggle.is-invite {
+  color: #fff;
+  font-size: 11px;
+  padding: 5px 11px;
+  background: rgb(255 79 135 / 0.92);
+  border-color: rgb(255 79 135);
+  opacity: 1;
+  box-shadow: 0 0 0 0 rgb(255 79 135 / 0.6);
+  animation: aio-invite 2.4s ease-out 3;
+}
+.aio-toggle.is-invite:hover {
+  background: rgb(255 79 135);
+}
+@keyframes aio-invite {
+  0% {
+    box-shadow: 0 0 0 0 rgb(255 79 135 / 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgb(255 79 135 / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(255 79 135 / 0);
+  }
+}
+.aio-hint {
+  position: absolute;
+  top: 40px;
+  right: 8px;
+  max-width: min(60%, 300px);
+  margin: 0;
+  padding: 4px 8px;
+  color: var(--aio-ink);
+  font-size: 10px;
+  line-height: 1.4;
+  background: var(--aio-bg);
+  border: 1px solid var(--aio-line);
+  border-radius: 3px;
+}
 
 /* why the boxes couldn't start, under the switch */
 .aio-note {
@@ -187,6 +226,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .aio-toggle.is-invite {
+    animation: none;
+  }
   .aio-box,
   .aio-text {
     transition: none;
