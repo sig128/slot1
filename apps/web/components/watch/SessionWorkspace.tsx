@@ -333,7 +333,7 @@ export function SessionWorkspace(p: Props) {
             p.livePlayer
           )}
           {/* Boxes around what SLOT1's AI sees: on SLOT1's own video, or on the picture it looked at in a corner window over Twitch's or Kick's player. */}
-          {p.mode === "live" && p.session && !p.fixture && (
+          {p.mode === "live" && p.session && !p.fixture && status.state !== "stopped" && (
             <AiOverlay sessionId={p.session.id} over={playerKind === "slot1" ? "video" : "preview"} />
           )}
           {/* Only over SLOT1's own live video; with Twitch's player it docks in the rail instead. */}

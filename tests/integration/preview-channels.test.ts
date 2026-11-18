@@ -97,6 +97,14 @@ describe("Preview channels and follower counts", () => {
     }
   });
 
+  it("says learning is paused on a featured channel's watch page while Admin → Learning is off", async () => {
+    await h.ctx.redis.del(LEARNING_SWITCH_KEY);
+    // Vader is live: the watch page opens a session for the broadcast, which nobody is analyzing.
+    const w = WatchChannelResponse.parse((await visitor.get("/api/channels/vader/watch")).json());
+    expect(w.channel.analysis).toMatchObject({ state: "stopped", reason: "Learning is paused right now. SLOT1 isn't watching this stream." });
+    if (w.session) expect(w.session.analysis.state).toBe("stopped");
+  });
+
   it("puts follower totals on the watch page, read with a user token and cached for later visitors", async () => {
     await h.ctx.redis.del(`slot1:followers:${VADER.id}`);
     const before = followerCalls();

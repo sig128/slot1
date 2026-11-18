@@ -220,7 +220,11 @@ export const channelRoutes =
             avatarUrl: avatar,
             twitchUrl: channelUrl(login),
             broadcast: snapshot,
-            analysis: learningFor(snapshot.state, ctx.config.capabilities.vision.available),
+            // A featured channel while Admin → Learning is off: shown, but nobody is watching it.
+            analysis:
+              featured && !(await readLearningSwitch(ctx.redis)).on
+                ? pausedLearningStatus(snapshot.state, ctx.config.capabilities.vision.available)
+                : learningFor(snapshot.state, ctx.config.capabilities.vision.available),
             publicAnalysis: false,
             followers,
             ...(featured ? { preview: true } : {}),
@@ -264,11 +268,14 @@ export const channelRoutes =
         (owner || settings.viewerQuestions === "anyone" || (settings.viewerQuestions === "signed_in" && viewer.userId !== null));
       const card = await channelCard(ctx, b, snaps.get(b.id)!, visibleSession, settings.publicAnalysis);
       // A channel an admin added to the site keeps its platform player. Its session, when public,
-      // is the one the watcher is learning from. While Admin → Learning is off nobody is watching it.
+      // is the one the watcher is learning from. While Admin → Learning is off nobody is watching it:
+      // a session opened because the channel went live has no frames and mustn't say learning is on.
+      // (A creator sending their own video has an ingest session; the switch doesn't touch those.)
       if (await isFeatured(ctx, b.login)) {
         card.preview = true;
-        if (!visibleSession && !(await readLearningSwitch(ctx.redis)).on) {
+        if ((!visibleSession || visibleSession.kind === "twitch_broadcast") && !(await readLearningSwitch(ctx.redis)).on) {
           card.analysis = pausedLearningStatus(card.broadcast.state, ctx.config.capabilities.vision.available);
+          if (summary) summary.analysis = card.analysis;
         }
       }
       if (b.twitch_user_id) card.followers = (await followerTotals(ctx, [b.twitch_user_id])).get(b.twitch_user_id) ?? null;
