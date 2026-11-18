@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -11,6 +12,7 @@ import {
   type FrameInsight,
   type FrameModel,
   type ObjectFinder,
+  type PipelineSink,
 } from "@slot1/analysis";
 import {
   endTwitchBroadcastSessions,
@@ -49,6 +51,27 @@ const SAMPLE_MS = 5_000;
 const STATUS_TTL_SEC = 180;
 /** OCR readings left out of featured channels' logs: whole-frame text that isn't a subtitle, objective, title or place. */
 const PREVIEW_OCR_KEEP_OUT: ReadonlySet<string> = new Set(["visible_text"]);
+
+/** The last picture of one featured entry that went into the training pool (a SHA-1 of its bytes). */
+export const ADDED_WATCH_TRAINED_KEY = (entry: string) => `slot1:added-watch:trained:${entry}`;
+
+/**
+ * The AI looks at a featured stream's picture on every check, but the picture itself only changes
+ * every 1 to 5 minutes. Each distinct picture goes into the training pool once, not once per look.
+ */
+export function trainOncePerPicture(
+  redis: Pick<ServerContext["redis"], "get" | "set">,
+  entry: string,
+  jpeg: Buffer,
+  trainingFrame: NonNullable<PipelineSink["trainingFrame"]>,
+): NonNullable<PipelineSink["trainingFrame"]> {
+  const digest = createHash("sha1").update(jpeg).digest("hex");
+  return async (input) => {
+    if ((await redis.get(ADDED_WATCH_TRAINED_KEY(entry))) === digest) return;
+    await trainingFrame(input);
+    await redis.set(ADDED_WATCH_TRAINED_KEY(entry), digest, "EX", 6 * 3600);
+  };
+}
 
 export interface AddedWatchOptions {
   gtaModel: FrameModel | null;
@@ -343,12 +366,13 @@ async function learnFrame(
   const size = jpegSize(input.jpeg);
   const now = new Date();
   const source = await ensurePreviewSource(ctx.db, input.broadcaster.id, session.id);
-  const sink = createPipelineSink(ctx, {
+  const base = createPipelineSink(ctx, {
     session,
     source,
     settings,
     retentionDays: settings.retentionDays,
   });
+  const sink: PipelineSink = base.trainingFrame ? { ...base, trainingFrame: trainOncePerPicture(ctx.redis, input.entry, input.jpeg, base.trainingFrame) } : base;
   const pipeline = new ObservationPipeline({
     ocr: input.ocr,
     ocrVersion: "5",
