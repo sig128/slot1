@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { formatAge, formatMediaTime, OBSERVATION_TYPE_LABEL, type AiViewResponse, type AiViewSnapshot, type ObservationType } from "@slot1/contracts";
+import { formatAge, formatMediaTime, OBSERVATION_TYPE_LABEL, type AiViewObject, type AiViewResponse, type AiViewSnapshot, type ObservationType } from "@slot1/contracts";
 import { api } from "@/lib/api";
 import { useNow } from "./useSessionStream";
 
@@ -13,10 +13,49 @@ interface FeedState {
   response: AiViewResponse | null;
   /** The snapshot whose frame image has loaded (what's on screen). */
   shown: AiViewSnapshot | null;
+  /** The shown snapshot's object boxes, each with the id of the box it continues from the last frame. */
+  objects: TrackedObject[];
   error: string | null;
 }
 
-const EMPTY: FeedState = { response: null, shown: null, error: null };
+const EMPTY: FeedState = { response: null, shown: null, objects: [], error: null };
+
+/** An object box with an id that stays the same while it's the same thing frame to frame. */
+export interface TrackedObject extends AiViewObject {
+  id: number;
+}
+
+function boxIou(a: readonly number[], b: readonly number[]): number {
+  const ix = Math.max(0, Math.min(a[0]! + a[2]!, b[0]! + b[2]!) - Math.max(a[0]!, b[0]!));
+  const iy = Math.max(0, Math.min(a[1]! + a[3]!, b[1]! + b[3]!) - Math.max(a[1]!, b[1]!));
+  const inter = ix * iy;
+  const union = a[2]! * a[3]! + b[2]! * b[3]! - inter;
+  return union > 0 ? inter / union : 0;
+}
+
+let nextObjectId = 1;
+/**
+ * Give each box the id of the box it continues from the previous frame (same label, overlapping
+ * enough), so the overlay can glide it to its new place instead of redrawing it. Others get new ids.
+ */
+export function trackObjects(prev: readonly TrackedObject[], items: readonly AiViewObject[]): TrackedObject[] {
+  const used = new Set<number>();
+  return items.map((o) => {
+    let best: TrackedObject | null = null;
+    let bestIou = 0.15;
+    for (const p of prev) {
+      if (p.label !== o.label || used.has(p.id)) continue;
+      const v = boxIou(p.box, o.box);
+      if (v > bestIou) {
+        bestIou = v;
+        best = p;
+      }
+    }
+    const id = best ? best.id : nextObjectId++;
+    used.add(id);
+    return { ...o, id };
+  });
+}
 
 class Feed {
   state: FeedState = EMPTY;
@@ -68,9 +107,9 @@ class Feed {
             img.onerror = () => resolve();
             img.src = snap.frame.url;
           });
-          if (this.alive) this.set({ shown: snap });
+          if (this.alive) this.set({ shown: snap, objects: trackObjects(this.state.objects, snap.objects?.items ?? []) });
         }
-        if (!snap) this.set({ shown: null });
+        if (!snap) this.set({ shown: null, objects: [] });
       } catch {
         wait = 5000;
         this.set({ error: "Couldn't reach SLOT1. Retrying." });
@@ -303,7 +342,10 @@ export function AiFramePlayer({ sessionId, reason }: { sessionId: string; reason
   return (
     <div className="min-w-0">
       {shown ? (
-        <AnalyzedFrame snapshot={shown} annotate={false} className="w-full" />
+        // The AI overlay finds this as the player's picture.
+        <div data-player-surface>
+          <AnalyzedFrame snapshot={shown} annotate={false} className="w-full" />
+        </div>
       ) : (
         <div className="grid aspect-video w-full place-items-center bg-graphite-800 p-6 text-center text-sm text-ivory-2">
           {response?.reason ?? "Waiting for the first analyzed frame"}

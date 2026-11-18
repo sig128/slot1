@@ -38,6 +38,8 @@ _to_delete/
 ml/runs/
 __pycache__/
 *.onnx
+# The AI overlay's object finder ships with the worker (see apps/worker/models/README.md).
+!apps/worker/models/*.onnx
 
 # Licensed font files are never committed (see docs/ASSET_MANIFEST.md)
 *.ttf

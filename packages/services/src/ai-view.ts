@@ -1,5 +1,5 @@
 import type { FrameInsight } from "@slot1/analysis";
-import { AiViewSnapshot, type AiViewRegion, type SourceLabel } from "@slot1/contracts";
+import { AI_VIEW_OBJECTS_OFF, AiViewSnapshot, type AiViewObjects, type AiViewRegion, type SourceLabel } from "@slot1/contracts";
 import type { ServerContext } from "./context";
 
 /**
@@ -53,6 +53,8 @@ export function buildAiViewSnapshot(
   i: FrameInsight,
   /** The stored copy's size, and the size the frame was analyzed at. */
   image: { width: number; height: number; analyzedWidth: number; analyzedHeight: number },
+  /** What the object finder boxed in this frame (the worker runs it only while someone watches). */
+  objects: AiViewObjects = AI_VIEW_OBJECTS_OFF,
 ): AiViewSnapshot {
   const regions: AiViewRegion[] = i.profile.regions.map((r) => ({
     id: r.id,
@@ -122,6 +124,7 @@ export function buildAiViewSnapshot(
     produced: i.produced.slice(0, 12),
     source: { label: c.label, demo: c.demo },
     hidden: (c.hidden ?? []).map((h) => box([h.x, h.y, h.w, h.h])!),
+    objects: { ...objects, items: objects.items.slice(0, 24).map((o) => ({ label: o.label, score: round(o.score, 3), box: box(o.box)! })) },
   });
 }
 

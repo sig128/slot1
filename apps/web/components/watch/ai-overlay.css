@@ -1,0 +1,220 @@
+/* The AI overlay (AiOverlay.tsx): boxes around what SLOT1's AI found, over the stream. */
+
+.aio-root {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.aio-layer {
+  --aio-bg: rgb(7 10 14 / 0.74);
+  --aio-line: rgb(127 178 255 / 0.36);
+  --aio-box: #7fe3d9;
+  --aio-ink: #e3ebf2;
+  position: absolute;
+  overflow: hidden;
+  color: var(--aio-ink);
+  font-family: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  font-variant-ligatures: none;
+}
+
+.aio-dim {
+  color: rgb(227 235 242 / 0.6);
+}
+
+/* the on/off switch: the only part that takes clicks ------------------------------------------ */
+
+.aio-toggle {
+  pointer-events: auto;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 9px;
+  color: var(--color-signal);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: var(--aio-bg);
+  border: 1px solid var(--aio-line);
+  border-radius: 3px;
+  cursor: pointer;
+  opacity: 0.85;
+}
+.aio-toggle:hover {
+  opacity: 1;
+}
+.aio-toggle:focus-visible {
+  outline: 2px solid var(--color-apricot);
+  outline-offset: 1px;
+  opacity: 1;
+}
+.aio-toggle[aria-pressed="false"] {
+  color: rgb(227 235 242 / 0.6);
+}
+
+.aio-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgb(227 235 242 / 0.35);
+}
+.aio-dot.is-on {
+  background: #9fe38f;
+  box-shadow: 0 0 6px #9fe38f;
+}
+
+/* boxes -------------------------------------------------------------------------------------- */
+
+.aio-picture,
+.aio-boxes {
+  position: absolute;
+}
+.aio-boxes {
+  inset: 0;
+}
+
+.aio-box,
+.aio-text {
+  position: absolute;
+  transition:
+    left 600ms ease,
+    top 600ms ease,
+    width 600ms ease,
+    height 600ms ease;
+}
+.aio-box {
+  border: 1px solid rgb(127 227 217 / 0.45);
+  animation: aio-box-in 320ms ease-out;
+}
+@keyframes aio-box-in {
+  from {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.aio-text {
+  border: 1px dashed rgb(255 201 77 / 0.75);
+}
+
+.aio-c {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: var(--aio-box);
+  border-style: solid;
+  border-width: 0;
+}
+.aio-c-tl {
+  left: -2px;
+  top: -2px;
+  border-left-width: 2px;
+  border-top-width: 2px;
+}
+.aio-c-tr {
+  right: -2px;
+  top: -2px;
+  border-right-width: 2px;
+  border-top-width: 2px;
+}
+.aio-c-bl {
+  left: -2px;
+  bottom: -2px;
+  border-left-width: 2px;
+  border-bottom-width: 2px;
+}
+.aio-c-br {
+  right: -2px;
+  bottom: -2px;
+  border-right-width: 2px;
+  border-bottom-width: 2px;
+}
+
+.aio-tag {
+  position: absolute;
+  left: -2px;
+  bottom: calc(100% + 3px);
+  padding: 0 5px;
+  white-space: nowrap;
+  color: var(--aio-ink);
+  font-size: 10px;
+  background: rgb(7 10 14 / 0.86);
+  border: 1px solid rgb(127 227 217 / 0.7);
+}
+.aio-tag b {
+  color: var(--aio-box);
+  font-weight: 400;
+}
+.aio-tag-text {
+  border-color: rgb(255 201 77 / 0.75);
+  color: var(--color-gold);
+}
+
+/* SLOT1's eyes: the preview picture it looked at, for Twitch and Kick players ------------------ */
+
+.aio-eyes {
+  position: absolute;
+  left: 8px;
+  bottom: 54px;
+  width: min(30%, 300px);
+  margin: 0;
+  background: var(--aio-bg);
+  border: 1px solid var(--aio-line);
+  border-radius: 4px;
+}
+.aio-eyes figcaption {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  color: var(--color-signal);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+.aio-eyes-frame {
+  position: relative;
+  overflow: hidden;
+  border-top: 1px solid var(--aio-line);
+}
+.aio-eyes-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.aio-eyes .aio-tag {
+  font-size: 9px;
+  padding: 0 3px;
+}
+.aio-eyes .aio-c {
+  width: 7px;
+  height: 7px;
+}
+
+/* phones and narrow players --------------------------------------------------------------------- */
+
+.aio-compact .aio-eyes {
+  width: min(44%, 210px);
+  bottom: 46px;
+  font-size: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aio-box,
+  .aio-text {
+    transition: none;
+    animation: none;
+  }
+}

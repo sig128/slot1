@@ -13,6 +13,8 @@ import { GTA_BOXES, GTA_EVENTS, GTA_SCENES, GTA_TAXONOMY_VERSION, type GtaBox, t
  * paths produce exactly the same predictions for the same frame.
  */
 
+export * from "./objects";
+
 export const DEFAULT_THRESHOLDS = { scene: 0.6, event: 0.6, box: 0.5 };
 export type Thresholds = typeof DEFAULT_THRESHOLDS;
 

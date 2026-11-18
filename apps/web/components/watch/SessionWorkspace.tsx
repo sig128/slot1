@@ -17,6 +17,7 @@ import {
 import { chatEmbedUrl } from "@slot1/twitch/url";
 import { ClipperActions } from "@/components/clipper/ClipperActions";
 import { AnalysisChip, BroadcastChip, SourceLabelChip, StatusPair } from "@/components/ui/StatusChips";
+import { AiOverlay } from "./AiOverlay";
 import { api, ApiError, newIdempotencyKey } from "@/lib/api";
 import { pct } from "@/lib/format";
 import { AiViewPanel } from "./AiView";
@@ -330,6 +331,10 @@ export function SessionWorkspace(p: Props) {
             )
           ) : (
             p.livePlayer
+          )}
+          {/* Boxes around what SLOT1's AI sees: on SLOT1's own video, or on the picture it looked at in a corner window over Twitch's or Kick's player. */}
+          {p.mode === "live" && p.session && !p.fixture && (
+            <AiOverlay sessionId={p.session.id} over={playerKind === "slot1" ? "video" : "preview"} />
           )}
           {/* Only over SLOT1's own live video; with Twitch's player it docks in the rail instead. */}
           {replayState.kind !== "idle" && overlayReplay && <InstantReplayPlayer state={replayState} variant="overlay" onClose={closeReplay} />}

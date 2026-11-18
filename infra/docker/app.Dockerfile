@@ -60,6 +60,8 @@ CMD ["node", "dist/main.js"]
 FROM media-runtime AS worker
 COPY --from=build --chown=node:node /out/worker ./
 COPY --from=build --chown=node:node /repo/apps/worker/dist ./dist
+# The AI overlay's object finder (apps/worker/models/README.md).
+COPY --from=build --chown=node:node /repo/apps/worker/models ./models
 USER node
 CMD ["node", "dist/main.js"]
 

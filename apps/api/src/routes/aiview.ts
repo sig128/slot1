@@ -13,9 +13,10 @@ async function noSnapshotReason(ctx: ServerContext, session: StreamSessionRow): 
   const sources = await listSources(ctx.db, session.broadcaster_id);
   const live = sources.find((s) => s.kind === "live_ingest" && s.session_id === session.id && s.status === "publishing" && !s.revoked_at);
   if (!live) {
-    return session.kind === "ingest"
-      ? "The creator isn't sending video to SLOT1 right now, so there's no frame to show"
-      : "This channel doesn't send its video to SLOT1, so SLOT1 can't see the gameplay";
+    if (session.kind === "ingest") return "The creator isn't sending video to SLOT1 right now, so there's no frame to show";
+    // A featured channel: SLOT1 looks at the stream's public preview picture while Admin → Learning is on.
+    const looked = session.last_received_frame_at && Date.now() - session.last_received_frame_at.getTime() < 120_000;
+    return looked ? "Waiting for SLOT1's next look at this stream" : "This channel doesn't send its video to SLOT1, so SLOT1 can't see the gameplay";
   }
   const st = analysisStatus(session, ctx.config);
   if (st.state === "ready" && st.reason?.includes("agent not enabled")) return "AI analysis is off for this stream";

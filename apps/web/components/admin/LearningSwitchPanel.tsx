@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { AdminLearning } from "@slot1/contracts";
 import { api, ApiError } from "@/lib/api";
+import { useNow } from "@/components/watch/useSessionStream";
 import { ago } from "./parts";
 
 /**
@@ -14,17 +15,21 @@ export function LearningSwitchPanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      setData(await api<AdminLearning>("/api/admin/learning"));
-    } catch {
-      setError("Couldn’t load whether learning is on. Reload the page.");
-    }
-  }, []);
+  const now = useNow(5000);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let alive = true;
+    api<AdminLearning>("/api/admin/learning")
+      .then((r) => {
+        if (alive) setData(r);
+      })
+      .catch(() => {
+        if (alive) setError("Couldn’t load whether learning is on. Reload the page.");
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   async function set(on: boolean) {
     setBusy(true);
@@ -52,7 +57,7 @@ export function LearningSwitchPanel() {
           <p className="font-display text-2xl font-bold text-ivory">{!data ? "…" : on ? "Learning is on" : "Learning is off"}</p>
           {data && (
             <p className="mt-0.5 text-[0.85rem] text-ivory-3">
-              {data.changedAt ? `${on ? "Turned on" : "Turned off"} ${ago(data.changedAt, Date.now())}` : "Nobody has turned it on yet."}
+              {data.changedAt ? `${on ? "Turned on" : "Turned off"} ${ago(data.changedAt, now)}` : "Nobody has turned it on yet."}
             </p>
           )}
         </div>

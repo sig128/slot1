@@ -8,6 +8,7 @@ import {
   getProfile,
   jpegSize,
   ObservationPipeline,
+  type FrameInsight,
   type FrameModel,
 } from "@slot1/analysis";
 import {
@@ -29,6 +30,7 @@ import {
 } from "@slot1/db";
 import { sanitizeErrorMessage } from "@slot1/platform";
 import { sizeThumbnail } from "@slot1/twitch";
+import type { AiViewContext } from "./ai-view";
 import type { ServerContext } from "./context";
 import { kickChannels, kickConfigured, type KickChannel } from "./kick";
 import { LEARNING_PAUSED_KEY, readLearningSwitch } from "./learning-switch";
@@ -44,6 +46,13 @@ const LOCK_KEY = "slot1:lock:added-watch";
  */
 const SAMPLE_MS = 5_000;
 const STATUS_TTL_SEC = 180;
+
+export interface AddedWatchOptions {
+  gtaModel: FrameModel | null;
+  toJpeg?: (buf: Buffer, contentType: string) => Promise<Buffer | null>;
+  /** "What the AI sees" and the AI overlay: called once per analyzed picture (the worker stores it while someone watches). */
+  insight?: (c: AiViewContext, i: FrameInsight) => Promise<void>;
+}
 
 export interface AddedWatchResult {
   watched: number;
@@ -70,7 +79,7 @@ export function addedWatchReason(visionOn: boolean, visionReason: string | null)
  */
 export async function watchAddedStreams(
   ctx: ServerContext,
-  opts: { gtaModel: FrameModel | null; toJpeg?: (buf: Buffer, contentType: string) => Promise<Buffer | null> } = { gtaModel: null },
+  opts: AddedWatchOptions = { gtaModel: null },
 ): Promise<AddedWatchResult> {
   const idle = { watched: 0, learned: 0, unchanged: 0, vision: ctx.config.capabilities.vision.available };
   const locked = await ctx.redis.set(LOCK_KEY, "1", "EX", 90, "NX");
@@ -112,7 +121,7 @@ async function pauseWatching(ctx: ServerContext): Promise<void> {
 
 async function runWatch(
   ctx: ServerContext,
-  opts: { gtaModel: FrameModel | null; toJpeg?: (buf: Buffer, contentType: string) => Promise<Buffer | null> },
+  opts: AddedWatchOptions,
 ): Promise<AddedWatchResult> {
   const entries = await getPreviewLogins(ctx);
   const result: AddedWatchResult = { watched: 0, learned: 0, unchanged: 0, vision: ctx.config.capabilities.vision.available };
@@ -173,6 +182,7 @@ async function runWatch(
               vision,
               ocr,
               gtaModel: opts.gtaModel,
+              insight: opts.insight,
               reason,
             });
             if (learned === "skipped") return;
@@ -214,6 +224,7 @@ async function runWatch(
             vision,
             ocr,
             gtaModel: opts.gtaModel,
+            insight: opts.insight,
             reason,
           });
           if (learned === "skipped") return;
@@ -302,6 +313,7 @@ async function learnFrame(
     vision: ReturnType<typeof createVisionProvider>;
     ocr: ReturnType<typeof createOcrEngine>;
     gtaModel: FrameModel | null;
+    insight?: AddedWatchOptions["insight"];
     reason: string;
   },
 ): Promise<"learned" | "unchanged" | "skipped"> {
@@ -340,6 +352,10 @@ async function learnFrame(
     coverageMsPerFrame: SAMPLE_MS,
     workDir: path.join(input.work, input.broadcaster.id),
     sink,
+    // The picture SLOT1 just looked at, for "What the AI sees" and the AI overlay.
+    insight: input.insight
+      ? (i) => input.insight!({ sessionId: session.id, label: "live", demo: false, intervalMs: SAMPLE_MS, measuredCadenceMs: null }, i)
+      : undefined,
   });
   await pipeline.handleFrame({
     ptsMs: Date.now(),

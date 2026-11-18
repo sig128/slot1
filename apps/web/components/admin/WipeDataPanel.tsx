@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { WIPE_CONFIRM_WORD, type AdminWipeResponse } from "@slot1/contracts";
 import { api, ApiError } from "@/lib/api";
+import { useNow } from "@/components/watch/useSessionStream";
 import { ago, num, Stat } from "./parts";
 
 const hours = (h: number) => h.toLocaleString("en-US", { maximumFractionDigits: 1 });
@@ -18,24 +19,41 @@ export function WipeDataPanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      setData(await api<AdminWipeResponse>("/api/admin/wipe"));
-    } catch {
-      setError("Couldn’t load what’s stored. Reload the page.");
-    }
-  }, []);
+  const now = useNow(5000);
+
+  // setState only ever runs in these promise callbacks, never straight from an effect.
+  const load = () =>
+    api<AdminWipeResponse>("/api/admin/wipe").then(
+      (r) => setData(r),
+      () => setError("Couldn’t load what’s stored. Reload the page."),
+    );
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let alive = true;
+    api<AdminWipeResponse>("/api/admin/wipe").then(
+      (r) => {
+        if (alive) setData(r);
+      },
+      () => {
+        if (alive) setError("Couldn’t load what’s stored. Reload the page.");
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const working = data?.status.state === "queued" || data?.status.state === "running";
   useEffect(() => {
     if (!working) return;
-    const t = window.setInterval(() => void load(), 2000);
+    const t = window.setInterval(() => {
+      api<AdminWipeResponse>("/api/admin/wipe").then(
+        (r) => setData(r),
+        () => undefined,
+      );
+    }, 2000);
     return () => window.clearInterval(t);
-  }, [working, load]);
+  }, [working]);
 
   async function wipe() {
     setBusy(true);
@@ -116,7 +134,7 @@ export function WipeDataPanel() {
         {!error && s?.state === "running" && <p className="text-ivory-2">Wiping. This page updates when it’s done.</p>}
         {!error && s?.state === "done" && s.deleted && (
           <p className="text-ivory-2">
-            Wiped {ago(s.finishedAt, Date.now())}: {num(s.deleted.streams)} streams, {num(s.deleted.findings)} findings, {num(s.filesRemoved ?? 0)} files
+            Wiped {ago(s.finishedAt, now)}: {num(s.deleted.streams)} streams, {num(s.deleted.findings)} findings, {num(s.filesRemoved ?? 0)} files
             and {hours(s.deleted.hoursWatched)} hours watched.
           </p>
         )}

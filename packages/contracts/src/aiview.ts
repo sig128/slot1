@@ -41,6 +41,31 @@ export const AiViewProduced = z.object({
 });
 export type AiViewProduced = z.infer<typeof AiViewProduced>;
 
+/** One thing the object finder boxed in the frame: a person, a vehicle or an animal. */
+export const AiViewObject = z.object({
+  /** Plain word: person, car, truck, motorbike, bicycle, bus, boat, plane, train, dog… */
+  label: z.string(),
+  /** The finder's own score, 0..1. */
+  score: z.number(),
+  box: NormBox,
+});
+export type AiViewObject = z.infer<typeof AiViewObject>;
+
+/**
+ * What SLOT1's object finder (a small general detector, not trained on GTA) boxed in the frame.
+ * Overlay only: these boxes never become log entries.
+ */
+export const AiViewObjects = z.object({
+  status: z.enum(["found", "off", "error"]),
+  model: z.string().nullable(),
+  items: z.array(AiViewObject),
+  durationMs: z.number().nullable(),
+  note: z.string().nullable(),
+});
+export type AiViewObjects = z.infer<typeof AiViewObjects>;
+
+export const AI_VIEW_OBJECTS_OFF: AiViewObjects = { status: "off", model: null, items: [], durationMs: null, note: null };
+
 export const AiViewSnapshot = z.object({
   /** Changes with every analyzed frame; also the id of the frame image. */
   id: z.string(),
@@ -89,6 +114,7 @@ export const AiViewSnapshot = z.object({
   source: z.object({ label: SourceLabel, demo: z.boolean() }),
   /** Areas the creator hid from the AI: already solid black in the frame above, before analysis. */
   hidden: z.array(NormBox).default([]),
+  objects: AiViewObjects.default(AI_VIEW_OBJECTS_OFF),
 });
 export type AiViewSnapshot = z.infer<typeof AiViewSnapshot>;
 
